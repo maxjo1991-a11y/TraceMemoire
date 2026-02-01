@@ -1,5 +1,5 @@
 package com.maxjth.tracememoire
-// TEST GIT – écran 1
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
