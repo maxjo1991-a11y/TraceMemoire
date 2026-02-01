@@ -1,8 +1,7 @@
 package com.maxjth.tracememoire
-
+// TEST GIT – écran 1
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.Animatable
@@ -35,9 +34,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DateRange
-import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -67,7 +64,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
-import androidx.compose.runtime.saveable.rememberSaveable
+
 // ✅ IMPORTS ÉCRANS (UI) — CORRIGÉS (PLUS DE com.example)
 import com.maxjth.tracememoire.ui.TraceDuJourScreen
 import com.maxjth.tracememoire.ui.TraceDuTempsVecuScreen
