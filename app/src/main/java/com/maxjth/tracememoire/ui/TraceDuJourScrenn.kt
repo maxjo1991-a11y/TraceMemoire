@@ -387,23 +387,26 @@ private fun TagChip(
     val scale = remember { Animatable(1f) }
 
     LaunchedEffect(triggerTime) {
-        triggerTime?.takeIf { it > 0 }?.let {
-            scale.animateTo(1.14f, tween(140, easing = FastOutSlowInEasing))
-            scale.animateTo(1f,   tween(220, easing = FastOutSlowInEasing))
-        }
+        val t = triggerTime ?: return@LaunchedEffect
+        if (t <= 0L) return@LaunchedEffect
+
+        scale.snapTo(1f) // ✅ évite un état bizarre si relancé vite
+        scale.animateTo(1.14f, tween(durationMillis = 140, easing = FastOutSlowInEasing))
+        scale.animateTo(1f, tween(durationMillis = 220, easing = FastOutSlowInEasing))
     }
+
+    val bg = if (active) MAUVE.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.06f)
+    val borderW = if (active) 1.5.dp else 0.dp
+    val borderC = if (active) MAUVE else Color.Transparent
+    val textC = if (active) MAUVE else WHITE_SOFT.copy(alpha = 0.88f)
 
     Box(
         modifier = Modifier
             .scale(scale.value)
             .clip(RoundedCornerShape(14.dp))
-            .background(if (active) MAUVE.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.06f))
-            .border(
-                width = if (active) 1.5.dp else 0.dp,
-                color = if (active) MAUVE else Color.Transparent,
-                shape = RoundedCornerShape(14.dp)
-            )
-            .clickable(enabled = enabled) { onToggle() }
+            .background(bg)
+            .border(width = borderW, color = borderC, shape = RoundedCornerShape(14.dp))
+            .clickable(enabled = enabled, onClick = onToggle) // ✅ suffit
             .padding(horizontal = 12.dp, vertical = 9.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -411,8 +414,9 @@ private fun TagChip(
                 text = text,
                 fontSize = 12.5.sp,
                 fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
-                color = if (active) MAUVE else WHITE_SOFT.copy(alpha = 0.88f)
+                color = textC
             )
+
             badge?.let {
                 Spacer(Modifier.width(8.dp))
                 Text(
@@ -424,7 +428,6 @@ private fun TagChip(
         }
     }
 }
-
 @Composable
 private fun SelectedTagChip(
     text: String,
@@ -1018,6 +1021,3 @@ fun TraceDuJourScreen(
         }
     }
 }
-
-
-
