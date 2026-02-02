@@ -119,7 +119,7 @@ private fun timeLeftLabel(nowMs: Long, createdAtMs: Long): String {
     return "${h}h ${m}m"
 }
 
-// ✅ Corrigé (Kotlin pur)
+// ✅ FIX : hhmm Kotlin valide
 private fun hhmm(ms: Long): String {
     val totalMin = (ms / 60_000L).toInt()
     val h = (totalMin / 60) % 24
@@ -208,6 +208,19 @@ private fun buildTrianglePath(
         lineTo(cx - halfBase, top + h * 0.95f)
         close()
     }
+}
+
+private fun Color.desaturate(amount: Float): Color {
+    val a = amount.coerceIn(0f, 1f)
+    val gray = red * 0.2126f + green * 0.7152f + blue * 0.0722f
+    fun mix(c: Float) = c + (gray - c) * a
+    return Color(mix(red), mix(green), mix(blue), alpha)
+}
+
+private fun Color.brighten(amount: Float): Color {
+    val a = amount.coerceIn(0f, 1f)
+    fun up(c: Float) = (c + (1f - c) * a).coerceIn(0f, 1f)
+    return Color(up(red), up(green), up(blue), alpha)
 }
 
 @Composable
@@ -333,20 +346,6 @@ private fun TriangleOutlineBreathing(
     }
 }
 
-// ── Helpers couleur ──────────────────────────────────────────
-private fun Color.desaturate(amount: Float): Color {
-    val a = amount.coerceIn(0f, 1f)
-    val gray = red * 0.2126f + green * 0.7152f + blue * 0.0722f
-    fun mix(c: Float) = c + (gray - c) * a
-    return Color(mix(red), mix(green), mix(blue), alpha)
-}
-
-private fun Color.brighten(amount: Float): Color {
-    val a = amount.coerceIn(0f, 1f)
-    fun up(c: Float) = (c + (1f - c) * a).coerceIn(0f, 1f)
-    return Color(up(red), up(green), up(blue), alpha)
-}
-
 // ── Tags (Écran 2) ───────────────────────────────────────────
 private enum class Tier { FREE, PREMIUM }
 
@@ -358,15 +357,15 @@ private data class TagCategory(
 )
 
 private val TAG_GROUPS_OFFICIAL = listOf(
-    TagCategory("Humeur globale",         "Quelle est la tonalité dominante de la journée ?",          Tier.FREE,    listOf("calme", "tendu", "stable", "agité", "lourd", "léger", "équilibré", "joyeux", "sombre")),
-    TagCategory("Énergie / Rythme",       "Comment l’énergie a-t-elle circulé dans le temps ?",       Tier.FREE,    listOf("lent", "fluide", "rapide", "irrégulier", "soutenu", "épuisant", "constant", "énergisé", "ralenti")),
-    TagCategory("Corps / Sensations",     "Qu’a exprimé le corps aujourd’hui, sans interprétation ?", Tier.FREE,   listOf("reposée", "fatigué", "tendu", "détendu", "inconfort", "à l’aise", "crispé", "relâché")),
-    TagCategory("Présence / Attention",   "Où se situait l’attention la plupart du temps ?",          Tier.FREE,    listOf("présent", "distrait", "concentré", "dispersé", "attentif", "absent", "ancré", "flottant")),
-    TagCategory("Type de journée",        "Quel était le décor dominant de la journée ?",             Tier.FREE,    listOf("travail", "repos", "social", "maison", "extérieur", "déplacements", "mixte", "solitude choisie")),
+    TagCategory("Humeur globale",         "Quelle est la tonalité dominante de la journée ?",                Tier.FREE,    listOf("calme", "tendu", "stable", "agité", "lourd", "léger", "équilibré", "joyeux", "sombre")),
+    TagCategory("Énergie / Rythme",       "Comment l’énergie a-t-elle circulé dans le temps ?",             Tier.FREE,    listOf("lent", "fluide", "rapide", "irrégulier", "soutenu", "épuisant", "constant", "énergisé", "ralenti")),
+    TagCategory("Corps / Sensations",     "Qu’a exprimé le corps aujourd’hui, sans interprétation ?",       Tier.FREE,    listOf("reposée", "fatigué", "tendu", "détendu", "inconfort", "à l’aise", "crispé", "relâché")),
+    TagCategory("Présence / Attention",   "Où se situait l’attention la plupart du temps ?",                Tier.FREE,    listOf("présent", "distrait", "concentré", "dispersé", "attentif", "absent", "ancré", "flottant")),
+    TagCategory("Type de journée",        "Quel était le décor dominant de la journée ?",                   Tier.FREE,    listOf("travail", "repos", "social", "maison", "extérieur", "déplacements", "mixte", "solitude choisie")),
 
-    TagCategory("Motifs / Cycles",        "Quel pattern temporel se répète ou se brise ?",            Tier.PREMIUM, listOf("similaire à hier", "répétitif", "changement", "rupture", "cycle connu", "progression", "stagnation", "retour inattendu")),
+    TagCategory("Motifs / Cycles",        "Quel pattern temporel se répète ou se brise ?",                  Tier.PREMIUM, listOf("similaire à hier", "répétitif", "changement", "rupture", "cycle connu", "progression", "stagnation", "retour inattendu")),
     TagCategory("Environnement",          "Qu’est-ce qui entourait la journée (bruit, foule, air, espace) ?", Tier.PREMIUM, listOf("bruit", "calme", "météo lourde", "foule", "isolement", "mouvement", "nature", "confiné")),
-    TagCategory("Clarté mentale",         "Quel était l’état de lisibilité mentale global ?",         Tier.PREMIUM, listOf("clair", "chargé", "confus", "léger", "saturé", "posé", "fluide", "embrumé")),
+    TagCategory("Clarté mentale",         "Quel était l’état de lisibilité mentale global ?",               Tier.PREMIUM, listOf("clair", "chargé", "confus", "léger", "saturé", "posé", "fluide", "embrumé")),
     TagCategory("Charge émotionnelle",    "Quelle intensité émotionnelle était présente (sans jugement) ?", Tier.PREMIUM, listOf("faible", "présente", "intense", "contenue", "débordante", "instable", "maîtrisée")),
     TagCategory("Alignement intérieur",   "Le ressenti global était-il aligné, en friction, ou en transition ?", Tier.PREMIUM, listOf("aligné", "désaligné", "en transition", "résistant", "ouvert", "fermé", "en questionnement"))
 )
@@ -390,7 +389,8 @@ private fun TagChip(
         val t = triggerTime ?: return@LaunchedEffect
         if (t <= 0L) return@LaunchedEffect
 
-        scale.snapTo(1f) // ✅ évite un état bizarre si relancé vite
+        scale.stop()     // ✅ FIX important
+        scale.snapTo(1f)
         scale.animateTo(1.14f, tween(durationMillis = 140, easing = FastOutSlowInEasing))
         scale.animateTo(1f, tween(durationMillis = 220, easing = FastOutSlowInEasing))
     }
@@ -406,7 +406,7 @@ private fun TagChip(
             .clip(RoundedCornerShape(14.dp))
             .background(bg)
             .border(width = borderW, color = borderC, shape = RoundedCornerShape(14.dp))
-            .clickable(enabled = enabled, onClick = onToggle) // ✅ suffit
+            .clickable(enabled = enabled, onClick = onToggle)
             .padding(horizontal = 12.dp, vertical = 9.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -428,6 +428,7 @@ private fun TagChip(
         }
     }
 }
+
 @Composable
 private fun SelectedTagChip(
     text: String,
@@ -581,7 +582,7 @@ private fun TagCategoryAccordion(
                         TagChip(
                             text = tag,
                             active = tag in selectedTags,
-                            enabled = true,
+                            enabled = !locked, // ✅ FIX : plus de enabled=true
                             badge = if (category.tier == Tier.PREMIUM) "Premium" else null,
                             onToggle = { onToggleTag(tag) },
                             triggerTime = animationTriggers[tag]
@@ -707,11 +708,14 @@ fun TraceDuJourScreen(
 
     var selectedTags by remember { mutableStateOf(setOf<String>()) }
 
-    // ✅ Corrigé : StateMap (sinon l’UI ne voit pas les updates)
+    // ✅ FIX : stateMap pour triggers anim
     val tagAnimationTriggers = remember { mutableStateMapOf<String, Long>() }
 
+    // ✅ FIX : toggle ultra-safe
     val toggleTag: (String) -> Unit = { tag ->
-        selectedTags = if (tag in selectedTags) selectedTags - tag else selectedTags + tag
+        selectedTags = selectedTags.toMutableSet().apply {
+            if (!add(tag)) remove(tag)
+        }.toSet()
         tagAnimationTriggers[tag] = System.currentTimeMillis()
     }
 
@@ -746,7 +750,6 @@ fun TraceDuJourScreen(
             .let { if (it == -1) Int.MAX_VALUE else it }
     }
 
-    // ✅ Branché : utilisé par le triangle pendant le slide
     var isInteracting by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -779,7 +782,6 @@ fun TraceDuJourScreen(
                         .background(BG_DEEP)
                         .padding(horizontal = 28.dp, vertical = 16.dp)
                 ) {
-                    // Bouton Approfondir (optionnel)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -807,7 +809,6 @@ fun TraceDuJourScreen(
 
                     Spacer(Modifier.height(10.dp))
 
-                    // Bouton principal Enregistrer
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -985,9 +986,7 @@ fun TraceDuJourScreen(
             )
 
             TAG_GROUPS_OFFICIAL.forEachIndexed { idx, cat ->
-                if (idx == firstPremiumIndex) {
-                    PremiumSeparatorRow()
-                }
+                if (idx == firstPremiumIndex) PremiumSeparatorRow()
 
                 val allowed = tierAllowed(cat.tier, hasPremium, hasPremiumPlus)
                 val isOpen = openIndex == idx
