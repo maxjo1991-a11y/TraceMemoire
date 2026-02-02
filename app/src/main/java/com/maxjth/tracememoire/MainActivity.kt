@@ -129,7 +129,7 @@ private fun AppRoot() {
         }
 
         // =========================
-        // ÉCRAN 2 — TRACE DU JOUr
+        // ÉCRAN 2 — TRACE DU JOU
         // =========================
         Screen.TRACE_DU_JOUR -> {
             TraceDuJourScreen(

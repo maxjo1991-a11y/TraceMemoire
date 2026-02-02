@@ -57,7 +57,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-// =====================================================
+// ====================================================
 // TRACE MÉMOIRE — ÉCRAN 3 (LECTURE)
 // Fichier complet : TraceDuTempsVecuScreen.kt
 // =====================================================
