@@ -1,5 +1,5 @@
 package com.maxjth.tracememoire
-//111111111111111111111111111111111111111111111111111111
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
