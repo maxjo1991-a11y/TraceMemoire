@@ -1,5 +1,6 @@
-//       Ecran 1
+
 package com.maxjth.tracememoire
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -9,7 +10,6 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -64,16 +64,21 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import androidx.compose.animation.core.animateFloat
 
-// ✅ IMPORTS ÉCRANS (UI) — CORRIGÉS (PLUS DE com.example)
+// ✅ Tes écrans UI (déjà dans d'autres fichiers)
 import com.maxjth.tracememoire.ui.TraceDuJourScreen
 import com.maxjth.tracememoire.ui.TraceDuTempsVecuScreen
 
-// ✅ Navigation minimale (Écran 1 pilote tout)
+// ================================
+// CHAMBRE 1 — NAVIGATION MINIMALE
+// Rôle : le “switch” entre Écran 1 / 2 / 3
+// ================================
 private enum class Screen { HOME, TRACE_DU_JOUR, TRACE_DU_TEMPS_VECU }
 
 // ================================
-// COULEURS
+// CHAMBRE 2 — COULEURS + CONSTANTES (globales)
+// Rôle : rien d’autre ici que des constantes
 // ================================
 private val BG_DEEP = Color(0xFF000000)
 private val WHITE_SOFT = Color(0xFFE9E9E9)
@@ -81,31 +86,33 @@ private val TEXT_MUTED = Color(0xFFAAAAAA)
 private val TURQUOISE = Color(0xFF00A3A3)
 private val MAUVE = Color(0xFF7A63C6)
 
-// ================================
-// BOUTON — VAGUE "LIQUIDE"
-// ================================
 private const val WAVE_MS = 720
 private const val GLOW_MAX_ALPHA = 0.26f
 private const val RING_MAX_ALPHA = 0.36f
 private val LIQUID_EASING = CubicBezierEasing(0.22f, 0.98f, 0.28f, 1.00f)
 
+// ================================
+// CHAMBRE 3 — MAIN ACTIVITY
+// Rôle : point d’entrée Android
+// ================================
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             MaterialTheme {
-                HomeScreen()
+                AppRoot()
             }
         }
     }
 }
 
+// ================================
+// CHAMBRE 4 — APP ROOT (pilote)
+// Rôle : affiche le bon écran (1/2/3)
+// ================================
 @Composable
-fun HomeScreen() {
-    val haptic = LocalHapticFeedback.current
-
-    // Tu peux remettre rememberSaveable après, mais ça c’est stable.
+private fun AppRoot() {
     var screen by remember { mutableStateOf(Screen.HOME) }
 
     when (screen) {
@@ -114,124 +121,11 @@ fun HomeScreen() {
         // ÉCRAN 1 — HOME
         // =========================
         Screen.HOME -> {
-            val traceCount = 0
-            val lastTraceText = "Il y a 2 jours"
-            val showLastToast = (traceCount > 0)
-
-            Scaffold(containerColor = BG_DEEP) { padding ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                        .padding(horizontal = 32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "Trace\nMémoire",
-                        fontSize = 60.sp,
-                        lineHeight = 60.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color.White,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(Modifier.height(12.dp))
-
-                    Text(
-                        text = "Ici, la mémoire se construit avec le temps.",
-                        fontSize = 16.sp,
-                        lineHeight = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = androidx.compose.ui.graphics.lerp(
-                            Color.White,
-                            Color(0xFF8E7CFF),
-                            0.12f
-                        ).copy(alpha = 0.72f),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(Modifier.height(22.dp))
-
-                    HomeMemoryCircle(traceCount = traceCount)
-
-                    if (traceCount == 0) {
-                        Spacer(Modifier.height(14.dp))
-                        Text(
-                            text = "Quelque chose est en train de commencer",
-                            fontSize = 14.sp,
-                            lineHeight = 18.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = androidx.compose.ui.graphics.lerp(
-                                Color.White,
-                                Color(0xFF8E7CFF),
-                                0.12f
-                            ).copy(alpha = 0.72f),
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-
-                    if (traceCount > 0 && traceCount % 11 == 0) {
-                        Spacer(Modifier.height(12.dp))
-                        MessageSymbolique11Moelleux(traceCount = traceCount)
-                    }
-
-                    Spacer(Modifier.height(22.dp))
-
-                    Text(
-                        text = buildAnnotatedString {
-                            append("Chaque trace fait grandir ce ")
-                            withStyle(style = SpanStyle(color = MAUVE)) { append("Cercle") }
-                        },
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = WHITE_SOFT.copy(alpha = 0.65f),
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(Modifier.height(26.dp))
-
-                    AddTraceButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            screen = Screen.TRACE_DU_JOUR
-                        }
-                    )
-
-                    Spacer(Modifier.height(18.dp))
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .clickable { /* Historique plus tard */ }
-                            .padding(vertical = 12.dp, horizontal = 16.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.DateRange,
-                            contentDescription = "Historique",
-                            tint = TURQUOISE.copy(alpha = 0.65f),
-                            modifier = Modifier.size(22.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = "Historique",
-                            fontSize = 20.sp,
-                            color = TEXT_MUTED,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-
-                    Spacer(Modifier.height(16.dp))
-
-                    LastTraceToast(
-                        lastTraceText = lastTraceText,
-                        show = showLastToast,
-                        modifier = Modifier.padding(top = 6.dp)
-                    )
-                }
-            }
+            HomeScreen(
+                traceCount = 0, // TODO: brancher au store plus tard
+                lastTraceText = "Il y a 2 jours",
+                onOpenTraceDuJour = { screen = Screen.TRACE_DU_JOUR }
+            )
         }
 
         // =========================
@@ -255,14 +149,154 @@ fun HomeScreen() {
         // =========================
         Screen.TRACE_DU_TEMPS_VECU -> {
             TraceDuTempsVecuScreen(
-                ui = null, // temporaire tant que pas branché
+                ui = null, // TODO: brancher quand prêt
                 onBack = { screen = Screen.TRACE_DU_JOUR }
             )
         }
     }
 }
+
 // ================================
-// MESSAGE SYMBOLIQUE 11 — MOELLEUX
+// CHAMBRE 5 — HOME SCREEN (UI)
+// Rôle : l’écran 1 uniquement, propre
+// ================================
+@Composable
+private fun HomeScreen(
+    traceCount: Int,
+    lastTraceText: String,
+    onOpenTraceDuJour: () -> Unit
+) {
+    val haptic = LocalHapticFeedback.current
+    val showLastToast = (traceCount > 0)
+
+    Scaffold(containerColor = BG_DEEP) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            // Titre
+            Text(
+                text = "Trace\nMémoire",
+                fontSize = 60.sp,
+                lineHeight = 60.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            // Sous-titre
+            Text(
+                text = "Ici, la mémoire se construit avec le temps.",
+                fontSize = 16.sp,
+                lineHeight = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = androidx.compose.ui.graphics.lerp(
+                    Color.White,
+                    Color(0xFF8E7CFF),
+                    0.12f
+                ).copy(alpha = 0.72f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(22.dp))
+
+            // Cercle vivant
+            HomeMemoryCircle(traceCount = traceCount)
+
+            if (traceCount == 0) {
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    text = "Quelque chose est en train de commencer",
+                    fontSize = 14.sp,
+                    lineHeight = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = androidx.compose.ui.graphics.lerp(
+                        Color.White,
+                        Color(0xFF8E7CFF),
+                        0.12f
+                    ).copy(alpha = 0.72f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            if (traceCount > 0 && traceCount % 11 == 0) {
+                Spacer(Modifier.height(12.dp))
+                MessageSymbolique11Moelleux(traceCount = traceCount)
+            }
+
+            Spacer(Modifier.height(22.dp))
+
+            Text(
+                text = buildAnnotatedString {
+                    append("Chaque trace fait grandir ce ")
+                    withStyle(style = SpanStyle(color = MAUVE)) { append("Cercle") }
+                },
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = WHITE_SOFT.copy(alpha = 0.65f),
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(Modifier.height(26.dp))
+
+            // Bouton (ouvre Écran 2)
+            AddTraceButton(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onOpenTraceDuJour()
+                }
+            )
+
+            Spacer(Modifier.height(18.dp))
+
+            // Historique (placeholder)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clickable { /* TODO Historique plus tard */ }
+                    .padding(vertical = 12.dp, horizontal = 16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.DateRange,
+                    contentDescription = "Historique",
+                    tint = TURQUOISE.copy(alpha = 0.65f),
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "Historique",
+                    fontSize = 20.sp,
+                    color = TEXT_MUTED,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Toast dernière entrée
+            LastTraceToast(
+                lastTraceText = lastTraceText,
+                show = showLastToast,
+                modifier = Modifier.padding(top = 6.dp)
+            )
+        }
+    }
+}
+
+// ✅ CUBE 2 à coller juste après ce cube 1 (voir plus bas)
+
+
+// ================================
+// CHAMBRE 6 — MESSAGE SYMBOLIQUE 11
+// Rôle : petit encart doux quand traceCount % 11 == 0
 // ================================
 @Composable
 private fun MessageSymbolique11Moelleux(traceCount: Int) {
@@ -296,10 +330,11 @@ private fun MessageSymbolique11Moelleux(traceCount: Int) {
 }
 
 // ================================
-// CERCLE VIVANT (HOME)
+// CHAMBRE 7 — CERCLE VIVANT (HOME)
+// Rôle : cercle mauve + chiffre turquoise au centre
 // ================================
 @Composable
-fun HomeMemoryCircle(traceCount: Int) {
+private fun HomeMemoryCircle(traceCount: Int) {
     var showExact by remember { mutableStateOf(false) }
 
     LaunchedEffect(showExact) {
@@ -443,10 +478,11 @@ fun HomeMemoryCircle(traceCount: Int) {
 }
 
 // ================================
-// BOUTON “AJOUTER UNE TRACE”
+// CHAMBRE 8 — BOUTON “AJOUTER UNE TRACE”
+// Rôle : bouton turquoise + vague mauve (press)
 // ================================
 @Composable
-fun AddTraceButton(
+private fun AddTraceButton(
     onClick: () -> Unit,
     text: String = "Ajouter une trace"
 ) {
@@ -518,10 +554,11 @@ fun AddTraceButton(
 }
 
 // ================================
-// TOAST “DERNIÈRE ENTRÉE”
+// CHAMBRE 9 — TOAST “DERNIÈRE ENTRÉE”
+// Rôle : petite info qui disparaît après 6 sec
 // ================================
 @Composable
-fun LastTraceToast(
+private fun LastTraceToast(
     lastTraceText: String,
     show: Boolean,
     modifier: Modifier = Modifier
