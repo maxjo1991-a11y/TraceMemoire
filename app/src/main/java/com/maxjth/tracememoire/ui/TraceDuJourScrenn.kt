@@ -1,4 +1,4 @@
-file:OptIn(ExperimentalLayoutApi::class)
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 
 package com.maxjth.tracememoire.ui
 
@@ -73,6 +73,13 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import androidx.compose.animation.core.animateFloat
+
+
+// █████████████████████████████████████████
+// ÉCRAN 2 — TRACE D’ÉTAT D’ÂME (NETTOYÉ)
+// But : compiler + garder ton look + enlever les doublons
+// █████████████████████████████████████████
 
 // ── Couleurs CalmTrace ───────────────────────────────────────
 private val BG_DEEP     = Color(0xFF000000)
@@ -118,7 +125,6 @@ private fun timeLeftLabel(nowMs: Long, createdAtMs: Long): String {
     return "${h}h ${m}m"
 }
 
-// ✅ Corrigé (Kotlin pur)
 private fun hhmm(ms: Long): String {
     val totalMin = (ms / 60_000L).toInt()
     val h = (totalMin / 60) % 24
@@ -127,18 +133,30 @@ private fun hhmm(ms: Long): String {
     return "${two(h)}:${two(m)}"
 }
 
+// ── Helpers couleur (UNE SEULE FOIS) ─────────────────────────
+private fun Color.desaturate(amount: Float): Color {
+    val a = amount.coerceIn(0f, 1f)
+    val gray = red * 0.2126f + green * 0.7152f + blue * 0.0722f
+    fun mix(c: Float) = c + (gray - c) * a
+    return Color(mix(red), mix(green), mix(blue), alpha)
+}
+
+private fun Color.brighten(amount: Float): Color {
+    val a = amount.coerceIn(0f, 1f)
+    fun up(c: Float) = (c + (1f - c) * a).coerceIn(0f, 1f)
+    return Color(up(red), up(green), up(blue), alpha)
+}
+
 // ── Bulle de description du pourcentage ──────────────────────
-private fun scoreGrid(p: Int): Pair<String, String> {
-    return when (p.coerceIn(0, 100)) {
-        in 0..10   -> "Très bas"     to "fatigué · lourd · difficile"
-        in 11..25  -> "Bas"          to "peu d’énergie · tendu · ralenti"
-        in 26..40  -> "Plutôt bas"   to "fragile · irrégulier · demandant"
-        in 41..55  -> "Modéré"       to "correct · fonctionnel · neutre"
-        in 56..70  -> "Plutôt bon"   to "stable · disponible · posé"
-        in 71..85  -> "Bon"          to "énergie présente · fluide · à l’aise"
-        in 86..95  -> "Très bon"     to "léger · clair · positif"
-        else       -> "Maximum"      to "pleinement présent · aligné · fort"
-    }
+private fun scoreGrid(p: Int): Pair<String, String> = when (p.coerceIn(0, 100)) {
+    in 0..10   -> "Très bas"     to "fatigué · lourd · difficile"
+    in 11..25  -> "Bas"          to "peu d’énergie · tendu · ralenti"
+    in 26..40  -> "Plutôt bas"   to "fragile · irrégulier · demandant"
+    in 41..55  -> "Modéré"       to "correct · fonctionnel · neutre"
+    in 56..70  -> "Plutôt bon"   to "stable · disponible · posé"
+    in 71..85  -> "Bon"          to "énergie présente · fluide · à l’aise"
+    in 86..95  -> "Très bon"     to "léger · clair · positif"
+    else       -> "Maximum"      to "pleinement présent · aligné · fort"
 }
 
 @Composable
@@ -174,7 +192,6 @@ private fun PercentMessageBubble(
             )
         }
     }
-
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -200,7 +217,6 @@ private fun buildTrianglePath(
     val inset = insetRatio.coerceIn(0f, 0.20f)
     val base = baseWidthRatio.coerceIn(0.70f, 1f)
     val halfBase = (w * base) / 2f
-
     return Path().apply {
         moveTo(cx, top + h * inset)
         lineTo(cx + halfBase, top + h * 0.95f)
@@ -225,11 +241,10 @@ private fun TriangleOutlineBreathing(
     val isMax  = pct >= 100
 
     val excite = when {
-        isMax           -> 1.0f
-        isInteracting   -> 0.75f
-        else            -> 0f
+        isMax         -> 1.0f
+        isInteracting -> 0.75f
+        else          -> 0f
     }
-
     val calmBoost = if (isZero) 0.15f else 1f
 
     val baseDuration = lerpFloat(8200f, 4200f, t).roundToInt()
@@ -240,12 +255,17 @@ private fun TriangleOutlineBreathing(
         else          -> baseDuration
     }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "triangle-breath")
+    val infiniteTransition =
+        rememberInfiniteTransition(label = "triangle-breath")
+
     val phase by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = (Math.PI * 2).toFloat(),
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = duration, easing = LinearEasing),
+            animation = tween(
+                durationMillis = duration,
+                easing = LinearEasing
+            ),
             repeatMode = RepeatMode.Restart
         ),
         label = "phase"
@@ -254,11 +274,11 @@ private fun TriangleOutlineBreathing(
     val w1 = ((sin(phase.toDouble()) + 1.0) / 2.0).toFloat()
     val w2 = ((sin((phase * 0.72f).toDouble() + 1.3) + 1.0) / 2.0).toFloat()
 
-    val strokeBase     = lerpFloat(17f, 22f, t) * calmBoost
-    val strokeAmpBase  = lerpFloat(0.8f, 6f, t * t) * calmBoost
-    val strokeAmp      = strokeAmpBase * (1f + 0.9f * excite)
-    val strokeExtra    = 0.8f * excite
-    val stroke         = strokeBase + strokeExtra + strokeAmp * (0.65f * w1 + 0.35f * w2)
+    val strokeBase    = lerpFloat(17f, 22f, t) * calmBoost
+    val strokeAmpBase = lerpFloat(0.8f, 6f, t * t) * calmBoost
+    val strokeAmp     = strokeAmpBase * (1f + 0.9f * excite)
+    val strokeExtra   = 0.8f * excite
+    val stroke        = strokeBase + strokeExtra + strokeAmp * (0.65f * w1 + 0.35f * w2)
 
     val glowOuterBase = lerpFloat(0.05f, 0.30f, t * t) * calmBoost
     val glowInnerBase = lerpFloat(0.04f, 0.22f, t * t) * calmBoost
@@ -332,22 +352,8 @@ private fun TriangleOutlineBreathing(
     }
 }
 
-// ── Helpers couleur ──────────────────────────────────────────
-private fun Color.desaturate(amount: Float): Color {
-    val a = amount.coerceIn(0f, 1f)
-    val gray = red * 0.2126f + green * 0.7152f + blue * 0.0722f
-    fun mix(c: Float) = c + (gray - c) * a
-    return Color(mix(red), mix(green), mix(blue), alpha)
-}
-
-private fun Color.brighten(amount: Float): Color {
-    val a = amount.coerceIn(0f, 1f)
-    fun up(c: Float) = (c + (1f - c) * a).coerceIn(0f, 1f)
-    return Color(up(red), up(green), up(blue), alpha)
-}
-
 // ── Tags (Écran 2) ───────────────────────────────────────────
-// ✅ IMPORTANT : on enlève "private" sinon MainActivity/écran 3 ne peut pas y accéder
+// Rendre ces types réutilisables (public) pour éviter les erreurs d'exposition.
 enum class Tier { FREE, PREMIUM }
 
 data class TagCategory(
@@ -357,22 +363,70 @@ data class TagCategory(
     val tags: List<String>
 )
 
-// ✅ IMPORTANT : on enlève "private" sinon erreur "it is private in file"
+// IMPORTANT : public val pour réutilisation
 val TAG_GROUPS_OFFICIAL = listOf(
-    TagCategory("Humeur globale",         "Quelle est la tonalité dominante de la journée ?",          Tier.FREE,    listOf("calme", "tendu", "stable", "agité", "lourd", "léger", "équilibré", "joyeux", "sombre")),
-    TagCategory("Énergie / Rythme",       "Comment l’énergie a-t-elle circulé dans le temps ?",       Tier.FREE,    listOf("lent", "fluide", "rapide", "irrégulier", "soutenu", "épuisant", "constant", "énergisé", "ralenti")),
-    TagCategory("Corps / Sensations",     "Qu’a exprimé le corps aujourd’hui, sans interprétation ?", Tier.FREE,   listOf("reposée", "fatigué", "tendu", "détendu", "inconfort", "à l’aise", "crispé", "relâché")),
-    TagCategory("Présence / Attention",   "Où se situait l’attention la plupart du temps ?",          Tier.FREE,    listOf("présent", "distrait", "concentré", "dispersé", "attentif", "absent", "ancré", "flottant")),
-    TagCategory("Type de journée",        "Quel était le décor dominant de la journée ?",             Tier.FREE,    listOf("travail", "repos", "social", "maison", "extérieur", "déplacements", "mixte", "solitude choisie")),
-
-    TagCategory("Motifs / Cycles",        "Quel pattern temporel se répète ou se brise ?",            Tier.PREMIUM, listOf("similaire à hier", "répétitif", "changement", "rupture", "cycle connu", "progression", "stagnation", "retour inattendu")),
-    TagCategory("Environnement",          "Qu’est-ce qui entourait la journée (bruit, foule, air, espace) ?", Tier.PREMIUM, listOf("bruit", "calme", "météo lourde", "foule", "isolement", "mouvement", "nature", "confiné")),
-    TagCategory("Clarté mentale",         "Quel était l’état de lisibilité mentale global ?",         Tier.PREMIUM, listOf("clair", "chargé", "confus", "léger", "saturé", "posé", "fluide", "embrumé")),
-    TagCategory("Charge émotionnelle",    "Quelle intensité émotionnelle était présente (sans jugement) ?", Tier.PREMIUM, listOf("faible", "présente", "intense", "contenue", "débordante", "instable", "maîtrisée")),
-    TagCategory("Alignement intérieur",   "Le ressenti global était-il aligné, en friction, ou en transition ?", Tier.PREMIUM, listOf("aligné", "désaligné", "en transition", "résistant", "ouvert", "fermé", "en questionnement"))
+    TagCategory(
+        "Humeur globale",
+        "Quelle est la tonalité dominante de la journée ?",
+        Tier.FREE,
+        listOf("calme", "tendu", "stable", "agité", "lourd", "léger", "équilibré", "joyeux", "sombre")
+    ),
+    TagCategory(
+        "Énergie / Rythme",
+        "Comment l’énergie a-t-elle circulé dans le temps ?",
+        Tier.FREE,
+        listOf("lent", "fluide", "rapide", "irrégulier", "soutenu", "épuisant", "constant", "énergisé", "ralenti")
+    ),
+    TagCategory(
+        "Corps / Sensations",
+        "Qu’a exprimé le corps aujourd’hui, sans interprétation ?",
+        Tier.FREE,
+        listOf("reposée", "fatigué", "tendu", "détendu", "inconfort", "à l’aise", "crispé", "relâché")
+    ),
+    TagCategory(
+        "Présence / Attention",
+        "Où se situait l’attention la plupart du temps ?",
+        Tier.FREE,
+        listOf("présent", "distrait", "concentré", "dispersé", "attentif", "absent", "ancré", "flottant")
+    ),
+    TagCategory(
+        "Type de journée",
+        "Quel était le décor dominant de la journée ?",
+        Tier.FREE,
+        listOf("travail", "repos", "social", "maison", "extérieur", "déplacements", "mixte", "solitude choisie")
+    ),
+    TagCategory(
+        "Motifs / Cycles",
+        "Quel pattern temporel se répète ou se brise ?",
+        Tier.PREMIUM,
+        listOf("similaire à hier", "répétitif", "changement", "rupture", "cycle connu", "progression", "stagnation", "retour inattendu")
+    ),
+    TagCategory(
+        "Environnement",
+        "Qu’est-ce qui entourait la journée (bruit, foule, air, espace) ?",
+        Tier.PREMIUM,
+        listOf("bruit", "calme", "météo lourde", "foule", "isolement", "mouvement", "nature", "confiné")
+    ),
+    TagCategory(
+        "Clarté mentale",
+        "Quel était l’état de lisibilité mentale global ?",
+        Tier.PREMIUM,
+        listOf("clair", "chargé", "confus", "léger", "saturé", "posé", "fluide", "embrumé")
+    ),
+    TagCategory(
+        "Charge émotionnelle",
+        "Quelle intensité émotionnelle était présente (sans jugement) ?",
+        Tier.PREMIUM,
+        listOf("faible", "présente", "intense", "contenue", "débordante", "instable", "maîtrisée")
+    ),
+    TagCategory(
+        "Alignement intérieur",
+        "Le ressenti global était-il aligné, en friction, ou en transition ?",
+        Tier.PREMIUM,
+        listOf("aligné", "désaligné", "en transition", "résistant", "ouvert", "fermé", "en questionnement")
+    )
 )
 
-// ✅ IMPORTANT : on enlève "private" si c’est appelé ailleurs
 fun tierAllowed(tier: Tier, hasPremium: Boolean, hasPremiumPlus: Boolean): Boolean =
     tier == Tier.FREE || hasPremium || hasPremiumPlus
 
@@ -389,22 +443,25 @@ private fun TagChip(
     val scale = remember { Animatable(1f) }
 
     LaunchedEffect(triggerTime) {
-        triggerTime?.takeIf { it > 0 }?.let {
-            scale.animateTo(1.14f, tween(140, easing = FastOutSlowInEasing))
-            scale.animateTo(1f,   tween(220, easing = FastOutSlowInEasing))
-        }
+        val t = triggerTime ?: return@LaunchedEffect
+        if (t <= 0L) return@LaunchedEffect
+        scale.stop()
+        scale.snapTo(1f)
+        scale.animateTo(1.14f, tween(durationMillis = 140, easing = FastOutSlowInEasing))
+        scale.animateTo(1f, tween(durationMillis = 220, easing = FastOutSlowInEasing))
     }
+
+    val bg = if (active) MAUVE.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.06f)
+    val borderW = if (active) 1.5.dp else 0.dp
+    val borderC = if (active) MAUVE else Color.Transparent
+    val textC = if (active) MAUVE else WHITE_SOFT.copy(alpha = 0.88f)
 
     Box(
         modifier = Modifier
             .scale(scale.value)
             .clip(RoundedCornerShape(14.dp))
-            .background(if (active) MAUVE.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.06f))
-            .border(
-                width = if (active) 1.5.dp else 0.dp,
-                color = if (active) MAUVE else Color.Transparent,
-                shape = RoundedCornerShape(14.dp)
-            )
+            .background(bg)
+            .border(width = borderW, color = borderC, shape = RoundedCornerShape(14.dp))
             .clickable(enabled = enabled) { onToggle() }
             .padding(horizontal = 12.dp, vertical = 9.dp)
     ) {
@@ -413,7 +470,7 @@ private fun TagChip(
                 text = text,
                 fontSize = 12.5.sp,
                 fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
-                color = if (active) MAUVE else WHITE_SOFT.copy(alpha = 0.88f)
+                color = textC
             )
             badge?.let {
                 Spacer(Modifier.width(8.dp))
@@ -498,12 +555,12 @@ private fun SelectedTagsSection(
                 }
             }
         }
+
         Spacer(Modifier.height(10.dp))
     }
 }
 
-// ── Accordéon catégorie ───────────────────────────
-
+// ── Accordéon catégorie ──────────────────────────────────────
 @Composable
 private fun TagCategoryAccordion(
     category: TagCategory,
@@ -517,7 +574,6 @@ private fun TagCategoryAccordion(
     val locked = !allowed
     val count = category.tags.count { it in selectedTags }
     val titleDisplay = if (count > 0) "${category.title} ($count)" else category.title
-
     val arrowTint = if (isOpen) TURQUOISE.copy(alpha = 0.88f) else TURQUOISE.copy(alpha = 0.42f)
 
     Column(
@@ -701,13 +757,11 @@ fun TraceDuJourScreen(
     onBack: () -> Unit = {}
 ) {
     var note by remember { mutableStateOf("") }
-    var etat   by remember { mutableStateOf<String?>(null) }
+    var etat by remember { mutableStateOf<String?>(null) }
     var mental by remember { mutableStateOf<String?>(null) }
     var energie by remember { mutableStateOf<String?>(null) }
-
     var selectedTags by remember { mutableStateOf(setOf<String>()) }
 
-    // ✅ Corrigé : StateMap (sinon l’UI ne voit pas les updates)
     val tagAnimationTriggers = remember { mutableStateMapOf<String, Long>() }
 
     val toggleTag: (String) -> Unit = { tag ->
@@ -719,7 +773,6 @@ fun TraceDuJourScreen(
     val animPercent = remember { Animatable(target) }
 
     var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
-
     LaunchedEffect(Unit) {
         while (true) {
             delay(30_000L)
@@ -740,13 +793,11 @@ fun TraceDuJourScreen(
     val canSave = editable && (note.isNotBlank() || selectedTags.isNotEmpty())
 
     var openIndex by remember { mutableStateOf<Int?>(null) }
-
     val firstPremiumIndex = remember {
         TAG_GROUPS_OFFICIAL.indexOfFirst { it.tier == Tier.PREMIUM }
             .let { if (it == -1) Int.MAX_VALUE else it }
     }
 
-    // ✅ Branché : utilisé par le triangle pendant le slide
     var isInteracting by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -887,6 +938,7 @@ fun TraceDuJourScreen(
 
             Spacer(Modifier.height(12.dp))
             PercentMessageBubble(p = p, dyn = dynColor)
+
             Spacer(Modifier.height(12.dp))
 
             Text(
@@ -913,6 +965,7 @@ fun TraceDuJourScreen(
                     }
                 },
                 valueRange = 0f..100f,
+                enabled = editable, // correction : disable slider when non-editable
                 colors = SliderDefaults.colors(
                     thumbColor = if (editable) sliderColor else Color.White.copy(alpha = 0.25f),
                     activeTrackColor = if (editable) sliderColor else Color.White.copy(alpha = 0.25f),
@@ -920,7 +973,9 @@ fun TraceDuJourScreen(
                     activeTickColor = Color.Transparent,
                     inactiveTickColor = Color.Transparent
                 ),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = "Pourcentage du jour" } // a11y léger
             )
 
             Spacer(Modifier.height(16.dp))
@@ -945,6 +1000,16 @@ fun TraceDuJourScreen(
                     .background(Color.White.copy(alpha = 0.06f))
                     .padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
+                // placeholder simple et non intrusif
+                if (note.isEmpty()) {
+                    Text(
+                        "Écrire une courte note (optionnel)",
+                        color = WHITE_SOFT.copy(alpha = 0.34f),
+                        fontSize = 16.sp,
+                        modifier = Modifier.align(Alignment.TopStart)
+                    )
+                }
+
                 BasicTextField(
                     value = note,
                     onValueChange = { if (editable) note = it.take(120) },
@@ -983,9 +1048,7 @@ fun TraceDuJourScreen(
             )
 
             TAG_GROUPS_OFFICIAL.forEachIndexed { idx, cat ->
-                if (idx == firstPremiumIndex) {
-                    PremiumSeparatorRow()
-                }
+                if (idx == firstPremiumIndex) PremiumSeparatorRow()
 
                 val allowed = tierAllowed(cat.tier, hasPremium, hasPremiumPlus)
                 val isOpen = openIndex == idx
@@ -999,7 +1062,6 @@ fun TraceDuJourScreen(
                     onToggleTag = toggleTag,
                     animationTriggers = tagAnimationTriggers
                 )
-
                 Spacer(Modifier.height(8.dp))
             }
 
