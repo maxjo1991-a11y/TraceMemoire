@@ -125,9 +125,8 @@ private fun AppRoot() {
         }
 
         Screen.TRACE_DU_JOUR -> {
-            // ✅ Appel minimal pour compiler (on enlève onSave / onBack / onOpen...)
             com.maxjth.tracememoire.ui.tracejour.TraceDuJourScreen(
-                percent = 54
+                onBack = { screen = Screen.HOME }
             )
         }
 

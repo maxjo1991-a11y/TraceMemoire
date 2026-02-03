@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -27,15 +28,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlin.math.roundToInt
-import kotlinx.coroutines.delay
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import com.maxjth.tracememoire.ui.components.TriangleOutlineBreathing
-import com.maxjth.tracememoire.ui.tags.ETAT_TAGS
-import com.maxjth.tracememoire.ui.tags.TagGroup
+
+
+import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 
 /* ------------------------------
- COULEURS (locales à l’écran 2)
+COULEURS (locales à l’écran 2)
 -------------------------------- */
 
 private val BG_DEEP = Color(0xFF0A0A0A)
@@ -44,24 +44,18 @@ private val MAUVE = Color(0xFFB388FF)
 private val TURQUOISE = Color(0xFF2ED1C3)
 
 /* ------------------------------
- ÉCRAN 2 — TRACE DU JOUR
+ÉCRAN 2 — TRACE DU JOUR
 -------------------------------- */
 
 @Composable
 fun TraceDuJourScreen(
-    percent: Int = 54,
-    createdAtMs: Long = System.currentTimeMillis(),
-    updatedAtMs: Long = System.currentTimeMillis(),
-    updateCount: Int = 1,
     onBack: () -> Unit = {}
 ) {
-    // STATE
-    var note by remember { mutableStateOf("") }
-    var target by remember { mutableStateOf(percent.toFloat()) }
-    var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
-    // ✅ TAGS (sélection)
-    var selectedTags by remember { mutableStateOf(emptySet<String>()) }
+    // ✅ STORE = source de vérité
+    val store = remember { TraceDuJourStore() }
 
+    // ✅ Horloge (pour le 24h / statut)
+    var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
             delay(30_000)
@@ -69,11 +63,28 @@ fun TraceDuJourScreen(
         }
     }
 
-    // DERIVED
-    val p = target.roundToInt().coerceIn(0, 100)
+    // ✅ S’assure qu’une trace existe
+    LaunchedEffect(Unit) {
+        if (store.trace == null) {
+            store.createNewTrace()
+        }
+    }
+
+    val trace = store.trace
+
+    // Fallback safe (si trace encore null 1 frame)
+    val createdAtMs = trace?.createdAtMs ?: nowMs
+    val updatedAtMs = trace?.updatedAtMs ?: nowMs
+    val updateCount = trace?.updateCount ?: 0
+
+    val p = (trace?.percent ?: 50).coerceIn(0, 100)
     val label = levelLabel(p)
     val editable = isEditable(nowMs, createdAtMs)
     val dynColor = lerpColor(TURQUOISE, MAUVE, p / 100f)
+
+    // Slider Float (UI) mais store en Int
+    var sliderValue by remember(p) { mutableStateOf(p.toFloat()) }
+    LaunchedEffect(p) { sliderValue = p.toFloat() }
 
     Scaffold(
         containerColor = BG_DEEP,
@@ -86,7 +97,7 @@ fun TraceDuJourScreen(
             ) {
                 IconButton(onClick = onBack) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                        imageVector = Icons.Filled.ArrowBack,
                         contentDescription = null,
                         tint = WHITE_SOFT
                     )
@@ -134,23 +145,20 @@ fun TraceDuJourScreen(
 
             Spacer(Modifier.height(22.dp))
 
-            // ✅ TAGS (visuels + sélection)
-            TagGroup(
-                tags = ETAT_TAGS,
-                selectedTags = selectedTags,
-                enabled = editable,
-                onTagToggle = { tag ->
-                    selectedTags =
-                        if (selectedTags.contains(tag)) selectedTags - tag
-                        else selectedTags + tag
-                }
-            )
+            // ✅ TAGS (Set<String> garanti)
+            val selectedTags: Set<String> = (trace?.tags ?: emptySet())
+
 
             Spacer(Modifier.height(22.dp))
 
+            // ✅ SLIDER (branché store)
             Slider(
-                value = target,
-                onValueChange = { if (editable) target = it },
+                value = sliderValue,
+                onValueChange = { v ->
+                    if (!editable) return@Slider
+                    sliderValue = v
+                    store.updatePercent(v.roundToInt().coerceIn(0, 100))
+                },
                 valueRange = 0f..100f,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -167,9 +175,12 @@ fun TraceDuJourScreen(
 
             Spacer(Modifier.height(24.dp))
 
+            // ✅ NOTE (branchée store)
             TraceNoteField(
-                note = note,
-                onNoteChange = { note = it },
+                note = trace?.note ?: "",
+                onNoteChange = { txt ->
+                    if (editable) store.updateNote(txt)
+                },
                 enabled = editable,
                 textColor = WHITE_SOFT
             )
