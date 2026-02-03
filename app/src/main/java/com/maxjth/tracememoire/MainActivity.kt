@@ -67,8 +67,7 @@ import kotlinx.coroutines.delay
 import androidx.compose.animation.core.animateFloat
 
 // ✅ Tes écrans UI (déjà dans d'autres fichiers)
-import com.maxjth.tracememoire.ui.TraceDuJourScreen
-import com.maxjth.tracememoire.ui.TraceDuTempsVecuScreen
+import com.maxjth.tracememoire.ui.tracejour.TraceDuJourScreen
 
 // ================================
 // CHAMBRE 1 — NAVIGATION MINIMALE
@@ -117,49 +116,27 @@ private fun AppRoot() {
 
     when (screen) {
 
-        // =========================
-        // ÉCRAN 1 — HOME
-        // =========================
         Screen.HOME -> {
             HomeScreen(
-                traceCount = 0, // TODO: brancher au store plus tard
+                traceCount = 0,
                 lastTraceText = "Il y a 2 jours",
                 onOpenTraceDuJour = { screen = Screen.TRACE_DU_JOUR }
             )
         }
 
-        // =========================
-        // ÉCRAN 2 — TRACE DU JOU
-        // =========================
         Screen.TRACE_DU_JOUR -> {
-            TraceDuJourScreen(
-                percent = 54,
-                onSave = { _: Int, _: String, _: String?, _: String?, _: String?, _: Set<String> ->
-                    screen = Screen.HOME
-                },
-                onOpenTraceDuTempsVecu = {
-                    screen = Screen.TRACE_DU_TEMPS_VECU
-                },
-                onBack = { screen = Screen.HOME }
+            // ✅ Appel minimal pour compiler (on enlève onSave / onBack / onOpen...)
+            com.maxjth.tracememoire.ui.tracejour.TraceDuJourScreen(
+                percent = 54
             )
         }
 
-        // =========================
-        // ÉCRAN 3 — TRACE DU TEMPS VÉCU
-        // =========================
         Screen.TRACE_DU_TEMPS_VECU -> {
-            TraceDuTempsVecuScreen(
-                ui = null, // TODO: brancher quand prêt
-                onBack = { screen = Screen.TRACE_DU_JOUR }
-            )
+            // ✅ Temporaire : on ne branche pas Écran 3 tant que l’import est rouge
+            Text("Trace du temps vécu (bientôt)")
         }
     }
 }
-
-// ================================
-// CHAMBRE 5 — HOME SCREEN (UI)
-// Rôle : l’écran 1 uniquement, propre
-// ================================
 @Composable
 private fun HomeScreen(
     traceCount: Int,
