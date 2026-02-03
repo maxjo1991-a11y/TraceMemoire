@@ -2,166 +2,113 @@ package com.maxjth.tracememoire.ui.tags
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.KeyboardArrowDown
-import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.FlowRow
 
-private val WHITE_SOFT = Color(0xFFE9E9E9)
-private val TURQUOISE  = Color(0xFF00A3A3)
-private val MAUVE      = Color(0xFF7A63C6)
+// Tu peux brancher ça sur tes vraies structures ensuite
+data class SimpleTagCategory(
+    val title: String,
+    val tags: List<String>,
+    val premium: Boolean = false
+)
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun TagGroupsAccordion(
-    groups: List<TagCategory>,
+fun TagGroup(
+    category: SimpleTagCategory,
     selectedTags: Set<String>,
     enabled: Boolean,
-    hasPremium: Boolean,
-    hasPremiumPlus: Boolean,
+    mauve: Color,
+    textColor: Color,
+    cardBg: Color,
     onToggleTag: (String) -> Unit
 ) {
-    var openIndex by remember { mutableStateOf<Int?>(null) }
+    var expanded by remember { mutableStateOf(false) }
+    val shape = RoundedCornerShape(22.dp)
 
-    val firstPremiumIndex = remember(groups) {
-        groups.indexOfFirst { it.tier == Tier.PREMIUM }
-            .let { if (it == -1) Int.MAX_VALUE else it }
-    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(cardBg)
+            .clickable { expanded = !expanded }
+            .padding(horizontal = 18.dp, vertical = 16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = category.title,
+                color = textColor.copy(alpha = 0.95f),
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold
+            )
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+            Spacer(Modifier.weight(1f))
 
-        groups.forEachIndexed { index, category ->
-
-            // ─── Séparateur Premium ─────────────────────────────
-            if (index == firstPremiumIndex) {
-                Spacer(Modifier.height(12.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "Premium",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MAUVE.copy(alpha = 0.8f)
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = "profondeur spatiale",
-                        fontSize = 12.sp,
-                        fontStyle = FontStyle.Italic,
-                        color = WHITE_SOFT.copy(alpha = 0.6f)
-                    )
-                }
-                Spacer(Modifier.height(12.dp))
+            if (category.premium) {
+                Text(
+                    text = "Premium",
+                    color = mauve.copy(alpha = 0.90f),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(Modifier.width(10.dp))
             }
 
-            val allowed = tierAllowed(category.tier, hasPremium, hasPremiumPlus)
-            val isOpen = openIndex == index
-            val count = category.tags.count { it in selectedTags }
-            val title = if (count > 0) "${category.title} ($count)" else category.title
+            // ✅ Flèche MAUVE (comme tu veux)
+            Icon(
+                imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                contentDescription = null,
+                tint = mauve.copy(alpha = 0.95f)
+            )
+        }
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(Color.White.copy(alpha = 0.05f))
+        if (expanded) {
+            Spacer(Modifier.height(14.dp))
+
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-
-                // ─── Header ──────────────────────────────────────
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { openIndex = if (isOpen) null else index }
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-
-                    Text(
-                        text = title,
-                        modifier = Modifier.weight(1f),
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (count > 0) MAUVE else WHITE_SOFT
+                category.tags.forEach { tag ->
+                    val isSelected = selectedTags.contains(tag)
+                    TagChip(
+                        text = tag,
+                        selected = isSelected,
+                        enabled = enabled,
+                        mauve = mauve,
+                        textColor = textColor,
+                        onClick = { onToggleTag(tag) }
                     )
-
-                    if (!allowed) {
-                        Text(
-                            text = "Premium",
-                            fontSize = 13.sp,
-                            color = MAUVE.copy(alpha = 0.75f)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                    }
-
-                    Icon(
-                        imageVector = if (isOpen)
-                            Icons.Outlined.KeyboardArrowUp
-                        else
-                            Icons.Outlined.KeyboardArrowDown,
-                        contentDescription = null,
-                        tint = TURQUOISE.copy(alpha = if (isOpen) 0.9f else 0.45f)
-                    )
-                }
-
-                // ─── Contenu ─────────────────────────────────────
-                if (isOpen) {
-
-                    Text(
-                        text = category.foundation,
-                        fontSize = 12.5.sp,
-                        fontStyle = FontStyle.Italic,
-                        color = WHITE_SOFT.copy(alpha = 0.55f),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 6.dp)
-                    )
-
-                    if (!allowed) {
-
-                        Text(
-                            text = "Débloqué avec Premium",
-                            fontSize = 13.sp,
-                            color = WHITE_SOFT.copy(alpha = 0.45f),
-                            modifier = Modifier.padding(16.dp)
-                        )
-
-                    } else {
-
-                        FlowRow(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            category.tags.forEach { tag ->
-                                TagChip(
-                                    label = tag,
-                                    isSelected = tag in selectedTags,
-                                    onClick = {
-                                        if (enabled) {
-                                            onToggleTag(tag)
-                                        }
-                                    }
-                                )
-                    }
                 }
             }
-
-            Spacer(Modifier.height(10.dp))
         }
     }
-        }
-    }}
+}
