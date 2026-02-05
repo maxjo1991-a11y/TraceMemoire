@@ -30,6 +30,7 @@ import com.maxjth.tracememoire.ui.components.HomeMemoryCircle
 import com.maxjth.tracememoire.ui.logic.HomeMessages
 import com.maxjth.tracememoire.ui.theme.*
 import kotlinx.coroutines.delay
+import java.util.Calendar
 
 @Composable
 fun HomeScreen(
@@ -38,6 +39,12 @@ fun HomeScreen(
 ) {
     val traceCount = 0
     val isEmpty = traceCount == 0
+
+    // ─────────────────────────────
+    // Sous-titre annuel (2026 → 2030)
+    // ─────────────────────────────
+    val year = remember { Calendar.getInstance().get(Calendar.YEAR) }
+    val subtitle = remember(year) { homeSubtitleForYear(year) }
 
     // ─────────────────────────────
     // Bouton principal – interaction
@@ -123,8 +130,7 @@ fun HomeScreen(
                     .padding(bottom = 14.dp),
                 contentAlignment = Alignment.Center
             ) {
-
-                // 🌫️ Glow turquoise (press seulement)
+                // Glow turquoise (press seulement)
                 Box(
                     modifier = Modifier
                         .graphicsLayer {
@@ -135,9 +141,8 @@ fun HomeScreen(
                             color = TURQUOISE.copy(alpha = historyGlowAlpha),
                             shape = RoundedCornerShape(28.dp)
                         )
-                        .padding(1.dp) // espace pour le glow
+                        .padding(1.dp)
                 ) {
-
                     TextButton(
                         onClick = onOpenHistory,
                         interactionSource = historyInteraction,
@@ -206,13 +211,14 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
+                // ✅ Phrase annuelle (mystère)
                 Text(
-                    text = "Ici, la mémoire se construit avec le temps.",
+                    text = subtitle,
                     fontSize = 16.sp,
                     lineHeight = 22.sp,
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
-                    color = WHITE_MAUVE.copy(alpha = 0.78f)
+                    color = WHITE_MAUVE.copy(alpha = 0.82f)
                 )
 
                 Spacer(modifier = Modifier.height(28.dp))
@@ -244,9 +250,7 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(42.dp))
 
-                // ─────────────────────────────
                 // Bouton principal – Ajouter
-                // ─────────────────────────────
                 Button(
                     onClick = onAddTrace,
                     modifier = Modifier
@@ -285,5 +289,19 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(18.dp))
             }
         }
+    }
+}
+
+// ─────────────────────────────
+// Phrases annuelles (2026 → 2030)
+// ─────────────────────────────
+private fun homeSubtitleForYear(year: Int): String {
+    return when (year) {
+        2026 -> "Le temps fait la mémoire."
+        2027 -> "Ce qui revient laisse une trace."
+        2028 -> "La mémoire révèle ce qui insistait."
+        2029 -> "Ce qui a été noté ne disparaît plus."
+        2030 -> "Le temps n’oublie pas. Il assemble."
+        else -> "Le temps fait la mémoire."
     }
 }
