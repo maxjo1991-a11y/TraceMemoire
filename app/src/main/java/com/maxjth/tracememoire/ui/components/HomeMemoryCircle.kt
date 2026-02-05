@@ -35,7 +35,9 @@ import kotlin.math.sin
 @Composable
 fun HomeMemoryCircle(
     traceCount: Int,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // ✅ Nouveau : bounce du chiffre (ex: 0 -> 1.06 -> 1.0)
+    numberEntryScale: Float = 1f
 ) {
     val text = traceCount.toString()
 
@@ -108,12 +110,10 @@ fun HomeMemoryCircle(
         label = "orbit_phase"
     )
 
-    // 2.6dp -> 3.6dp selon l’intensité (discret mais visible)
     val orbitRadiusDp = lerpFloat(2.6f, 3.6f, strokeBoost)
     val orbitXdp = (cos(orbitPhase.toDouble()) * orbitRadiusDp).toFloat()
     val orbitYdp = (sin(orbitPhase.toDouble()) * orbitRadiusDp * 0.70f).toFloat()
 
-    // ✅ dp -> px (obligatoire pour graphicsLayer)
     val density = LocalDensity.current
     val orbitXpx = with(density) { orbitXdp.dp.toPx() }
     val orbitYpx = with(density) { orbitYdp.dp.toPx() }
@@ -133,9 +133,9 @@ fun HomeMemoryCircle(
     )
     val tiltDeg = lerpFloat(0.25f, 0.45f, strokeBoost) * tiltPhase
 
-    // ✨ HALO (donne l’impression que ça flotte dans le noir)
-    val haloA = 0.08f + 0.16f * strokeBoost // alpha du glow
-    val haloR = 0.76f + 0.14f * strokeBoost // rayon du glow
+    // ✨ HALO
+    val haloA = 0.08f + 0.16f * strokeBoost
+    val haloR = 0.76f + 0.14f * strokeBoost
 
     Box(
         modifier = modifier
@@ -151,7 +151,7 @@ fun HomeMemoryCircle(
     ) {
         Canvas(modifier = Modifier.matchParentSize()) {
 
-            // Halo 1 (large)
+            // Halo 1
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
@@ -163,7 +163,7 @@ fun HomeMemoryCircle(
                 radius = size.minDimension * haloR
             )
 
-            // Halo 2 (plus serré)
+            // Halo 2
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
@@ -187,7 +187,13 @@ fun HomeMemoryCircle(
             fontSize = numberSize,
             fontWeight = FontWeight.ExtraBold,
             color = TURQUOISE,
-            modifier = Modifier.offset(y = offsetY)
+            modifier = Modifier
+                .offset(y = offsetY)
+                // ✅ Bounce uniquement sur le chiffre
+                .graphicsLayer {
+                    scaleX = numberEntryScale
+                    scaleY = numberEntryScale
+                }
         )
     }
 }

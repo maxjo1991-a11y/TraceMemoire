@@ -14,6 +14,10 @@ val BG_SOFT = Color(0xFF0A0A0A)          // Noir doux (variations possibles)
 val WHITE_SOFT = Color(0xFFE9E9E9)       // Texte principal
 val TEXT_MUTED = Color(0xFFAAAAAA)       // Texte secondaire / discret
 
+// Texte narratif (blanc + souffle mauve)
+// → blanc dominant, mauve perceptible sans être violet
+val WHITE_MAUVE = Color(0xFFE6E4F2)
+
 // Accents Trace Mémoire
 val TURQUOISE = Color(0xFF00A3A3)        // Présence, stabilité, souffle
 val MAUVE = Color(0xFF7A63C6)            // Intériorité, trace, mémoire
