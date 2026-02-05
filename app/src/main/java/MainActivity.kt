@@ -3,8 +3,10 @@ package com.maxjth.tracememoire.ui
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import com.maxjth.tracememoire.ui.history.HistoryScreen
 import com.maxjth.tracememoire.ui.home.HomeScreen
 import com.maxjth.tracememoire.ui.theme.TraceMemoireTheme
@@ -24,23 +26,23 @@ class MainActivity : ComponentActivity() {
         setContent {
             TraceMemoireTheme {
 
-                val currentScreen = rememberSaveable {
+                var currentScreen by rememberSaveable {
                     mutableStateOf(SCREEN_HOME)
                 }
 
-                when (currentScreen.value) {
+                when (currentScreen) {
 
                     SCREEN_HOME -> HomeScreen(
-                        onAddTrace = { currentScreen.value = SCREEN_TRACE_JOUR },
-                        onOpenHistory = { currentScreen.value = SCREEN_HISTORY }
+                        onAddTrace = { currentScreen = SCREEN_TRACE_JOUR },
+                        onOpenHistory = { currentScreen = SCREEN_HISTORY }
                     )
 
                     SCREEN_TRACE_JOUR -> TraceJourScreen(
-                        onBack = { currentScreen.value = SCREEN_HOME }
+                        onBack = { currentScreen = SCREEN_HOME }
                     )
 
                     SCREEN_HISTORY -> HistoryScreen(
-                        onBack = { currentScreen.value = SCREEN_HOME }
+                        onBack = { currentScreen = SCREEN_HOME }
                     )
                 }
             }

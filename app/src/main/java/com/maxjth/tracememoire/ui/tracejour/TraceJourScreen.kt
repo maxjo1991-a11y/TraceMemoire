@@ -33,6 +33,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,8 +43,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.maxjth.tracememoire.ui.components.TriangleOutlineBreathing
+import com.maxjth.tracememoire.ui.model.TraceEvent
 import com.maxjth.tracememoire.ui.tags.TAG_GROUPS_OFFICIAL
 import com.maxjth.tracememoire.ui.tags.Tier
 import com.maxjth.tracememoire.ui.tags.tierAllowed
@@ -52,6 +56,9 @@ import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
 import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,9 +70,19 @@ fun TraceJourScreen(onBack: () -> Unit) {
     // ✅ sélection tags
     var selectedTags by remember { mutableStateOf(setOf<String>()) }
 
-    // ✅ (temp) accès premium — plus tard tu branches tes vrais flags
+    // ✅ heure collée à chaque tag sélectionné
+    var selectedTagTimes by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+
+    // ✅ (temp) accès premium
     val hasPremium = false
     val hasPremiumPlus = false
+
+    // ✅ Events (source de vérité)
+    val events by TraceEventStore.events.collectAsState()
+
+    // ✅ Formatter heure (24h)
+    val hourFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+    fun nowHourLabel(): String = hourFormatter.format(Date(System.currentTimeMillis()))
 
     // ✅ Entrée triangle
     val triEntry = remember { Animatable(0f) }
@@ -76,10 +93,7 @@ fun TraceJourScreen(onBack: () -> Unit) {
         triEntry.snapTo(0f)
         triEntry.animateTo(
             targetValue = 1f,
-            animationSpec = spring(
-                dampingRatio = 0.70f,
-                stiffness = Spring.StiffnessLow
-            )
+            animationSpec = spring(dampingRatio = 0.70f, stiffness = Spring.StiffnessLow)
         )
 
         delay(180)
@@ -87,10 +101,7 @@ fun TraceJourScreen(onBack: () -> Unit) {
         entryScale.snapTo(0f)
         entryScale.animateTo(
             targetValue = 1f,
-            animationSpec = spring(
-                dampingRatio = 0.62f,
-                stiffness = Spring.StiffnessLow
-            )
+            animationSpec = spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessLow)
         )
     }
 
@@ -122,11 +133,7 @@ fun TraceJourScreen(onBack: () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(bgDeep, bgSlight, bgDeep)
-                    )
-                )
+                .background(Brush.verticalGradient(listOf(bgDeep, bgSlight, bgDeep)))
                 .padding(padding)
         ) {
 
@@ -167,14 +174,19 @@ fun TraceJourScreen(onBack: () -> Unit) {
                         percent = it.toInt()
                         isInteracting = true
                     },
-                    onValueChangeFinished = { isInteracting = false },
+                    onValueChangeFinished = {
+                        isInteracting = false
+                        // ✅ 1 event seulement quand tu relâches
+                        TraceEventStore.recordPercent(percent)
+                    },
                     valueRange = 0f..100f
                 )
 
                 Spacer(Modifier.height(22.dp))
 
                 // ─────────────────────────────
-                // ✅ TAGS — branchés sur TAG_GROUPS_OFFICIAL
+                // ✅ TAGS — + heure collée sur chaque tag sélectionné
+                // + LOG PROPRE: TAG_ON|xxx / TAG_OFF|xxx
                 // ─────────────────────────────
                 TAG_GROUPS_OFFICIAL.forEach { cat ->
                     val allowed = tierAllowed(cat.tier, hasPremium, hasPremiumPlus)
@@ -187,23 +199,176 @@ fun TraceJourScreen(onBack: () -> Unit) {
                         tags = cat.tags,
                         selectedTags = selectedTags,
                         onToggleTag = { tag ->
-                            selectedTags =
-                                if (selectedTags.contains(tag)) selectedTags - tag else selectedTags + tag
+                            val wasSelected = selectedTags.contains(tag)
+
+                            if (wasSelected) {
+                                // OFF
+                                selectedTags = selectedTags - tag
+                                selectedTagTimes = selectedTagTimes - tag
+                                TraceEventStore.recordTag("TAG_OFF", tag)
+                            } else {
+                                // ON + heure collée
+                                val hour = nowHourLabel()
+                                selectedTags = selectedTags + tag
+                                selectedTagTimes = selectedTagTimes + (tag to hour)
+                                TraceEventStore.recordTag("TAG_ON", tag)
+                            }
                         }
                     )
 
                     Spacer(Modifier.height(16.dp))
                 }
 
+                // ✅ Pastilles "heure • tag"
                 if (selectedTags.isNotEmpty()) {
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
+
                     Text(
-                        text = "Sélection : " + selectedTags.joinToString(" • "),
-                        color = WHITE_SOFT.copy(alpha = 0.55f),
+                        text = "Sélection",
+                        color = WHITE_SOFT.copy(alpha = 0.70f),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    Spacer(Modifier.height(10.dp))
+
+                    // 2 par ligne = stable
+                    val ordered = selectedTags.toList()
+                    ordered.chunked(2).forEach { row ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            row.forEach { tag ->
+                                val hour = selectedTagTimes[tag] ?: "--:--"
+                                val label = "$hour • $tag"
+
+                                AssistChip(
+                                    onClick = {
+                                        // toggle OFF direct si tu retouches la pastille
+                                        selectedTags = selectedTags - tag
+                                        selectedTagTimes = selectedTagTimes - tag
+                                        TraceEventStore.recordTag("TAG_OFF", tag)
+                                    },
+                                    label = {
+                                        Text(
+                                            text = label,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    },
+                                    colors = AssistChipDefaults.assistChipColors(
+                                        containerColor = MAUVE.copy(alpha = 0.20f),
+                                        labelColor = WHITE_SOFT.copy(alpha = 0.92f)
+                                    ),
+                                    border = BorderStroke(
+                                        width = 1.dp,
+                                        color = MAUVE.copy(alpha = 0.45f)
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+
+                            repeat(2 - row.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                        Spacer(Modifier.height(10.dp))
+                    }
+                }
+
+                // ─────────────────────────────
+                // ✅ TIMELINE (preuves)
+                // ─────────────────────────────
+                Spacer(Modifier.height(18.dp))
+
+                Text(
+                    text = "Événements",
+                    color = WHITE_SOFT.copy(alpha = 0.78f),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                val lastEvents = remember(events) { events.asReversed().take(12) }
+
+                if (lastEvents.isEmpty()) {
+                    Text(
+                        text = "Aucun événement pour l’instant.",
+                        color = WHITE_SOFT.copy(alpha = 0.38f),
                         style = MaterialTheme.typography.bodyMedium
                     )
+                } else {
+                    lastEvents.forEach { e ->
+                        TraceEventRow(e)
+                        Spacer(Modifier.height(8.dp))
+                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun TraceEventRow(e: TraceEvent) {
+    val label = when (e.type.name) {
+        "PERCENT_UPDATE" -> "Pourcentage"
+        "TAG_UPDATE" -> "Tag"
+        "TIME_ADJUST" -> "Heure"
+        else -> "Event"
+    }
+
+    // ✅ rendu lisible des tags: TAG_ON|Calme -> ON • Calme
+    val prettyValue: String = if (e.type.name == "TAG_UPDATE") {
+        val parts = e.value.split("|", limit = 2)
+        if (parts.size == 2) {
+            val action = parts[0]
+            val tag = parts[1]
+            when (action) {
+                "TAG_ON" -> "ON • $tag"
+                "TAG_OFF" -> "OFF • $tag"
+                else -> e.value
+            }
+        } else e.value
+    } else {
+        e.value
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MAUVE.copy(alpha = 0.18f),
+                shape = RoundedCornerShape(14.dp)
+            )
+            .background(
+                color = BG_SOFT.copy(alpha = 0.22f),
+                shape = RoundedCornerShape(14.dp)
+            )
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = e.hourLabel,
+                color = WHITE_SOFT.copy(alpha = 0.55f),
+                style = MaterialTheme.typography.labelLarge
+            )
+            Spacer(Modifier.size(10.dp))
+            Text(
+                text = label,
+                color = WHITE_SOFT.copy(alpha = 0.85f),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.size(10.dp))
+            Text(
+                text = "— $prettyValue",
+                color = WHITE_SOFT.copy(alpha = 0.55f),
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -256,7 +421,6 @@ private fun TagCategoryBlock(
 
         Spacer(Modifier.height(10.dp))
 
-        // Rangées simples (3 par ligne) = stable, sans dépendances
         tags.chunked(3).forEach { row ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -266,13 +430,13 @@ private fun TagCategoryBlock(
                     val selected = selectedTags.contains(tag)
 
                     AssistChip(
-                        onClick = {
-                            if (!locked) onToggleTag(tag)
-                        },
+                        onClick = { if (!locked) onToggleTag(tag) },
                         label = {
                             Text(
                                 text = tag,
-                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         },
                         enabled = !locked,
@@ -282,7 +446,6 @@ private fun TagCategoryBlock(
                             disabledContainerColor = BG_SOFT.copy(alpha = 0.18f),
                             disabledLabelColor = WHITE_SOFT.copy(alpha = 0.25f)
                         ),
-                        // ✅ FIX : BorderStroke direct (évite ChipBorder vs BorderStroke)
                         border = BorderStroke(
                             width = 1.dp,
                             color = when {
