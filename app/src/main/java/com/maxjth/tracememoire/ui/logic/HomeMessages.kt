@@ -7,31 +7,31 @@ object HomeMessages {
 
         return when {
             n == 0 ->
-                "Tout commence ici."
+                "Pose ta première trace. Rien d’autre."
 
             n in 1..6 ->
-                "Quelques repères sont posés."
+                "Reste simple : un pourcentage, quelques repères."
 
             n in 7..13 ->
-                "Une première continuité apparaît."
+                "Une semaine : le rythme est lancé."
 
             n in 14..29 ->
-                "Les journées commencent à se répondre."
+                "Deux semaines : tu vois déjà la cadence."
 
             n in 30..59 ->
-                "Un rythme discret s’installe."
+                "Un mois : la trace devient naturelle."
 
             n in 60..89 ->
-                "La trace devient familière."
+                "Deux mois : c’est stable, sans effort."
 
             n in 90..179 ->
-                "Une présence régulière se dessine."
+                "Trois mois : tu tiens un fil."
 
             n in 180..364 ->
-                "Ce chemin t’appartient maintenant."
+                "Une saison entière : tu peux relire."
 
             else ->
-                "Tu n’as rien à prouver. La trace est là."
+                "Ça continue. Calme. Régulier."
         }
     }
 }

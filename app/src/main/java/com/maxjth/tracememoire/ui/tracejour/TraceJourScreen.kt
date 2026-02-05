@@ -3,18 +3,53 @@ package com.maxjth.tracememoire.ui.tracejour
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.maxjth.tracememoire.ui.components.TriangleOutlineBreathing
+import com.maxjth.tracememoire.ui.tags.TAG_GROUPS_OFFICIAL
+import com.maxjth.tracememoire.ui.tags.Tier
+import com.maxjth.tracememoire.ui.tags.tierAllowed
 import com.maxjth.tracememoire.ui.theme.BG_SOFT
+import com.maxjth.tracememoire.ui.theme.MAUVE
+import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
 import kotlinx.coroutines.delay
 
@@ -25,14 +60,19 @@ fun TraceJourScreen(onBack: () -> Unit) {
     var percent by remember { mutableStateOf(50) }
     var isInteracting by remember { mutableStateOf(false) }
 
-    // ✅ Entrée triangle (très léger)
-    val triEntry = remember { Animatable(0f) }
+    // ✅ sélection tags
+    var selectedTags by remember { mutableStateOf(setOf<String>()) }
 
-    // ✅ Entrée % (bounce doux) — arrive après un micro-delay
+    // ✅ (temp) accès premium — plus tard tu branches tes vrais flags
+    val hasPremium = false
+    val hasPremiumPlus = false
+
+    // ✅ Entrée triangle
+    val triEntry = remember { Animatable(0f) }
+    // ✅ Entrée %
     val entryScale = remember { Animatable(0f) }
 
     LaunchedEffect(Unit) {
-        // Triangle d’abord
         triEntry.snapTo(0f)
         triEntry.animateTo(
             targetValue = 1f,
@@ -42,7 +82,6 @@ fun TraceJourScreen(onBack: () -> Unit) {
             )
         )
 
-        // Puis le % (narratif)
         delay(180)
 
         entryScale.snapTo(0f)
@@ -55,7 +94,6 @@ fun TraceJourScreen(onBack: () -> Unit) {
         )
     }
 
-    // ✅ Gradient ultra léger (Trace Mémoire)
     val bgDeep = BG_SOFT
     val bgSlight = BG_SOFT.copy(alpha = 0.92f)
 
@@ -69,9 +107,14 @@ fun TraceJourScreen(onBack: () -> Unit) {
                         onClick = onBack,
                         interactionSource = remember { MutableInteractionSource() }
                     ) {
-                        Text("Retour")
+                        Text(
+                            text = "Retour",
+                            color = TURQUOISE,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = bgDeep)
             )
         }
     ) { padding ->
@@ -81,7 +124,7 @@ fun TraceJourScreen(onBack: () -> Unit) {
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(bgDeep, bgSlight, bgDeep)
+                        listOf(bgDeep, bgSlight, bgDeep)
                     )
                 )
                 .padding(padding)
@@ -89,12 +132,13 @@ fun TraceJourScreen(onBack: () -> Unit) {
 
             Column(
                 modifier = Modifier
-                    .align(Alignment.Center)
+                    .align(Alignment.TopCenter)
                     .fillMaxWidth()
                     .widthIn(max = 520.dp)
-                    .padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                    .padding(horizontal = 24.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(top = 22.dp, bottom = 28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
                 TriangleOutlineBreathing(
@@ -102,21 +146,20 @@ fun TraceJourScreen(onBack: () -> Unit) {
                     isInteracting = isInteracting,
                     modifier = Modifier
                         .size(260.dp)
-                        // ✅ Micro-entrée : 0.92 -> 1.0 (subtil)
                         .scale(0.92f + (0.08f * triEntry.value))
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(Modifier.height(22.dp))
 
                 Text(
                     text = "$percent%",
                     style = MaterialTheme.typography.headlineMedium,
                     color = WHITE_SOFT,
-                    // ✅ % arrive après (bounce)
-                    modifier = Modifier.scale(entryScale.value)
+                    modifier = Modifier.scale(entryScale.value),
+                    fontWeight = FontWeight.ExtraBold
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(Modifier.height(14.dp))
 
                 Slider(
                     value = percent.toFloat(),
@@ -126,6 +169,157 @@ fun TraceJourScreen(onBack: () -> Unit) {
                     },
                     onValueChangeFinished = { isInteracting = false },
                     valueRange = 0f..100f
+                )
+
+                Spacer(Modifier.height(22.dp))
+
+                // ─────────────────────────────
+                // ✅ TAGS — branchés sur TAG_GROUPS_OFFICIAL
+                // ─────────────────────────────
+                TAG_GROUPS_OFFICIAL.forEach { cat ->
+                    val allowed = tierAllowed(cat.tier, hasPremium, hasPremiumPlus)
+
+                    TagCategoryBlock(
+                        title = cat.title,
+                        foundation = cat.foundation,
+                        locked = !allowed,
+                        tier = cat.tier,
+                        tags = cat.tags,
+                        selectedTags = selectedTags,
+                        onToggleTag = { tag ->
+                            selectedTags =
+                                if (selectedTags.contains(tag)) selectedTags - tag else selectedTags + tag
+                        }
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+                }
+
+                if (selectedTags.isNotEmpty()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = "Sélection : " + selectedTags.joinToString(" • "),
+                        color = WHITE_SOFT.copy(alpha = 0.55f),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TagCategoryBlock(
+    title: String,
+    foundation: String,
+    locked: Boolean,
+    tier: Tier,
+    tags: List<String>,
+    selectedTags: Set<String>,
+    onToggleTag: (String) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                color = WHITE_SOFT.copy(alpha = 0.88f),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f)
+            )
+
+            if (locked) {
+                Text(
+                    text = when (tier) {
+                        Tier.PREMIUM -> "Premium"
+                        Tier.PREMIUM_PLUS -> "Premium+"
+                        else -> ""
+                    },
+                    color = MAUVE.copy(alpha = 0.85f),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+
+        Spacer(Modifier.height(6.dp))
+
+        Text(
+            text = foundation,
+            color = WHITE_SOFT.copy(alpha = 0.55f),
+            style = MaterialTheme.typography.bodyMedium
+        )
+
+        Spacer(Modifier.height(10.dp))
+
+        // Rangées simples (3 par ligne) = stable, sans dépendances
+        tags.chunked(3).forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                row.forEach { tag ->
+                    val selected = selectedTags.contains(tag)
+
+                    AssistChip(
+                        onClick = {
+                            if (!locked) onToggleTag(tag)
+                        },
+                        label = {
+                            Text(
+                                text = tag,
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
+                            )
+                        },
+                        enabled = !locked,
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = if (selected) MAUVE.copy(alpha = 0.20f) else BG_SOFT.copy(alpha = 0.35f),
+                            labelColor = WHITE_SOFT.copy(alpha = if (selected) 0.95f else 0.80f),
+                            disabledContainerColor = BG_SOFT.copy(alpha = 0.18f),
+                            disabledLabelColor = WHITE_SOFT.copy(alpha = 0.25f)
+                        ),
+                        // ✅ FIX : BorderStroke direct (évite ChipBorder vs BorderStroke)
+                        border = BorderStroke(
+                            width = 1.dp,
+                            color = when {
+                                locked -> MAUVE.copy(alpha = 0.10f)
+                                selected -> MAUVE.copy(alpha = 0.55f)
+                                else -> MAUVE.copy(alpha = 0.22f)
+                            }
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+
+        if (locked) {
+            Spacer(Modifier.height(6.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        width = 1.dp,
+                        color = MAUVE.copy(alpha = 0.20f),
+                        shape = RoundedCornerShape(14.dp)
+                    )
+                    .background(
+                        color = BG_SOFT.copy(alpha = 0.18f),
+                        shape = RoundedCornerShape(14.dp)
+                    )
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
+            ) {
+                Text(
+                    text = "Déverrouiller avec Premium.",
+                    color = WHITE_SOFT.copy(alpha = 0.35f),
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
         }
