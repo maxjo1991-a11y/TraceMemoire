@@ -6,7 +6,7 @@ object HomeMessages {
         val n = traceCount.coerceAtLeast(0)
 
         return when {
-            n == 0 -> "Quelque chose est en train de commencer"
+            n == 0 -> "Quelque chose est en train de commencer!"
 
             n in 1..6 ->
                 "Chaque trace ajoute une couche de mémoire"
