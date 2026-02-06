@@ -1,7 +1,6 @@
 package com.maxjth.tracememoire.ui.history
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,11 +11,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -40,16 +36,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.maxjth.tracememoire.ui.model.TraceEvent
-import com.maxjth.tracememoire.ui.model.TraceEventType
+import com.maxjth.tracememoire.ui.history.components.DayHeader
+import com.maxjth.tracememoire.ui.history.components.HistoryEventCard
+import com.maxjth.tracememoire.ui.history.logic.buildGroupedHistory
 import com.maxjth.tracememoire.ui.theme.BG_DEEP
-import com.maxjth.tracememoire.ui.theme.BG_SOFT
-import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
 import com.maxjth.tracememoire.ui.tracejour.TraceEventStore
-import java.text.SimpleDateFormat
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,23 +54,8 @@ fun HistoryScreen(onBack: () -> Unit) {
     val bgDeep = BG_DEEP
     val bgSlight = BG_DEEP.copy(alpha = 0.92f)
 
-    // 1) Tri + option onlyChanges
-    // 2) Groupement par dayKey
-    val grouped: List<DayGroup> = remember(events, onlyChanges) {
-        val base = events
-            .sortedBy { it.timestamp } // timeline naturelle
-            .let { if (onlyChanges) filterOnlyChanges(it) else it }
-
-        base
-            .groupBy { it.dayKey.ifBlank { "unknown" } }
-            .toSortedMap(compareByDescending { it }) // yyyy-MM-dd => tri lexical OK
-            .map { (dayKey, list) ->
-                DayGroup(
-                    dayKey = dayKey,
-                    prettyDay = prettyDayLabel(dayKey),
-                    events = list.sortedBy { it.timestamp }
-                )
-            }
+    val grouped = remember(events, onlyChanges) {
+        buildGroupedHistory(events = events, onlyChanges = onlyChanges)
     }
 
     Scaffold(
@@ -114,10 +92,8 @@ fun HistoryScreen(onBack: () -> Unit) {
                 .padding(padding)
         ) {
 
-            // ─────────────────────────────
-            // AUCUN ÉVÉNEMENT -> écran calme
-            // ─────────────────────────────
             if (grouped.isEmpty()) {
+
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -162,9 +138,6 @@ fun HistoryScreen(onBack: () -> Unit) {
                         .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
 
-                    // ─────────────────────────────
-                    // SWITCH ONLY CHANGES
-                    // ─────────────────────────────
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -194,9 +167,6 @@ fun HistoryScreen(onBack: () -> Unit) {
 
                     Spacer(Modifier.height(10.dp))
 
-                    // ─────────────────────────────
-                    // LISTE GROUPÉE PAR JOUR
-                    // ─────────────────────────────
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -216,7 +186,7 @@ fun HistoryScreen(onBack: () -> Unit) {
                                 items = group.events,
                                 key = { it.id }
                             ) { e ->
-                                HistoryEventCard(e)
+                                HistoryEventCard(event = e)
                             }
                         }
 
@@ -225,180 +195,5 @@ fun HistoryScreen(onBack: () -> Unit) {
                 }
             }
         }
-    }
-}
-
-/* ---------------------------- UI ---------------------------- */
-
-@Composable
-private fun DayHeader(prettyDay: String, dayKey: String, count: Int) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 6.dp, bottom = 2.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = prettyDay,
-                color = WHITE_SOFT.copy(alpha = 0.95f),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.ExtraBold
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = dayKey,
-                color = WHITE_SOFT.copy(alpha = 0.35f),
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
-
-        // ✅ Pastille "X événements"
-        Box(
-            modifier = Modifier
-                .border(
-                    width = 1.dp,
-                    color = MAUVE.copy(alpha = 0.22f),
-                    shape = RoundedCornerShape(999.dp)
-                )
-                .background(
-                    color = BG_SOFT.copy(alpha = 0.18f),
-                    shape = RoundedCornerShape(999.dp)
-                )
-                .padding(horizontal = 10.dp, vertical = 6.dp)
-        ) {
-            Text(
-                text = "$count év.",
-                color = WHITE_SOFT.copy(alpha = 0.72f),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-    }
-}
-
-@Composable
-private fun HistoryEventCard(e: TraceEvent) {
-
-    val (title, detail) = eventLabel(e)
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                color = MAUVE.copy(alpha = 0.18f),
-                shape = RoundedCornerShape(16.dp)
-            )
-            .background(
-                color = BG_DEEP.copy(alpha = 0.18f),
-                shape = RoundedCornerShape(16.dp)
-            )
-            .padding(horizontal = 12.dp, vertical = 10.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-
-            Text(
-                text = e.hourLabel,
-                color = WHITE_SOFT.copy(alpha = 0.55f),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            Spacer(Modifier.width(10.dp))
-
-            Box(
-                modifier = Modifier
-                    .width(10.dp)
-                    .height(1.dp)
-                    .background(WHITE_SOFT.copy(alpha = 0.18f))
-            )
-
-            Spacer(Modifier.width(10.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    color = WHITE_SOFT.copy(alpha = 0.90f),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-                if (detail.isNotBlank()) {
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = detail,
-                        color = WHITE_SOFT.copy(alpha = 0.52f),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-        }
-    }
-}
-
-/* ---------------------------- Data / Helpers ---------------------------- */
-
-private data class DayGroup(
-    val dayKey: String,
-    val prettyDay: String,
-    val events: List<TraceEvent>
-)
-
-/**
- * “Voir seulement les changements” :
- * enlève les doublons CONSÉCUTIFS identiques (même type + même value)
- */
-private fun filterOnlyChanges(list: List<TraceEvent>): List<TraceEvent> {
-    if (list.isEmpty()) return emptyList()
-
-    val out = ArrayList<TraceEvent>(list.size)
-    var lastSig: String? = null
-
-    for (e in list) {
-        val sig = "${e.type.name}|${e.value}"
-        if (sig != lastSig) {
-            out.add(e)
-            lastSig = sig
-        }
-    }
-    return out
-}
-
-private fun eventLabel(e: TraceEvent): Pair<String, String> {
-    return when (e.type) {
-
-        TraceEventType.PERCENT_UPDATE -> {
-            "Pourcentage" to "${e.value}%"
-        }
-
-        TraceEventType.TAG_UPDATE -> {
-            val v = e.value
-            when {
-                v.startsWith("TAG_ON|") -> "Tag activé" to v.removePrefix("TAG_ON|")
-                v.startsWith("TAG_OFF|") -> "Tag retiré" to v.removePrefix("TAG_OFF|")
-                v.startsWith("ON:") -> "Tag activé" to v.removePrefix("ON:")
-                v.startsWith("OFF:") -> "Tag retiré" to v.removePrefix("OFF:")
-                else -> "Tag" to v
-            }
-        }
-
-        TraceEventType.TIME_ADJUST -> {
-            "Heure ajustée" to "Modification manuelle"
-        }
-
-        else -> {
-            "Événement" to e.value
-        }
-    }
-}
-
-private fun prettyDayLabel(dayKey: String): String {
-    return try {
-        val inFmt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val outFmt = SimpleDateFormat("d MMM yyyy", Locale.getDefault())
-        val date = inFmt.parse(dayKey)
-        if (date != null) outFmt.format(date) else dayKey
-    } catch (_: Throwable) {
-        dayKey
     }
 }

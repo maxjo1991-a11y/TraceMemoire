@@ -2,12 +2,33 @@ package com.maxjth.tracememoire.ui.tracedata
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -29,7 +50,6 @@ fun TraceDataScreen(
     eventsFlow: StateFlow<List<TraceEvent>> = TraceEventStore.events
 ) {
     val events by eventsFlow.collectAsState()
-
     var onlyChanges by remember { mutableStateOf(true) }
 
     val bgDeep = BG_SOFT
@@ -45,20 +65,32 @@ fun TraceDataScreen(
 
     // 3) Grouper par dayKey (dernier jour en haut)
     val grouped = remember(filtered) {
-        filtered.groupBy { it.dayKey }
-            .toSortedMap(compareByDescending { it }) // yyyy-MM-dd => tri OK
+        filtered
+            .groupBy { it.dayKey.ifBlank { "unknown" } }
+            .toSortedMap(compareByDescending { it }) // yyyy-MM-dd => tri lexical OK
     }
 
     Scaffold(
         containerColor = bgDeep,
         topBar = {
             TopAppBar(
-                title = { Text("Trace — Données (Écran 4)") },
+                title = {
+                    Text(
+                        text = "Trace — Données",
+                        color = WHITE_SOFT,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                },
                 navigationIcon = {
                     TextButton(onClick = onBack) {
-                        Text("Retour", color = TURQUOISE, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = "Retour",
+                            color = TURQUOISE,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = bgDeep)
             )
         }
     ) { padding ->
@@ -162,7 +194,8 @@ private fun TimelineRow(e: TraceEvent) {
         Text(
             text = e.hourLabel,
             color = WHITE_SOFT.copy(alpha = 0.55f),
-            style = MaterialTheme.typography.labelLarge
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold
         )
 
         Spacer(Modifier.width(10.dp))
@@ -187,7 +220,7 @@ private fun TimelineRow(e: TraceEvent) {
 /**
  * ✅ Ne garde que les changements “réels”.
  * - Pourcentage : garde seulement si différent du précédent % (dans la timeline)
- * - Tag : toujours un changement (TAG_ON|X / TAG_OFF|X)
+ * - Tag : toujours un changement (ON/OFF)
  * - TIME_ADJUST : toujours un changement
  */
 private fun keepOnlyChanges(sorted: List<TraceEvent>): List<TraceEvent> {
@@ -205,6 +238,9 @@ private fun keepOnlyChanges(sorted: List<TraceEvent>): List<TraceEvent> {
             }
             TraceEventType.TAG_UPDATE -> out.add(e)
             TraceEventType.TIME_ADJUST -> out.add(e)
+
+            // ✅ sécurité si tu ajoutes d’autres types plus tard
+            else -> out.add(e)
         }
     }
     return out
@@ -212,26 +248,42 @@ private fun keepOnlyChanges(sorted: List<TraceEvent>): List<TraceEvent> {
 
 /**
  * Format lecture humaine.
+ * Supporte:
  * - PERCENT_UPDATE: "Pourcentage" / "72%"
- * - TAG_UPDATE: "Tag" / "ON • Calme" ou "OFF • Calme"
- * - TIME_ADJUST: "Heure" / "MANUAL"
+ * - TAG_UPDATE:
+ *    • "TAG_ON|Calme"
+ *    • "TAG_OFF|Calme"
+ *    • "TAG_ON|12:34|Calme"
+ *    • "TAG_OFF|12:34|Calme"
+ * - TIME_ADJUST: "Heure" / value
  */
 private fun formatEvent(e: TraceEvent): Pair<String, String> {
     return when (e.type) {
         TraceEventType.PERCENT_UPDATE -> "Pourcentage" to "${e.value}%"
 
         TraceEventType.TAG_UPDATE -> {
-            // attend: TAG_ON|Calme / TAG_OFF|Calme
-            val parts = e.value.split("|", limit = 2)
-            if (parts.size == 2) {
-                val action = parts[0].removePrefix("TAG_").replace("_", "")
-                val tag = parts[1]
-                "Tag" to "$action • $tag"
+            val parts = e.value.split("|")
+            // formats possibles:
+            // 2 parts: TAG_ON, tag
+            // 3 parts: TAG_ON, hh:mm, tag
+            if (parts.size >= 2) {
+                val action = parts[0]
+                    .removePrefix("TAG_")
+                    .replace("_", "")
+                    .uppercase()
+
+                val tag = parts.last() // prend le dernier token = le tag
+                val time = if (parts.size >= 3) parts[1] else null
+
+                val detail = if (!time.isNullOrBlank()) "$action • $tag • $time" else "$action • $tag"
+                "Tag" to detail
             } else {
                 "Tag" to e.value
             }
         }
 
         TraceEventType.TIME_ADJUST -> "Heure" to e.value
+
+        else -> "Événement" to e.value
     }
 }

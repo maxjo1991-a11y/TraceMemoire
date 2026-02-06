@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /* ------------------------------
-  HELPERS (écran 2)
+ HELPERS (écran 2)
 -------------------------------- */
 
 fun levelLabel(p: Int): String =
@@ -44,7 +44,7 @@ fun lerpColor(a: Color, b: Color, t: Float): Color {
 }
 
 /* ------------------------------
-  UI BRICKS (écran 2)
+ UI BRICKS (écran 2)
 -------------------------------- */
 
 @Composable
@@ -65,6 +65,7 @@ fun TraceStatusBlock(
     nowMs: Long,
     textColor: Color
 ) {
+    // ✅ pour l’instant: affichage minimal (tu pourras afficher "modifié", "x updates", etc.)
     Text(
         text = "Trace du jour",
         fontSize = 12.sp,
@@ -92,6 +93,43 @@ fun TraceNoteField(
             onValueChange = { if (enabled) onNoteChange(it.take(120)) },
             textStyle = TextStyle(color = textColor, fontSize = 16.sp),
             modifier = Modifier.fillMaxSize()
+        )
+    }
+}
+
+
+
+data class TraceDuJour(
+    val percent: Int = 50,
+    val note: String = "",
+    val tags: Set<String> = emptySet(),
+    val createdAtMs: Long = System.currentTimeMillis(),
+    val updatedAtMs: Long = createdAtMs,
+    val updateCount: Int = 0
+) {
+    fun withPercent(newPercent: Int, nowMs: Long = System.currentTimeMillis()): TraceDuJour {
+        val p = newPercent.coerceIn(0, 100)
+        return copy(
+            percent = p,
+            updatedAtMs = nowMs,
+            updateCount = updateCount + 1
+        )
+    }
+
+    fun withNote(newNote: String, nowMs: Long = System.currentTimeMillis()): TraceDuJour {
+        val clean = newNote.take(120)
+        return copy(
+            note = clean,
+            updatedAtMs = nowMs,
+            updateCount = updateCount + 1
+        )
+    }
+
+    fun withTags(newTags: Set<String>, nowMs: Long = System.currentTimeMillis()): TraceDuJour {
+        return copy(
+            tags = newTags,
+            updatedAtMs = nowMs,
+            updateCount = updateCount + 1
         )
     }
 }

@@ -1,63 +1,34 @@
 package com.maxjth.tracememoire.ui.tracejour
 
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 
-class TraceDuJourStore {
 
-    // Trace courante (celle du jour)
-    var trace by mutableStateOf<TraceDuJour?>(null)
-        private set
+object TraceDuJourStore {
 
-    // Créer une nouvelle trace
+    private val _trace = mutableStateOf<TraceDuJour?>(null)
+    val trace: State<TraceDuJour?> = _trace
+
     fun createNewTrace() {
-        val now = System.currentTimeMillis()
-        trace = TraceDuJour(
-            percent = 50,
-            note = "",
-            tags = emptySet(),          // ✅ Set (pas List)
-            createdAtMs = now,
-            updatedAtMs = now,
-            updateCount = 0
-        )
+        _trace.value = TraceDuJour()
     }
 
-    // Modifier le pourcentage
     fun updatePercent(percent: Int) {
-        val t = trace ?: return
-        val now = System.currentTimeMillis()
-        trace = t.copy(
-            percent = percent.coerceIn(0, 100),
-            updatedAtMs = now,
-            updateCount = t.updateCount + 1
-        )
+        val t = _trace.value ?: return
+        _trace.value = t.withPercent(percent)
     }
 
-    // Modifier la note
     fun updateNote(note: String) {
-        val t = trace ?: return
-        val now = System.currentTimeMillis()
-        trace = t.copy(
-            note = note,
-            updatedAtMs = now,
-            updateCount = t.updateCount + 1
-        )
+        val t = _trace.value ?: return
+        _trace.value = t.withNote(note)
     }
 
-    // ✅ Toggle tag (AJOUT MANQUANT)
     fun toggleTag(tag: String) {
-        val t = trace ?: return
-        val now = System.currentTimeMillis()
-
-        val nextTags =
+        val t = _trace.value ?: return
+        val next =
             if (t.tags.contains(tag)) t.tags - tag
             else t.tags + tag
 
-        trace = t.copy(
-            tags = nextTags,
-            updatedAtMs = now,
-            updateCount = t.updateCount + 1
-        )
+        _trace.value = t.withTags(next)
     }
 }

@@ -22,6 +22,9 @@ data class TraceEvent(
     /** Type d’événement */
     val type: TraceEventType,
 
-    /** Valeur associée (pourcentage, tag, etc.) */
-    val value: String
+    /** Valeur associée (pourcentage, tag, texte, etc.) */
+    val value: String,
+
+    /** Optionnel : écran source (TRACE_JOUR, HISTORY, etc.) */
+    val source: String = "TRACE_JOUR"
 )

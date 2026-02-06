@@ -13,6 +13,10 @@ import java.util.UUID
  * Store central des événements de la journée.
  * Source de vérité unique.
  * Rien n'est écrasé. Tout est tracé.
+ *
+ * Format TAG_UPDATE verrouillé :
+ *   "TAG_ON|HH:mm|Tag"
+ *   "TAG_OFF|HH:mm|Tag"
  */
 object TraceEventStore {
 
@@ -25,20 +29,23 @@ object TraceEventStore {
     /** Formatter jour (clé stable) */
     private val dayFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
+    private fun nowMs(): Long = System.currentTimeMillis()
+    private fun hourLabel(ms: Long): String = hourFormatter.format(Date(ms))
+    private fun dayKey(ms: Long): String = dayFormatter.format(Date(ms))
+
     /** Ajout générique d’événement */
     private fun addEvent(
         type: TraceEventType,
         value: String,
         customTimestamp: Long? = null
     ) {
-        val timestamp = customTimestamp ?: System.currentTimeMillis()
-        val date = Date(timestamp)
+        val timestamp = customTimestamp ?: nowMs()
 
         val event = TraceEvent(
             id = UUID.randomUUID().toString(),
-            dayKey = dayFormatter.format(date),   // ex: 2026-02-05
+            dayKey = dayKey(timestamp),
             timestamp = timestamp,
-            hourLabel = hourFormatter.format(date), // ex: 11:25
+            hourLabel = hourLabel(timestamp),
             type = type,
             value = value
         )
@@ -50,21 +57,46 @@ object TraceEventStore {
     fun recordPercent(percent: Int) {
         addEvent(
             type = TraceEventType.PERCENT_UPDATE,
-            value = percent.toString()
+            value = percent.coerceIn(0, 100).toString()
         )
     }
 
     /**
      * Tag ON / OFF
-     * value attendue:
-     *  - TAG_ON|Calme
-     *  - TAG_OFF|Calme
+     *
+     * ✅ Si action est déjà complet (ex: "TAG_ON|11:25|Calme"),
+     * on le garde tel quel.
+     *
+     * ✅ Sinon, on reconstruit un format propre "TAG_ON|HH:mm|tagLabel".
      */
     fun recordTag(action: String, tagLabel: String) {
+        val clean = normalizeTagValue(action = action, tagLabel = tagLabel)
         addEvent(
             type = TraceEventType.TAG_UPDATE,
-            value = "$action|$tagLabel"
+            value = clean
         )
+    }
+
+    private fun normalizeTagValue(action: String, tagLabel: String): String {
+        val parts = action.split("|")
+
+        // Cas 1) action complet : TAG_ON|HH:mm|Tag
+        if (parts.size >= 3 && (parts[0] == "TAG_ON" || parts[0] == "TAG_OFF")) {
+            val a = parts[0]
+            val hour = parts[1].ifBlank { hourLabel(nowMs()) }
+            val tag = parts[2].ifBlank { tagLabel }
+            return "$a|$hour|$tag"
+        }
+
+        // Cas 2) action simple : TAG_ON / TAG_OFF
+        if (action == "TAG_ON" || action == "TAG_OFF") {
+            val hour = hourLabel(nowMs())
+            return "$action|$hour|$tagLabel"
+        }
+
+        // Cas 3) fallback ultra safe (on force OFF si inconnu)
+        val hour = hourLabel(nowMs())
+        return "TAG_OFF|$hour|$tagLabel"
     }
 
     /** Ajustement manuel de l’heure */
