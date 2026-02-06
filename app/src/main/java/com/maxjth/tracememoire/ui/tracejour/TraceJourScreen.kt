@@ -3,13 +3,9 @@ package com.maxjth.tracememoire.ui.tracejour
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,11 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.weight
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -34,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -42,15 +36,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.maxjth.tracememoire.ui.components.TriangleOutlineBreathing
 import com.maxjth.tracememoire.ui.tags.TAG_GROUPS_OFFICIAL
 import com.maxjth.tracememoire.ui.tags.tierAllowed
 import com.maxjth.tracememoire.ui.theme.BG_SOFT
-import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
+import com.maxjth.tracememoire.ui.tracejour.components.SelectedTagsChips
 import com.maxjth.tracememoire.ui.tracejour.components.TagCategoryBlock
 import com.maxjth.tracememoire.ui.tracejour.helpers.TagEventParser
 import com.maxjth.tracememoire.ui.tracejour.timeline.TraceEventRow
@@ -90,7 +83,6 @@ fun TraceJourScreen(onBack: () -> Unit) {
 
         events.forEach { e ->
             if (e.type.name == "TAG_UPDATE") {
-
                 val parsed = TagEventParser.parse(
                     raw = e.value,
                     fallbackHour = e.hourLabel
@@ -136,6 +128,11 @@ fun TraceJourScreen(onBack: () -> Unit) {
         )
     }
 
+    // ✅ état d’ouverture des catégories (par titre)
+    val openMap = remember { mutableStateMapOf<String, Boolean>() }
+    fun isOpenFor(title: String): Boolean = openMap[title] ?: true
+    fun setOpenFor(title: String, value: Boolean) { openMap[title] = value }
+
     val bgDeep = BG_SOFT
     val bgSlight = BG_SOFT.copy(alpha = 0.92f)
 
@@ -168,55 +165,66 @@ fun TraceJourScreen(onBack: () -> Unit) {
                 .padding(padding)
         ) {
 
-            Column(
+            LazyColumn(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
                     .widthIn(max = 520.dp)
-                    .padding(horizontal = 24.dp)
-                    .verticalScroll(rememberScrollState())
-                    .padding(top = 22.dp, bottom = 28.dp),
+                    .padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
-                TriangleOutlineBreathing(
-                    percent = percent,
-                    isInteracting = isInteracting,
-                    modifier = Modifier
-                        .size(260.dp)
-                        .scale(0.92f + (0.08f * triEntry.value))
-                )
+                // ───────── HERO ─────────
+                item(key = "hero_triangle") {
+                    Spacer(Modifier.height(22.dp))
 
-                Spacer(Modifier.height(22.dp))
+                    TriangleOutlineBreathing(
+                        percent = percent,
+                        isInteracting = isInteracting,
+                        modifier = Modifier
+                            .size(260.dp)
+                            .scale(0.92f + (0.08f * triEntry.value))
+                    )
 
-                Text(
-                    text = "$percent%",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = WHITE_SOFT,
-                    modifier = Modifier.scale(entryScale.value),
-                    fontWeight = FontWeight.ExtraBold
-                )
+                    Spacer(Modifier.height(22.dp))
 
-                Spacer(Modifier.height(14.dp))
+                    Text(
+                        text = "$percent%",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = WHITE_SOFT,
+                        modifier = Modifier.scale(entryScale.value),
+                        fontWeight = FontWeight.ExtraBold
+                    )
 
-                Slider(
-                    value = percent.toFloat(),
-                    onValueChange = {
-                        percent = it.toInt()
-                        isInteracting = true
-                    },
-                    onValueChangeFinished = {
-                        isInteracting = false
-                        TraceEventStore.recordPercent(percent)
-                    },
-                    valueRange = 0f..100f
-                )
+                    Spacer(Modifier.height(14.dp))
 
-                Spacer(Modifier.height(22.dp))
+                    Slider(
+                        value = percent.toFloat(),
+                        onValueChange = {
+                            percent = it.toInt()
+                            isInteracting = true
+                        },
+                        onValueChangeFinished = {
+                            isInteracting = false
+                            TraceEventStore.recordPercent(percent)
+                        },
+                        valueRange = 0f..100f
+                    )
 
-                // ✅ TAGS
-                TAG_GROUPS_OFFICIAL.forEach { cat ->
+                    Spacer(Modifier.height(22.dp))
+                }
+
+                // ───────── TAGS ─────────
+                items(
+                    items = TAG_GROUPS_OFFICIAL,
+                    key = { it.title }
+                ) { cat ->
+
                     val allowed = tierAllowed(cat.tier, hasPremium, hasPremiumPlus)
+
+                    // ✅ règle : si pas autorisé -> reste fermé
+                    val forcedClosed = !allowed
+                    val open = if (forcedClosed) false else isOpenFor(cat.title)
 
                     TagCategoryBlock(
                         title = cat.title,
@@ -225,6 +233,10 @@ fun TraceJourScreen(onBack: () -> Unit) {
                         tier = cat.tier,
                         tags = cat.tags,
                         selectedTags = selectedTags,
+                        isOpen = open,
+                        onToggleOpen = {
+                            if (allowed) setOpenFor(cat.title, !open)
+                        },
                         onToggleTag = { tag ->
                             val wasSelected = selectedTags.contains(tag)
 
@@ -232,12 +244,20 @@ fun TraceJourScreen(onBack: () -> Unit) {
                                 val hour = nowHourLabel()
                                 selectedTags = selectedTags - tag
                                 selectedTagTimes = selectedTagTimes - tag
-                                TraceEventStore.recordTag("TAG_OFF|$hour|$tag")
+
+                                TraceEventStore.recordTag(
+                                    action = "TAG_OFF|$hour|$tag",
+                                    tagLabel = tag
+                                )
                             } else {
                                 val hour = nowHourLabel()
                                 selectedTags = selectedTags + tag
                                 selectedTagTimes = selectedTagTimes + (tag to hour)
-                                TraceEventStore.recordTag("TAG_ON|$hour|$tag")
+
+                                TraceEventStore.recordTag(
+                                    action = "TAG_ON|$hour|$tag",
+                                    tagLabel = tag
+                                )
                             }
                         }
                     )
@@ -245,86 +265,59 @@ fun TraceJourScreen(onBack: () -> Unit) {
                     Spacer(Modifier.height(16.dp))
                 }
 
-                // ✅ Pastilles "heure • tag"
-                if (selectedTags.isNotEmpty()) {
-                    Spacer(Modifier.height(8.dp))
+                // ───────── SÉLECTION ─────────
+                item(key = "selected_chips") {
+                    SelectedTagsChips(
+                        selectedTags = selectedTags,
+                        selectedTagTimes = selectedTagTimes,
+                        tagLabel = "Sélection",
+                        onRemoveTag = { tag ->
+                            val offHour = nowHourLabel()
+                            selectedTags = selectedTags - tag
+                            selectedTagTimes = selectedTagTimes - tag
+
+                            TraceEventStore.recordTag(
+                                action = "TAG_OFF|$offHour|$tag",
+                                tagLabel = tag
+                            )
+                        }
+                    )
+
+                    Spacer(Modifier.height(18.dp))
 
                     Text(
-                        text = "Sélection",
-                        color = WHITE_SOFT.copy(alpha = 0.70f),
-                        style = MaterialTheme.typography.titleSmall,
+                        text = "Événements",
+                        color = WHITE_SOFT.copy(alpha = 0.78f),
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
 
                     Spacer(Modifier.height(10.dp))
-
-                    val ordered = selectedTags.toList()
-                    ordered.chunked(2).forEach { row ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            row.forEach { tag ->
-                                val hour = selectedTagTimes[tag] ?: "--:--"
-                                val label = "$hour • $tag"
-
-                                AssistChip(
-                                    onClick = {
-                                        val offHour = nowHourLabel()
-                                        selectedTags = selectedTags - tag
-                                        selectedTagTimes = selectedTagTimes - tag
-                                        TraceEventStore.recordTag("TAG_OFF|$offHour|$tag")
-                                    },
-                                    label = {
-                                        Text(
-                                            text = label,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                    },
-                                    colors = AssistChipDefaults.assistChipColors(
-                                        containerColor = MAUVE.copy(alpha = 0.20f),
-                                        labelColor = WHITE_SOFT.copy(alpha = 0.92f)
-                                    ),
-                                    border = BorderStroke(
-                                        width = 1.dp,
-                                        color = MAUVE.copy(alpha = 0.45f)
-                                    ),
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-
-                            repeat(2 - row.size) { Spacer(Modifier.weight(1f)) }
-                        }
-                        Spacer(Modifier.height(10.dp))
-                    }
                 }
 
-                // ✅ Timeline
-                Spacer(Modifier.height(18.dp))
-
-                Text(
-                    text = "Événements",
-                    color = WHITE_SOFT.copy(alpha = 0.78f),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                Spacer(Modifier.height(10.dp))
-
-                val lastEvents = remember(events) { events.asReversed().take(12) }
+                // ───────── TIMELINE ─────────
+                val lastEvents = events.asReversed().take(12)
 
                 if (lastEvents.isEmpty()) {
-                    Text(
-                        text = "Aucun événement pour l’instant.",
-                        color = WHITE_SOFT.copy(alpha = 0.38f),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    item(key = "no_events") {
+                        Text(
+                            text = "Aucun événement pour l’instant.",
+                            color = WHITE_SOFT.copy(alpha = 0.38f),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(Modifier.height(22.dp))
+                    }
                 } else {
-                    lastEvents.forEach { e ->
+                    items(
+                        items = lastEvents,
+                        key = { it.id }
+                    ) { e ->
                         TraceEventRow(e)
                         Spacer(Modifier.height(8.dp))
+                    }
+
+                    item(key = "timeline_bottom_space") {
+                        Spacer(Modifier.height(22.dp))
                     }
                 }
             }
