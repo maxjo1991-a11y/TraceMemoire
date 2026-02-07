@@ -83,7 +83,7 @@ fun TriangleOutlineBreathing(
         label = "orbit"
     )
 
-    // ✅ Tilt ultra lent (gravité) — 0.2° -> 0.4°
+    // Tilt ultra lent (gravité) — 0.2° -> 0.4°
     val tiltPhase by transition.animateFloat(
         initialValue = 0f,
         targetValue = (Math.PI * 2).toFloat(),
@@ -127,7 +127,8 @@ fun TriangleOutlineBreathing(
 
         rotate(rotationDeg, pivot = c) {
 
-            val radius = sizeMin * 0.42f * scale
+            // ✅ Mise à jour: triangle plus grand (0.42f -> 0.46f)
+            val radius = sizeMin * 0.46f * scale
 
             val path = Path().apply {
                 moveTo(c.x, c.y - radius)

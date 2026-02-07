@@ -15,26 +15,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.maxjth.tracememoire.ui.components.TriangleOutlineBreathing
+import androidx.compose.ui.unit.sp
 import com.maxjth.tracememoire.ui.tags.TAG_GROUPS_OFFICIAL
 import com.maxjth.tracememoire.ui.tags.tierAllowed
 import com.maxjth.tracememoire.ui.theme.BG_SOFT
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
-import com.maxjth.tracememoire.ui.tracejour.components.SelectedTagsChips
 import com.maxjth.tracememoire.ui.tracejour.components.TagCategoryBlock
-import com.maxjth.tracememoire.ui.tracejour.helpers.TagEventParser
+import com.maxjth.tracememoire.ui.tracejour.components.TraceTriangleHero
 import com.maxjth.tracememoire.ui.tracejour.timeline.TraceEventRow
 import kotlinx.coroutines.delay
-import java.text.SimpleDateFormat
-import java.util.*
+
+private val HERO_SIZE = 280.dp
+private const val MAX_TIMELINE_EVENTS = 12
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TraceJourScreen(onBack: () -> Unit) {
-
-    // ───────── ÉTATS ─────────
+fun TraceJourScreen(
+    onBack: () -> Unit,
+    isPremium: Boolean = false,
+    isPremiumPlus: Boolean = false
+) {
+    // ───── ÉTATS ─────
     var percent by remember { mutableStateOf(50) }
     var isInteracting by remember { mutableStateOf(false) }
 
@@ -43,49 +47,28 @@ fun TraceJourScreen(onBack: () -> Unit) {
 
     val events by TraceEventStore.events.collectAsState()
 
-    // ───────── FORMAT HEURE ─────────
-    val hourFormatter = remember {
-        SimpleDateFormat("HH:mm", Locale.getDefault())
-    }
-    fun nowHour(): String = hourFormatter.format(Date())
+    // ───── HEURE ─────
+    val nowHour = rememberNowHour()
 
-    // ───────── REBUILD TAGS DEPUIS EVENTS ─────────
+    // ───── REBUILD TAGS ─────
     LaunchedEffect(events) {
-        val tags = linkedSetOf<String>()
-        val times = linkedMapOf<String, String>()
-
-        events.forEach { e ->
-            if (e.type.name == "TAG_UPDATE") {
-                TagEventParser.parse(e.value, e.hourLabel)?.let { parsed ->
-                    when (parsed.action) {
-                        TagEventParser.TagAction.ON -> {
-                            tags.add(parsed.tag)
-                            times[parsed.tag] = parsed.hour
-                        }
-                        TagEventParser.TagAction.OFF -> {
-                            tags.remove(parsed.tag)
-                            times.remove(parsed.tag)
-                        }
-                    }
-                }
-            }
-        }
-
-        selectedTags = tags
-        selectedTagTimes = times
+        val rebuilt = rebuildSelectedTagsFromEvents(events)
+        selectedTags = rebuilt.tags
+        selectedTagTimes = rebuilt.times
     }
 
-    // ───────── ANIMATIONS ─────────
+    // ───── ANIMATIONS ─────
     val triEntry = remember { Animatable(0f) }
-    val percentEntry = remember { Animatable(0f) }
 
     LaunchedEffect(Unit) {
-        triEntry.animateTo(1f, spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessLow))
-        delay(160)
-        percentEntry.animateTo(1f, spring(dampingRatio = 0.65f, stiffness = Spring.StiffnessLow))
+        triEntry.animateTo(
+            1f,
+            spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessLow)
+        )
+        delay(120)
     }
 
-    // ───────── UI ─────────
+    // ───── UI ─────
     val bg = BG_SOFT
     val bgSoft = BG_SOFT.copy(alpha = 0.92f)
 
@@ -93,7 +76,7 @@ fun TraceJourScreen(onBack: () -> Unit) {
         containerColor = bg,
         topBar = {
             TopAppBar(
-                title = { Text("Trace du jour") },
+                title = { /* vide */ },
                 navigationIcon = {
                     TextButton(
                         onClick = onBack,
@@ -123,30 +106,66 @@ fun TraceJourScreen(onBack: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
-                // ───────── HERO ─────────
-                item {
-                    Spacer(Modifier.height(24.dp))
+                // ───── TITRE (2 lignes) + SOUS-TITRE ─────
+                item(key = "hero_title") {
+                    Spacer(Modifier.height(6.dp))
 
-                    TriangleOutlineBreathing(
+                    Text(
+                        text = "Trace",
+                        color = WHITE_SOFT,
+                        fontSize = 67.sp,
+                        lineHeight = 59.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                            .offset(y = (-18).dp)
+                    )
+
+
+                    Text(
+                        text = "d’état d’âme",
+                        color = WHITE_SOFT.copy(alpha = 0.94f),
+                        fontSize = 59.sp,
+                        lineHeight = 57.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .offset(y = (-20).dp)
+                    )
+
+                    Spacer(Modifier.height(10.dp))
+
+                    Text(
+                        text = "Où en es-tu, là, maintenant ?",
+                        color = WHITE_SOFT.copy(alpha = 0.62f),
+                        fontSize = 18.sp,
+                        lineHeight = 22.sp,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .offset(y = (-17).dp)
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+                }
+
+                // ✅ TRIANGLE (RETOUR OFFICIEL)
+                item(key = "hero_triangle") {
+                    TraceTriangleHero(
                         percent = percent,
                         isInteracting = isInteracting,
                         modifier = Modifier
-                            .size(260.dp)
-                            .scale(0.92f + 0.08f * triEntry.value)
-                    )
-
-                    Spacer(Modifier.height(22.dp))
-
-                    Text(
-                        text = "$percent%",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = WHITE_SOFT,
-                        fontWeight = FontWeight.ExtraBold,
-                        modifier = Modifier.scale(percentEntry.value)
+                            .size(HERO_SIZE)
+                            .scale(0.96f + 0.04f * triEntry.value)
                     )
 
                     Spacer(Modifier.height(14.dp))
+                }
 
+                // ───── SLIDER (SOUS LE TRIANGLE) ─────
+                item(key = "hero_slider") {
                     Slider(
                         value = percent.toFloat(),
                         onValueChange = {
@@ -160,12 +179,28 @@ fun TraceJourScreen(onBack: () -> Unit) {
                         valueRange = 0f..100f
                     )
 
-                    Spacer(Modifier.height(26.dp))
+                    Spacer(Modifier.height(12.dp))
                 }
 
-                // ───────── TAGS ─────────
+                // ───── 3e TEXTE (AVANT LES TAGS) ─────
+                item(key = "before_tags_phrase") {
+                    Text(
+                        text = "Le présent intérieur est noté. À travers quelques repères.",
+                        color = WHITE_SOFT.copy(alpha = 0.62f),
+                        fontSize = 16.sp,
+                        lineHeight = 22.sp,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp)
+                    )
+                    Spacer(Modifier.height(18.dp))
+                }
+
+                // ───── TAGS ─────
                 items(TAG_GROUPS_OFFICIAL, key = { it.title }) { cat ->
-                    val allowed = tierAllowed(cat.tier, false, false)
+                    val allowed = tierAllowed(cat.tier, isPremium, isPremiumPlus)
 
                     TagCategoryBlock(
                         title = cat.title,
@@ -194,12 +229,11 @@ fun TraceJourScreen(onBack: () -> Unit) {
                     Spacer(Modifier.height(16.dp))
                 }
 
-                // ───────── SÉLECTION ─────────
-                item {
-                    SelectedTagsChips(
+                // ───── SÉLECTION + TITRE ─────
+                item(key = "selection_header") {
+                    SelectionAndEventsHeader(
                         selectedTags = selectedTags,
                         selectedTagTimes = selectedTagTimes,
-                        tagLabel = "Sélection",
                         onRemoveTag = { tag ->
                             val hour = nowHour()
                             selectedTags -= tag
@@ -207,24 +241,13 @@ fun TraceJourScreen(onBack: () -> Unit) {
                             TraceEventStore.recordTag("TAG_OFF|$hour|$tag", tag)
                         }
                     )
-
-                    Spacer(Modifier.height(18.dp))
-
-                    Text(
-                        text = "Événements",
-                        color = WHITE_SOFT.copy(alpha = 0.75f),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-
-                    Spacer(Modifier.height(10.dp))
                 }
 
-                // ───────── TIMELINE ─────────
-                val lastEvents = events.asReversed().take(12)
+                // ───── TIMELINE ─────
+                val lastEvents = events.asReversed().take(MAX_TIMELINE_EVENTS)
 
                 if (lastEvents.isEmpty()) {
-                    item {
+                    item(key = "no_events") {
                         Text(
                             text = "Aucun événement pour l’instant.",
                             color = WHITE_SOFT.copy(alpha = 0.38f)
@@ -236,8 +259,7 @@ fun TraceJourScreen(onBack: () -> Unit) {
                         TraceEventRow(e)
                         Spacer(Modifier.height(8.dp))
                     }
-
-                    item { Spacer(Modifier.height(26.dp)) }
+                    item(key = "timeline_bottom_space") { Spacer(Modifier.height(26.dp)) }
                 }
             }
         }
