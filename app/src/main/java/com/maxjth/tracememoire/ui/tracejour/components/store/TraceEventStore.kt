@@ -1,4 +1,4 @@
-package com.maxjth.tracememoire.ui.tracejour
+package com.maxjth.tracememoire.ui.tracejour.components.store
 
 import com.maxjth.tracememoire.ui.model.TraceEvent
 import com.maxjth.tracememoire.ui.model.TraceEventType

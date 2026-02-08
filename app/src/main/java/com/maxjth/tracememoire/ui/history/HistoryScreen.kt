@@ -42,7 +42,7 @@ import com.maxjth.tracememoire.ui.history.logic.buildGroupedHistory
 import com.maxjth.tracememoire.ui.theme.BG_DEEP
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
-import com.maxjth.tracememoire.ui.tracejour.TraceEventStore
+import com.maxjth.tracememoire.ui.tracejour.components.store.TraceEventStore
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -1,4 +1,4 @@
-package com.maxjth.tracememoire.ui.tracejour.components
+package com.maxjth.tracememoire.ui.tags
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background

@@ -1,4 +1,4 @@
-package com.maxjth.tracememoire.ui.tracejour.components
+package com.maxjth.tracememoire.ui.tags
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -24,7 +24,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.maxjth.tracememoire.ui.tags.Tier
 import com.maxjth.tracememoire.ui.theme.BG_SOFT
 import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.TURQUOISE

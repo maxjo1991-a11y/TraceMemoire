@@ -40,7 +40,7 @@ import com.maxjth.tracememoire.ui.theme.BG_SOFT
 import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
-import com.maxjth.tracememoire.ui.tracejour.TraceEventStore
+import com.maxjth.tracememoire.ui.tracejour.components.store.TraceEventStore
 import kotlinx.coroutines.flow.StateFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
