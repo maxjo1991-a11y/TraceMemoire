@@ -30,7 +30,7 @@ fun TraceMemoireTheme(
 ) {
     MaterialTheme(
         colorScheme = TraceDarkColors,
-        typography = Typography,
+        typography = AppTypography,
         content = content
     )
 }

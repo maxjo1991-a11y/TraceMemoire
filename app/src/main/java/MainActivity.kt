@@ -11,7 +11,7 @@ import androidx.compose.runtime.setValue
 import com.maxjth.tracememoire.ui.history.HistoryScreen
 import com.maxjth.tracememoire.ui.home.HomeScreen
 import com.maxjth.tracememoire.ui.theme.TraceMemoireTheme
-import com.maxjth.tracememoire.ui.tracejour.screen.TraceJourScreen
+import com.maxjth.tracememoire.ui.tracejour.components.screen.TraceJourScreen
 
 class MainActivity : ComponentActivity() {
 

@@ -1,7 +1,5 @@
-// BLOC — TraceJourScreenParts.kt (COMPLET) ✅ SANS TraceJourTitleBlock
-// Chemin: ui/tracejour/screen/TraceJourScreenParts.kt
-package com.maxjth.tracememoire.ui.tracejour.screen
 
+package com.maxjth.tracememoire.ui.tracejour.components.screen
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -93,20 +91,3 @@ fun TraceJourTagBlock(
     Spacer(Modifier.height(16.dp))
 }
 
-@Composable
-fun TraceJourTimelineBlock(events: List<TraceEvent>) {
-    if (events.isEmpty()) {
-        Text(
-            text = "Aucun événement pour l’instant.",
-            color = Color.White.copy(alpha = 0.38f)
-        )
-        Spacer(Modifier.height(24.dp))
-        return
-    }
-
-    events.forEach { e ->
-        TraceEventRow(e)
-        Spacer(Modifier.height(8.dp))
-    }
-    Spacer(Modifier.height(26.dp))
-}

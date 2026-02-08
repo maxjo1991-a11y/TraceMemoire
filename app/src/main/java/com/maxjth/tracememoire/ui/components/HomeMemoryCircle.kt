@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.utils.currentMonthlyBreath
+import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -36,7 +37,7 @@ import kotlin.math.sin
 fun HomeMemoryCircle(
     traceCount: Int,
     modifier: Modifier = Modifier,
-    // ✅ Nouveau : bounce du chiffre (ex: 0 -> 1.06 -> 1.0)
+    // ✅ Bounce du chiffre (ex: 0 -> 1.06 -> 1.0)
     numberEntryScale: Float = 1f
 ) {
     val text = traceCount.toString()
@@ -93,13 +94,15 @@ fun HomeMemoryCircle(
     // Cercle légèrement plus épais quand il “inspire”
     val strokeBase = 8.dp
     val strokeBoost =
-        ((finalScale - breath.minScale) / (breath.maxScale - breath.minScale)).coerceIn(0f, 1f)
+        ((finalScale - breath.minScale) / (breath.maxScale - breath.minScale))
+            .coerceIn(0f, 1f)
+
     val strokeDp = strokeBase + (2.dp * strokeBoost)
 
     // 🌍 ORBITE LENTE (gravité / flottement)
     val orbitPhase by tr.animateFloat(
         initialValue = 0f,
-        targetValue = (Math.PI * 2).toFloat(),
+        targetValue = (PI * 2).toFloat(),
         animationSpec = infiniteRepeatable(
             animation = tween(
                 durationMillis = (breath.durationMs * 6.5f).roundToInt(),
@@ -131,6 +134,7 @@ fun HomeMemoryCircle(
         ),
         label = "tilt_phase"
     )
+
     val tiltDeg = lerpFloat(0.25f, 0.45f, strokeBoost) * tiltPhase
 
     // ✨ HALO
@@ -149,6 +153,7 @@ fun HomeMemoryCircle(
             ),
         contentAlignment = Alignment.Center
     ) {
+
         Canvas(modifier = Modifier.matchParentSize()) {
 
             // Halo 1

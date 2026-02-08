@@ -1,4 +1,4 @@
-package com.maxjth.tracememoire.ui.tracejour.screen
+package com.maxjth.tracememoire.ui.tracejour.components.screen
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,7 +13,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
+import com.maxjth.tracememoire.ui.model.TraceEvent
+import com.maxjth.tracememoire.ui.tracejour.timeline.TraceEventRow
+import kotlin.collections.forEach
 @Composable
 fun TraceJourTitleBlock(subtitleTint: Color) {
 
@@ -62,3 +64,25 @@ fun TraceJourTitleBlock(subtitleTint: Color) {
     Spacer(Modifier.height(12.dp))
 }
 
+
+
+
+
+
+@Composable
+fun TraceJourTimelineBlock(events: List<TraceEvent>) {
+    if (events.isEmpty()) {
+        Text(
+            text = "Aucun événement pour l’instant.",
+            color = Color.White.copy(alpha = 0.38f)
+        )
+        Spacer(Modifier.height(24.dp))
+        return
+    }
+
+    events.forEach { e ->
+        TraceEventRow(e)
+        Spacer(Modifier.height(8.dp))
+    }
+    Spacer(Modifier.height(26.dp))
+}

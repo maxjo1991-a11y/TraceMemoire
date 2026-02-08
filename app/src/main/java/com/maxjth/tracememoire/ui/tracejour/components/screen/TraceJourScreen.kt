@@ -1,7 +1,4 @@
-// BLOC 2 — TraceJourScreen.kt (COMPLET)
-// Chemin: ui/tracejour/screen/TraceJourScreen.kt
-package com.maxjth.tracememoire.ui.tracejour.screen
-
+package com.maxjth.tracememoire.ui.tracejour.components.screen
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -29,6 +26,10 @@ import com.maxjth.tracememoire.ui.tracejour.helpers.rememberNowHour
 import kotlinx.coroutines.delay
 
 private const val MAX_TIMELINE_EVENTS = 12
+
+// ✅ IMPORTANT : pour matcher Écran 1, idéalement on met cette couleur dans ui/theme/Color.kt
+// et on l’importe ici (ex: SUBTITLE_TINT = WHITE_SOFT.copy(alpha = 0.55f))
+// Pour l’instant je laisse ta valeur, mais on va la remplacer par celle de l’Écran 1 ensuite.
 private val SUBTITLE_TINT = Color(0xFFAFAFAF)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -158,7 +159,6 @@ fun TraceJourScreen(
                     )
                 }
 
-                // ✅ Timeline
                 item(key = "timeline") {
                     val lastEvents = events.asReversed().take(MAX_TIMELINE_EVENTS)
                     TraceJourTimelineBlock(events = lastEvents)
