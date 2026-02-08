@@ -19,4 +19,4 @@ val BG_SOFT = Color(0xFF141414)
 val WHITE_SOFT = Color(0xFFF2F2F2)
 
 // Blanc teinté mauve (textes doux, messages, secondaires)
-val WHITE_MAUVE = MAUVE.copy(alpha = 0.85f)
+val WHITE_MAUVE = MAUVE.copy(alpha = 0.100f)

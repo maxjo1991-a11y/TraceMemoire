@@ -52,7 +52,7 @@ fun TraceJourTitleBlock(subtitleTint: Color) {
     Text(
         text = "Où en es-tu, là, maintenant ?",
         color = subtitleTint,
-        fontSize = 18.sp,
+        fontSize = 8.sp,
         lineHeight = 22.sp,
         fontWeight = FontWeight.Medium,
         textAlign = TextAlign.Center,
@@ -63,6 +63,7 @@ fun TraceJourTitleBlock(subtitleTint: Color) {
 
     Spacer(Modifier.height(12.dp))
 }
+
 
 
 

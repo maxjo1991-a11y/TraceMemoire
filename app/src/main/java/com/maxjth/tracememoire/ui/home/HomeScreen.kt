@@ -165,12 +165,12 @@ fun HomeScreen(
                         Icon(
                             imageVector = Icons.Outlined.CalendarToday,
                             contentDescription = "Historique",
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Historique",
-                            fontSize = 16.sp,
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -202,14 +202,15 @@ fun HomeScreen(
 
                 Text(
                     text = "Trace\nMémoire",
-                    fontSize = 59.sp,
-                    lineHeight = 57.sp,
+                    fontSize = 61.sp,
+                    lineHeight = 60.sp,
                     fontWeight = FontWeight.ExtraBold,
                     textAlign = TextAlign.Center,
                     color = Color.White
                 )
 
-                Spacer(modifier = Modifier.height(14.dp))
+                // ✅ MAJ: sous-texte du haut MONTE (14.dp -> 6.dp)
+                Spacer(modifier = Modifier.height(6.dp))
 
                 // ✅ Phrase annuelle (mystère)
                 Text(
@@ -221,7 +222,8 @@ fun HomeScreen(
                     color = WHITE_MAUVE.copy(alpha = 0.82f)
                 )
 
-                Spacer(modifier = Modifier.height(28.dp))
+                // ✅ MAJ: on redonne un poil d’air avant le cercle (28.dp -> 30.dp)
+                Spacer(modifier = Modifier.height(30.dp))
 
                 HomeMemoryCircle(
                     traceCount = traceCount,
@@ -234,12 +236,14 @@ fun HomeScreen(
                         }
                 )
 
-                Spacer(modifier = Modifier.height(30.dp))
+                // ✅ MAJ: sous-texte du bas DESCEND (30.dp -> 42.dp)
+                Spacer(modifier = Modifier.height(42.dp))
 
                 Text(
                     modifier = Modifier
                         .alpha(msgAlpha)
-                        .padding(top = 2.dp),
+                        // ✅ MAJ: on enlève la poussée vers le bas du texte (top=2) pour ne pas contredire le “descendre”
+                        .padding(top = 0.dp),
                     text = HomeMessages.messageForTraceCount(traceCount),
                     fontSize = 15.sp,
                     lineHeight = 21.sp,
@@ -275,12 +279,12 @@ fun HomeScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Add,
-                        contentDescription = "Ajouter une trace",
+                        contentDescription = "Ajouter une Mémoire",
                         modifier = Modifier.size(21.dp)
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "Ajouter une trace",
+                        text = "Ajouter une Mémoire",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
