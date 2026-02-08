@@ -12,11 +12,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -24,7 +24,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,13 +41,24 @@ import com.maxjth.tracememoire.ui.history.logic.buildGroupedHistory
 import com.maxjth.tracememoire.ui.theme.BG_DEEP
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
-import com.maxjth.tracememoire.ui.tracejour.components.store.TraceEventStore
-
+import com.maxjth.tracememoire.ui.model.TraceEvent
+/**
+ * Écran 3 (Historique) — version stable / neutre:
+ * - Pas de Store
+ * - Pas de collecte Flow
+ * - UI intacte (calme)
+ * - Données vides par défaut (placeholder)
+ *
+ * Plus tard, on reconnectera les vraies traces.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HistoryScreen(onBack: () -> Unit) {
+fun HistoryScreen(
+    onBack: () -> Unit
+) {
+    // ✅ Données temporaires: vide => placeholder s’affiche
+    val events = remember { emptyList<TraceEvent>() }
 
-    val events by TraceEventStore.events.collectAsState()
     var onlyChanges by remember { mutableStateOf(false) }
 
     val bgDeep = BG_DEEP
@@ -94,6 +104,7 @@ fun HistoryScreen(onBack: () -> Unit) {
 
             if (grouped.isEmpty()) {
 
+                // ✅ Placeholder “calme”
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -102,7 +113,7 @@ fun HistoryScreen(onBack: () -> Unit) {
                     verticalArrangement = Arrangement.Center
                 ) {
 
-                    androidx.compose.material3.Icon(
+                    Icon(
                         imageVector = Icons.Outlined.CalendarToday,
                         contentDescription = null,
                         tint = TURQUOISE.copy(alpha = 0.75f),
@@ -172,28 +183,31 @@ fun HistoryScreen(onBack: () -> Unit) {
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
 
+                        // ✅ Pas de items() imbriqué : on fait une boucle normale
                         grouped.forEach { group ->
 
                             item(key = "day_${group.dayKey}") {
-                                DayHeader(
-                                    prettyDay = group.prettyDay,
-                                    dayKey = group.dayKey,
-                                    count = group.events.size
-                                )
-                            }
+                                Column {
+                                    DayHeader(
+                                        prettyDay = group.prettyDay,
+                                        dayKey = group.dayKey,
+                                        count = group.events.size
+                                    )
 
-                            items(
-                                items = group.events,
-                                key = { it.id }
-                            ) { e ->
-                                HistoryEventCard(event = e)
+                                    Spacer(Modifier.height(10.dp))
+
+                                    group.events.forEach { e ->
+                                        HistoryEventCard(event = e)
+                                    }
+
+                                    Spacer(Modifier.height(16.dp))
+                                }
                             }
                         }
-
-                        item { Spacer(Modifier.height(16.dp)) }
                     }
                 }
             }
         }
     }
 }
+

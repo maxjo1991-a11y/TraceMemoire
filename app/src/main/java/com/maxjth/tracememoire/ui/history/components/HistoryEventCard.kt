@@ -16,21 +16,21 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.maxjth.tracememoire.ui.model.TraceEvent
-import com.maxjth.tracememoire.ui.model.TraceEventType
+import com.maxjth.tracememoire.ui.history.HistoryUiEvent
 import com.maxjth.tracememoire.ui.theme.BG_DEEP
 import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
 
 @Composable
 fun HistoryEventCard(
-    event: TraceEvent,
+    event: HistoryUiEvent,
     modifier: Modifier = Modifier
 ) {
-    val (title, detail) = eventLabel(event)
+    val time = event.time ?: "—"
+    val title = event.title
+    val detail = buildDetail(event)
 
     Box(
         modifier = modifier
@@ -46,13 +46,11 @@ fun HistoryEventCard(
             )
             .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
 
             // Heure
             Text(
-                text = event.hourLabel,
+                text = time,
                 color = WHITE_SOFT.copy(alpha = 0.55f),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold
@@ -71,9 +69,8 @@ fun HistoryEventCard(
             Spacer(modifier = Modifier.width(10.dp))
 
             // Texte principal
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
+
                 Text(
                     text = title,
                     color = WHITE_SOFT.copy(alpha = 0.90f),
@@ -94,32 +91,9 @@ fun HistoryEventCard(
     }
 }
 
-/* ---------------------------- LABELS ---------------------------- */
-
-private fun eventLabel(event: TraceEvent): Pair<String, String> {
-    return when (event.type) {
-
-        TraceEventType.PERCENT_UPDATE -> {
-            "Pourcentage" to "${event.value}%"
-        }
-
-        TraceEventType.TAG_UPDATE -> {
-            val v = event.value
-            when {
-                v.startsWith("TAG_ON|")  -> "Tag activé" to v.removePrefix("TAG_ON|")
-                v.startsWith("TAG_OFF|") -> "Tag retiré" to v.removePrefix("TAG_OFF|")
-                v.startsWith("ON:")      -> "Tag activé" to v.removePrefix("ON:")
-                v.startsWith("OFF:")     -> "Tag retiré" to v.removePrefix("OFF:")
-                else                     -> "Tag" to v
-            }
-        }
-
-        TraceEventType.TIME_ADJUST -> {
-            "Heure ajustée" to "Modification manuelle"
-        }
-
-        else -> {
-            "Événement" to event.value
-        }
-    }
+private fun buildDetail(event: HistoryUiEvent): String {
+    // Priorité: subtitle -> percent -> rien
+    event.subtitle?.let { if (it.isNotBlank()) return it }
+    event.percent?.let { return "${it}%" }
+    return ""
 }
