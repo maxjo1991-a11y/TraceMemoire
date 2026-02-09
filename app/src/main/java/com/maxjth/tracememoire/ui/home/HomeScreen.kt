@@ -249,7 +249,7 @@ fun HomeScreen(
                     lineHeight = 21.sp,
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
-                    color = WHITE_MAUVE.copy(alpha = 0.74f)
+                    color = WHITE_MAUVE.copy(alpha = 0.80f)
                 )
 
                 Spacer(modifier = Modifier.height(42.dp))
@@ -301,7 +301,7 @@ fun HomeScreen(
 // ─────────────────────────────
 private fun homeSubtitleForYear(year: Int): String {
     return when (year) {
-        2026 -> "Le temps fait la mémoire."
+        2026 -> "Le temps n'explique pas. Il mémorise"
         2027 -> "Ce qui revient laisse une trace."
         2028 -> "La mémoire révèle ce qui insistait."
         2029 -> "Ce qui a été noté ne disparaît plus."
