@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,11 +42,15 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.maxjth.tracememoire.ui.theme.BG_SOFT
 import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
+import com.maxjth.tracememoire.ui.tracejour.components.screen.keywords.TraceKeywordChip
+import com.maxjth.tracememoire.ui.tracejour.components.screen.keywords.TraceKeywordPickerSheet
+import com.maxjth.tracememoire.ui.tracejour.components.screen.keywords.TraceKeywordsData
 import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.abs
@@ -53,12 +59,12 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 private data class SliderPersona(
-    val breatheMs: Int,         // vitesse respiration
-    val haloBase: Float,        // halo base
-    val haloAmp: Float,         // amplitude halo
-    val wobbleAmpDp: Float,     // micro wobble (dp)
-    val wobbleMs: Int,          // vitesse wobble
-    val edgeTintMix: Float      // 0..1 (mauve -> turquoise)
+    val breatheMs: Int,
+    val haloBase: Float,
+    val haloAmp: Float,
+    val wobbleAmpDp: Float,
+    val wobbleMs: Int,
+    val edgeTintMix: Float
 )
 
 private fun stableSeed(seedBase: String, cycleKey: String, sliderKey: String, title: String): Int {
@@ -70,9 +76,9 @@ private fun buildPersona(seed: Int): SliderPersona {
     val r = Random(seed)
     return SliderPersona(
         breatheMs = r.nextInt(2300, 5200),
-        haloBase = r.nextFloat() * 0.10f + 0.14f,     // 0.14..0.24
-        haloAmp = r.nextFloat() * 0.10f + 0.06f,      // 0.06..0.16
-        wobbleAmpDp = r.nextFloat() * 2.2f + 0.4f,    // 0.4..2.6 dp
+        haloBase = r.nextFloat() * 0.10f + 0.14f,
+        haloAmp = r.nextFloat() * 0.10f + 0.06f,
+        wobbleAmpDp = r.nextFloat() * 2.2f + 0.4f,
         wobbleMs = r.nextInt(1800, 4200),
         edgeTintMix = r.nextFloat()
     )
@@ -94,21 +100,19 @@ fun TraceMoodSliderRow(
     title: String,
     enabled: Boolean,
     lockedLabel: String? = null,
-
-    // “verrouillage vivant”
-    cycleKey: String,     // "MATIN" / "SOIR" / "NUIT"
-    seedBase: String,     // ex: "20260208" (clé stable par jour)
-    sliderKey: String     // ex: "humeur"
+    cycleKey: String,
+    seedBase: String,
+    sliderKey: String
 ) {
-    // Valeur locale 0..100
     val value = rememberSaveable(title) { mutableFloatStateOf(50f) }
 
-    // Persona stable (aléatoire mais fixe)
+    var selectedWord by rememberSaveable(sliderKey, cycleKey, seedBase) { mutableStateOf<String?>(null) }
+    var showKeywords by remember { mutableStateOf(false) }
+
     val persona = remember(seedBase, cycleKey, sliderKey, title) {
         buildPersona(stableSeed(seedBase, cycleKey, sliderKey, title))
     }
 
-    // Idle motion (respiration + wobble)
     val infinite = rememberInfiniteTransition(label = "sliderAlive_$sliderKey")
     val breathePhase by infinite.animateFloat(
         initialValue = 0f,
@@ -129,11 +133,10 @@ fun TraceMoodSliderRow(
         label = "wobble_$sliderKey"
     )
 
-    // Réaction post-geste
     var isInteracting by remember { mutableStateOf(false) }
     LaunchedEffect(isInteracting) {
         if (isInteracting) {
-            delay(520) // petit “après-geste”
+            delay(520)
             isInteracting = false
         }
     }
@@ -143,22 +146,18 @@ fun TraceMoodSliderRow(
         label = "boost_$sliderKey"
     )
 
-    // Respect : si valeur proche 0 -> quasi immobile ; si haut -> vivant
     val respectRaw = (value.floatValue / 100f).coerceIn(0f, 1f)
     val respect = (0.10f + 0.90f * respectRaw) * (if (enabled) 1f else 0.55f)
 
-    // Couleurs “Trace”
     val aliveEdge = lerpColor(
         a = MAUVE.copy(alpha = 1f),
         b = Color(0xFF2EC4B6).copy(alpha = 1f),
         t = persona.edgeTintMix
     )
 
-    // Alphas (respiration + boost) * respect
     val edgeAlpha = (persona.haloBase + persona.haloAmp * breathePhase) * respect
     val borderAlpha = ((0.18f + 0.14f * breathePhase + 0.18f * boost) * respect).coerceIn(0f, 1f)
 
-    // Fond pastille (bords + vivant)
     val pillBg = Brush.horizontalGradient(
         colors = listOf(
             aliveEdge.copy(alpha = (0.10f + 0.10f * breathePhase) * respect),
@@ -167,53 +166,81 @@ fun TraceMoodSliderRow(
         )
     )
 
-    // Thumb vivant (wobble + micro scale)
     val wobble = sin(wobblePhase * 2f * PI).toFloat() * persona.wobbleAmpDp
     val thumbOffsetX = if (enabled) (wobble * respect).dp else 0.dp
-    val thumbScale = (0.985f + 0.04f * breathePhase) * (1f + 0.03f * boost) * (0.95f + 0.05f * respect)
+    val thumbScale =
+        (0.985f + 0.04f * breathePhase) * (1f + 0.03f * boost) * (0.95f + 0.05f * respect)
 
-    // Track
     val activeTrackColor = MAUVE.copy(alpha = ((0.88f + 0.10f * boost) * respect).coerceIn(0f, 1f))
     val inactiveTrackColor = Color.White.copy(alpha = (0.14f * respect).coerceIn(0f, 0.16f))
 
-    // Header
-    Row(
+    // ─────────────────────────────────────────
+    // ✅ NOUVEAU LAYOUT (2 lignes)
+    //   Ligne 1: Titre | %
+    //   Ligne 2: Chip mot-clé (en bas)
+    // ─────────────────────────────────────────
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+            .padding(start = 4.dp, end = 10.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
             Text(
                 text = title,
                 color = WHITE_SOFT.copy(alpha = if (enabled) 0.92f else 0.55f),
                 fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = true)
             )
 
-            if (!lockedLabel.isNullOrBlank()) {
-                Spacer(Modifier.size(8.dp))
-                Text(
-                    text = "• $lockedLabel",
-                    color = WHITE_SOFT.copy(alpha = 0.45f),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
+            Spacer(Modifier.size(12.dp))
+
+            Text(
+                text = "${value.floatValue.roundToInt()}%",
+                color = WHITE_SOFT.copy(alpha = if (enabled) 0.95f else 0.55f),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1
+            )
         }
 
-        Text(
-            text = "${value.floatValue.roundToInt()}%",
-            color = WHITE_SOFT.copy(alpha = if (enabled) 0.95f else 0.55f),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold
+        Spacer(Modifier.height(8.dp))
+
+        // Chip en bas (plus jamais coupé)
+        TraceKeywordChip(
+            label = selectedWord ?: "Choisir un mot ▾",
+            selected = !selectedWord.isNullOrBlank(),
+            enabled = enabled,
+            onClick = { if (enabled) showKeywords = true },
+            modifier = Modifier
+
         )
+
+        if (!lockedLabel.isNullOrBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = lockedLabel,
+                color = WHITE_SOFT.copy(alpha = 0.42f),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 
-    Spacer(modifier = Modifier.height(10.dp))
+    // ✅ plus d’air entre header et slider
+    Spacer(modifier = Modifier.height(12.dp))
 
-    // Pastille vivante (BOX)
+    // ─────────────────────────────────────────
+    // Pastille vivante (slider)
+    // ─────────────────────────────────────────
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -250,19 +277,14 @@ fun TraceMoodSliderRow(
                     modifier = Modifier
                         .offset(x = thumbOffsetX)
                         .size(24.dp)
-                        .graphicsLayer(
-                            scaleX = thumbScale,
-                            scaleY = thumbScale
-                        )
+                        .graphicsLayer(scaleX = thumbScale, scaleY = thumbScale)
                         .clip(CircleShape)
                         .background(aliveEdge.copy(alpha = if (enabled) 0.98f else 0.60f))
-                        // halo externe (plus visible quand valeur haute)
                         .border(
                             width = 7.dp,
                             color = aliveEdge.copy(alpha = (abs(edgeAlpha) + 0.06f * boost).coerceIn(0f, 1f)),
                             shape = CircleShape
                         )
-                        // peau fine
                         .border(
                             width = 1.dp,
                             color = Color.White.copy(alpha = if (enabled) 0.34f else 0.18f),
@@ -272,4 +294,19 @@ fun TraceMoodSliderRow(
             }
         )
     }
+
+    // ✅ plus d’air entre sliders (ça aide tes 4 sliders)
+    Spacer(modifier = Modifier.height(18.dp))
+
+    TraceKeywordPickerSheet(
+        visible = showKeywords,
+        title = title,
+        words = TraceKeywordsData.wordsForSlider(sliderKey),
+        selectedWord = selectedWord,
+        onPick = { picked ->
+            selectedWord = picked
+            showKeywords = false
+        },
+        onDismiss = { showKeywords = false }
+    )
 }
