@@ -1,4 +1,4 @@
-// BLOC 2 — FICHIER MIS À JOUR (COMPLET)
+// BLOC 2 — FICHIER COMPLET (MIS À JOUR)
 // FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/slider/TraceMoodSliderRow.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen.slider
 
@@ -45,6 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.maxjth.tracememoire.ui.squares.TraceSquaresRow
 import com.maxjth.tracememoire.ui.theme.BG_SOFT
 import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
@@ -155,9 +156,6 @@ fun TraceMoodSliderRow(
     val respectRaw = (value.floatValue / 100f).coerceIn(0f, 1f)
     val respect = (0.25f + 0.75f * respectRaw) * (if (enabled) 1f else 0.55f)
 
-    // Pastille: pas turquoise au milieu.
-    // -> intérieur sombre + glow mauve léger
-    // -> contour turquoise avec relief
     val innerGlow = MAUVE.copy(alpha = (0.08f + 0.06f * breathePhase) * respect)
 
     val pillBg = Brush.horizontalGradient(
@@ -168,8 +166,10 @@ fun TraceMoodSliderRow(
         )
     )
 
-    val outerTurqMain = TURQUOISE.copy(alpha = ((0.14f + 0.34f * breathePhase + 0.16f * boost) * respect).coerceIn(0f, 1f))
-    val outerTurqSoft = TURQUOISE.copy(alpha = (0.10f + 0.10f * breathePhase) * respect)
+    val outerTurqMain =
+        TURQUOISE.copy(alpha = ((0.14f + 0.34f * breathePhase + 0.16f * boost) * respect).coerceIn(0f, 1f))
+    val outerTurqSoft =
+        TURQUOISE.copy(alpha = (0.10f + 0.10f * breathePhase) * respect)
 
     val wobble = sin(wobblePhase * 2f * PI).toFloat() * persona.wobbleAmpDp
     val thumbOffsetX = if (enabled) (wobble * respect).dp else 0.dp
@@ -182,8 +182,6 @@ fun TraceMoodSliderRow(
 
     // ─────────────────────────────────────────
     // HEADER (2 lignes)
-    // L1: Titre + badge %
-    // L2: Chip mot-clé (contour turquoise)
     // ─────────────────────────────────────────
     Column(
         modifier = Modifier
@@ -207,7 +205,6 @@ fun TraceMoodSliderRow(
 
             Spacer(Modifier.size(12.dp))
 
-            // Badge % (contour mauve) — ton composant TracePercentBadge
             TracePercentBadge(
                 percent = pct,
                 enabled = enabled
@@ -243,11 +240,29 @@ fun TraceMoodSliderRow(
         }
     }
 
+    // ─────────────────────────────────────────
+    // ✅ LES CARRÉS (OFFICIEL) — “signature de profondeur”
+    // (ici, sous le header, au-dessus du slider)
+    // ─────────────────────────────────────────
+    Spacer(modifier = Modifier.height(10.dp))
+
+    TraceSquaresRow(
+        sliderKey = sliderKey,
+        seedBase = seedBase,
+        pct = pct,
+        sliderValue = value.floatValue,
+        // pour tester le clignement “absence”, mets true temporairement :
+        blink = false,
+        count = 4,
+        size = 14.dp,
+        gap = 8.dp,
+        followAmpY = 6.dp
+    )
+
     Spacer(modifier = Modifier.height(12.dp))
 
     // ─────────────────────────────────────────
     // PASTILLE (slider)
-    // contour turquoise + relief, pas turquoise au milieu
     // ─────────────────────────────────────────
     Box(
         modifier = Modifier
@@ -255,19 +270,16 @@ fun TraceMoodSliderRow(
             .height(46.dp)
             .clip(RoundedCornerShape(999.dp))
             .background(pillBg)
-            // relief 1: contour doux
             .border(
                 width = 1.dp,
                 color = outerTurqSoft,
                 shape = RoundedCornerShape(999.dp)
             )
-            // relief 2: contour principal
             .border(
                 width = 1.dp,
                 color = outerTurqMain,
                 shape = RoundedCornerShape(999.dp)
             )
-            // glow interne mauve (léger)
             .background(
                 Brush.horizontalGradient(
                     listOf(innerGlow, Color.Transparent, innerGlow)
@@ -300,9 +312,7 @@ fun TraceMoodSliderRow(
                         .size(24.dp)
                         .graphicsLayer(scaleX = thumbScale, scaleY = thumbScale)
                         .clip(CircleShape)
-                        // centre mauve
                         .background(MAUVE.copy(alpha = if (enabled) 0.98f else 0.60f))
-                        // halo turquoise (relief)
                         .border(
                             width = 7.dp,
                             color = TURQUOISE.copy(
@@ -310,7 +320,6 @@ fun TraceMoodSliderRow(
                             ),
                             shape = CircleShape
                         )
-                        // fin liseré blanc
                         .border(
                             width = 1.dp,
                             color = Color.White.copy(alpha = if (enabled) 0.34f else 0.18f),
@@ -322,14 +331,12 @@ fun TraceMoodSliderRow(
     }
 
     // ─────────────────────────────────────────
-    // ✅ PHRASE SOUS LE SLIDER (OFFICIELLE)
-    // + mini séparateur glow mauve ultra léger (look “premium”)
+    // PHRASE SOUS LE SLIDER
     // ─────────────────────────────────────────
     val phrase = TraceSliderPhrases.phraseFor(sliderKey = sliderKey, cycleKey = cycleKey)
 
     Spacer(modifier = Modifier.height(10.dp))
 
-    // mini séparateur glow mauve
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -357,11 +364,10 @@ fun TraceMoodSliderRow(
             .padding(start = 6.dp, end = 10.dp)
     )
 
-    // plus d’air entre sliders
     Spacer(modifier = Modifier.height(18.dp))
 
     // ─────────────────────────────────────────
-    // SHEET MOTS-CLÉS (+ NOTE) — corrige tes erreurs build
+    // SHEET MOTS-CLÉS (+ NOTE)
     // ─────────────────────────────────────────
     TraceKeywordPickerSheet(
         visible = showKeywords,
