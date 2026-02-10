@@ -39,10 +39,10 @@ object TraceCycleClock {
     // ─────────────────────────────────────────────
     fun subtitleForCycle(cycle: TraceCycle): String {
         return when (cycle) {
-            TraceCycle.MATIN -> "du Matin"
-            TraceCycle.JOUR  -> "du Jour"
-            TraceCycle.SOIR  -> "du Soir"
-            TraceCycle.NUIT  -> "de la Nuit"
+            TraceCycle.MATIN -> "Matin"
+            TraceCycle.JOUR  -> "Jour"
+            TraceCycle.SOIR  -> "Soir"
+            TraceCycle.NUIT  -> "Nuit"
         }
     }
 

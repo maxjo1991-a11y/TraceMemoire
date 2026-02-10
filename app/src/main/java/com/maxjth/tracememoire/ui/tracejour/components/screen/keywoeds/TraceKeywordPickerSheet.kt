@@ -1,4 +1,4 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/keywords/TraceKeywordPickerSheet.kt
+// FILE: TraceKeywordPickerSheet.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen.keywords
 
 import androidx.compose.foundation.layout.Arrangement
@@ -18,14 +18,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -44,21 +40,18 @@ fun TraceKeywordPickerSheet(
     words: List<String>,
     selectedWord: String?,
     onPick: (String) -> Unit,
+
+    // ✅ NOUVEAU: mini note liée au slider
+    note: String,
+    onNoteChange: (String) -> Unit,
+
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    sheetState: SheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
+    )
 ) {
     if (!visible) return
-
-    // ✅ stable
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    var query by rememberSaveable { mutableStateOf("") }
-
-    val filtered = remember(words, query) {
-        val q = query.trim().lowercase()
-        if (q.isBlank()) words
-        else words.filter { it.lowercase().contains(q) }
-    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -73,6 +66,8 @@ fun TraceKeywordPickerSheet(
                 .imePadding()
                 .padding(horizontal = 18.dp, vertical = 14.dp)
         ) {
+
+            // ── Header
             Text(
                 text = "Choisir un mot",
                 color = WHITE_SOFT.copy(alpha = 0.92f),
@@ -93,18 +88,24 @@ fun TraceKeywordPickerSheet(
             HorizontalDivider(color = Color.White.copy(alpha = 0.06f))
             Spacer(Modifier.height(12.dp))
 
+            // ✅ Note courte (optionnelle) — remplace la recherche
             OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                singleLine = true,
+                value = note,
+                onValueChange = { new ->
+                    // petit garde-fou: max 120 caractères
+                    onNoteChange(new.take(120))
+                },
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = {
                     Text(
-                        text = "Rechercher…",
+                        text = "Note (optionnelle)…",
                         color = WHITE_SOFT.copy(alpha = 0.38f),
                         fontSize = 14.sp
                     )
                 },
+                singleLine = false,
+                minLines = 2,
+                maxLines = 4,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = TURQUOISE.copy(alpha = 0.35f),
                     unfocusedBorderColor = Color.White.copy(alpha = 0.10f),
@@ -118,23 +119,23 @@ fun TraceKeywordPickerSheet(
 
             Spacer(Modifier.height(12.dp))
 
+            // ── Keywords (1 mot max → fermeture après choix)
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                if (filtered.isEmpty()) {
+                if (words.isEmpty()) {
                     Text(
                         text = "Aucun mot.",
                         color = WHITE_SOFT.copy(alpha = 0.42f),
                         fontSize = 14.sp
                     )
                 } else {
-                    filtered.forEach { word ->
+                    words.forEach { word ->
                         TraceKeywordChip(
                             label = word,
                             selected = (word == selectedWord),
-                            enabled = true,
                             onClick = {
                                 onPick(word)
                                 onDismiss()

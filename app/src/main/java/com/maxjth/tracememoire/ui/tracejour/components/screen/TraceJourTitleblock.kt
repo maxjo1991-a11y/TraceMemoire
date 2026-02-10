@@ -66,8 +66,8 @@ fun TraceJourTitleBlock(
         // SOUS-TITRE (du Matin / du Jour / du Soir / de la Nuit)
         Text(
             text = subtitle,
-            color = Color.White.copy(alpha = 0.78f),
-            fontSize = 22.sp,
+            color = Color.White.copy(alpha = 0.85f),
+            fontSize = 60.sp,
             fontWeight = FontWeight.Medium,
             textAlign = TextAlign.Center
         )
