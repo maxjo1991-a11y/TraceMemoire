@@ -1,4 +1,3 @@
-// BLOC 2 — FICHIER COMPLET (MIS À JOUR)
 // FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/slider/TraceMoodSliderRow.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen.slider
 
@@ -45,12 +44,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.maxjth.tracememoire.ui.squares.TraceSquaresRow
 import com.maxjth.tracememoire.ui.theme.BG_SOFT
 import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
-import com.maxjth.tracememoire.ui.tracejour.components.common.TracePercentBadge
 import com.maxjth.tracememoire.ui.tracejour.components.screen.keywords.TraceKeywordChip
 import com.maxjth.tracememoire.ui.tracejour.components.screen.keywords.TraceKeywordPickerSheet
 import com.maxjth.tracememoire.ui.tracejour.components.screen.keywords.TraceKeywordsData
@@ -59,6 +56,11 @@ import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.random.Random
+
+// ✅ RINGS
+import rings.RingBreathSpec
+import rings.RingEvolution
+import rings.TraceRing
 
 private data class SliderPersona(
     val breatheMs: Int,
@@ -102,8 +104,27 @@ fun TraceMoodSliderRow(
     var selectedWord by rememberSaveable(sliderKey, cycleKey, seedBase) { mutableStateOf<String?>(null) }
     var showKeywords by remember { mutableStateOf(false) }
 
-    // NOTE (pour ton Sheet — corrige l’erreur "note/onNoteChange")
     var note by rememberSaveable(sliderKey, cycleKey, seedBase, "note") { mutableStateOf("") }
+
+    val pct = value.floatValue.roundToInt().coerceIn(0, 100)
+
+    // ─────────────────────────────────────────
+    // ✅ MODE STABLE (recommandé)
+    // spec ne change PAS pendant le drag
+    // + ✅ on épaissit légèrement l’anneau ici
+    // ─────────────────────────────────────────
+    val baseSpec: RingBreathSpec = remember(seedBase, cycleKey, sliderKey) {
+        RingEvolution.specForKey(seedBase = seedBase, cycleKey = cycleKey, ringKey = sliderKey)
+    }
+
+    // 🔥 Boost épaisseur + mauve plus lisible
+    // (si tes noms sont bien strokeRatioBase/strokeRatioAmp, ça compile direct)
+    val stableSpec: RingBreathSpec = remember(baseSpec) {
+        baseSpec.copy(
+            strokeRatioBase = (baseSpec.strokeRatioBase * 1.65f).coerceIn(0.012f, 0.040f),
+            strokeRatioAmp  = (baseSpec.strokeRatioAmp  * 1.45f).coerceIn(0.004f, 0.028f)
+        )
+    }
 
     // ─────────────────────────────────────────
     // “VIE” (respiration + wobble)
@@ -148,8 +169,6 @@ fun TraceMoodSliderRow(
         label = "boost_$sliderKey"
     )
 
-    val pct = value.floatValue.roundToInt().coerceIn(0, 100)
-
     // ─────────────────────────────────────────
     // COULEURS / STYLE
     // ─────────────────────────────────────────
@@ -181,7 +200,7 @@ fun TraceMoodSliderRow(
     val inactiveTrackColor = Color.White.copy(alpha = (0.12f * respect).coerceIn(0f, 0.16f))
 
     // ─────────────────────────────────────────
-    // HEADER (2 lignes)
+    // HEADER
     // ─────────────────────────────────────────
     Column(
         modifier = Modifier
@@ -205,9 +224,15 @@ fun TraceMoodSliderRow(
 
             Spacer(Modifier.size(12.dp))
 
-            TracePercentBadge(
-                percent = pct,
-                enabled = enabled
+            // ✅ Cercle moyen (plus visible)
+            TraceRing(
+                ringKey = sliderKey,
+                percentText = "$pct%",
+                sizeDp = 90.dp, // ← un peu plus gros qu’avant
+                ringColor = MAUVE.copy(alpha = 0.96f), // ← plus mauve visible
+                percentColor = TURQUOISE,
+                spec = stableSpec,
+                showInnerPercent = true
             )
         }
 
@@ -240,25 +265,6 @@ fun TraceMoodSliderRow(
         }
     }
 
-    // ─────────────────────────────────────────
-    // ✅ LES CARRÉS (OFFICIEL) — “signature de profondeur”
-    // (ici, sous le header, au-dessus du slider)
-    // ─────────────────────────────────────────
-    Spacer(modifier = Modifier.height(10.dp))
-
-    TraceSquaresRow(
-        sliderKey = sliderKey,
-        seedBase = seedBase,
-        pct = pct,
-        sliderValue = value.floatValue,
-        // pour tester le clignement “absence”, mets true temporairement :
-        blink = false,
-        count = 4,
-        size = 14.dp,
-        gap = 8.dp,
-        followAmpY = 6.dp
-    )
-
     Spacer(modifier = Modifier.height(12.dp))
 
     // ─────────────────────────────────────────
@@ -270,21 +276,9 @@ fun TraceMoodSliderRow(
             .height(46.dp)
             .clip(RoundedCornerShape(999.dp))
             .background(pillBg)
-            .border(
-                width = 1.dp,
-                color = outerTurqSoft,
-                shape = RoundedCornerShape(999.dp)
-            )
-            .border(
-                width = 1.dp,
-                color = outerTurqMain,
-                shape = RoundedCornerShape(999.dp)
-            )
-            .background(
-                Brush.horizontalGradient(
-                    listOf(innerGlow, Color.Transparent, innerGlow)
-                )
-            )
+            .border(width = 1.dp, color = outerTurqSoft, shape = RoundedCornerShape(999.dp))
+            .border(width = 1.dp, color = outerTurqMain, shape = RoundedCornerShape(999.dp))
+            .background(Brush.horizontalGradient(listOf(innerGlow, Color.Transparent, innerGlow)))
             .padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -331,7 +325,7 @@ fun TraceMoodSliderRow(
     }
 
     // ─────────────────────────────────────────
-    // PHRASE SOUS LE SLIDER
+    // Phrase sous le slider
     // ─────────────────────────────────────────
     val phrase = TraceSliderPhrases.phraseFor(sliderKey = sliderKey, cycleKey = cycleKey)
 
@@ -366,9 +360,6 @@ fun TraceMoodSliderRow(
 
     Spacer(modifier = Modifier.height(18.dp))
 
-    // ─────────────────────────────────────────
-    // SHEET MOTS-CLÉS (+ NOTE)
-    // ─────────────────────────────────────────
     TraceKeywordPickerSheet(
         visible = showKeywords,
         title = title,

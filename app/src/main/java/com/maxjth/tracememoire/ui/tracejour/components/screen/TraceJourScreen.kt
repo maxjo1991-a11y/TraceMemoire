@@ -1,4 +1,3 @@
-
 package com.maxjth.tracememoire.ui.tracejour.components.screen
 
 import androidx.compose.foundation.background
@@ -103,7 +102,7 @@ fun TraceJourScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState()) // ✅ évite le “cut” sur petits écrans
+                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp, vertical = 16.dp)
             ) {
                 TraceJourTitleBlock()
@@ -111,15 +110,16 @@ fun TraceJourScreen(
                 // ✅ Espace clair : le slider ne touchera jamais le titre
                 Spacer(modifier = Modifier.height(28.dp))
 
+                // ✅ SLIDERS (c’est là qu’on va intégrer les anneaux “moyens” par ligne)
                 TraceJourSlidersBlock(
                     enabled = isCurrentCycleEditable,
                     isPremium = isPremium,
                     cycleKey = cycleKey,
                     seedBase = seedBase,
-                    showPremiumLockedRows = true // ✅ affiche Premium grisé même si pas premium
+                    showPremiumLockedRows = true
                 )
 
-                Spacer(modifier = Modifier.height(24.dp)) // respiration bas d’écran
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
