@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.PI
 import kotlin.math.sin
@@ -37,10 +38,8 @@ fun TraceRing(
     val density = LocalDensity.current
     val sizePx = with(density) { sizeDp.toPx() }
 
-    // Transition infinie (label = ringKey pour “stabilité” + debug)
     val infinite = rememberInfiniteTransition(label = "ring-$ringKey")
 
-    // 0..1 aller/retour (respiration)
     val breathe by infinite.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
@@ -51,7 +50,6 @@ fun TraceRing(
         label = "breathe"
     )
 
-    // 0..1 boucle (wobble)
     val wobble by infinite.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
@@ -62,7 +60,6 @@ fun TraceRing(
         label = "wobble"
     )
 
-    // ✅ Mauve plus présent: bornes d’alpha plus hautes
     val alpha = (spec.baseAlpha + spec.ampAlpha * breathe)
         .coerceIn(0.18f, 0.98f)
 
@@ -71,26 +68,21 @@ fun TraceRing(
     val w = sin((wobble.toDouble() * 2.0 * PI)).toFloat()
     val wobbleFactor = (1f + spec.wobbleAmp * w).coerceIn(0.96f, 1.06f)
 
-    // ✅ Anneau plus épais (sans devenir “gros gros”)
     fun strokePx(diameterPx: Float): Float {
         val ratio = (spec.strokeRatioBase + spec.strokeRatioAmp * breathe)
             .coerceIn(0.010f, 0.095f)
 
         val px = diameterPx * ratio
-
         return px.coerceIn(
             5.0f,
             (sizePx * 0.14f).coerceAtLeast(5f)
         )
     }
 
-    // ✅ Texte: pourcentage plus gros, et qui suit la taille du ring (sizeDp)
+    // ✅ Texte un peu plus gros (lisibilité)
     val pctInt = percentText.removeSuffix("%").toIntOrNull() ?: -1
     val isExtreme = (pctInt == 0 || pctInt == 100)
-
-    // Base = 26% du diamètre, extrêmes un peu + gros
-    val base = (sizeDp.value * 0.26f).sp
-    val textSize = if (isExtreme) (sizeDp.value * 0.28f).sp else base
+    val textSize = if (isExtreme) 25.sp else 20.sp
 
     Box(
         modifier = modifier.size(sizeDp),
@@ -101,6 +93,36 @@ fun TraceRing(
             val radius = (d * 0.5f) * scale * wobbleFactor
             val stroke = strokePx(d)
 
+            // ─────────────────────────────────────────
+            // ✅ GLOW MAUVE (halo diffus autour du ring)
+            //   3 couches : large → moyen → proche
+            // ─────────────────────────────────────────
+            val glowBase = ringColor.copy(
+                alpha = (0.08f + 0.20f * breathe) * alpha
+            )
+
+            // couche 1 (très large, très soft)
+            drawCircle(
+                color = glowBase.copy(alpha = glowBase.alpha * 0.55f),
+                radius = radius,
+                style = Stroke(width = stroke * 4.6f)
+            )
+            // couche 2
+            drawCircle(
+                color = glowBase.copy(alpha = glowBase.alpha * 0.75f),
+                radius = radius,
+                style = Stroke(width = stroke * 3.8f)
+            )
+            // couche 3 (proche du trait)
+            drawCircle(
+                color = glowBase.copy(alpha = glowBase.alpha * 0.95f),
+                radius = radius,
+                style = Stroke(width = stroke * 3.25f)
+            )
+
+            // ─────────────────────────────────────────
+            // ✅ CERCLE PRINCIPAL (identique, net)
+            // ─────────────────────────────────────────
             drawCircle(
                 color = ringColor.copy(alpha = alpha),
                 radius = radius,

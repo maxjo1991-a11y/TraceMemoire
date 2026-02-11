@@ -1,4 +1,3 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/TraceJourTitleBlock.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen
 
 import androidx.compose.foundation.layout.Column
@@ -11,11 +10,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.maxjth.tracememoire.ui.theme.MAUVE
+import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
 import com.maxjth.tracememoire.ui.tracejour.logic.TraceCycle
 import com.maxjth.tracememoire.ui.tracejour.logic.TraceCycleClock
 import java.time.LocalTime
@@ -24,54 +24,73 @@ import java.time.LocalTime
 fun TraceJourTitleBlock(
     modifier: Modifier = Modifier
 ) {
-    // 🔒 Cycle courant (logique officielle)
     val cycle: TraceCycle = remember {
         TraceCycleClock.currentCycle(LocalTime.now())
     }
 
-    // ✅ Sous-titre dynamique (ex: "du Soir")
-    val subtitle: String = remember(cycle) {
-        TraceCycleClock.subtitleForCycle(cycle)
+    val cycleTitle: String = remember(cycle) {
+        when (cycle) {
+            TraceCycle.JOUR -> "Jour"
+            TraceCycle.SOIR -> "Soir"
+            TraceCycle.NUIT -> "Nuit"
+            else -> cycle.name.lowercase().replaceFirstChar { it.uppercase() }
+        }
     }
+
+    val tagline = "Le temps n’explique pas. Il mémorise"
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = 24.dp),
+            // ✅ Plus d’air en haut (important pour équilibre global)
+            .padding(top = 26.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
 
-        // TITRE 1
         Text(
             text = "Trace",
-            color = Color.White,
-            fontSize = 65.sp,
+            color = WHITE_SOFT,
+            fontSize = 64.sp,
             fontWeight = FontWeight.ExtraBold,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            lineHeight = 64.sp
         )
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // TITRE 2
         Text(
             text = "d’état d’âme",
-            color = Color.White.copy(alpha = 0.9f),
-            fontSize = 47.sp,
+            color = WHITE_SOFT.copy(alpha = 0.92f),
+            fontSize = 48.sp,
             fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            lineHeight = 50.sp
         )
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(18.dp))
 
-        // SOUS-TITRE (du Matin / du Jour / du Soir / de la Nuit)
         Text(
-            text = subtitle,
-            color = Color.White.copy(alpha = 0.85f),
-            fontSize = 60.sp,
-            fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.Center
+            text = cycleTitle,
+            color = WHITE_SOFT.copy(alpha = 0.88f),
+            fontSize = 64.sp,
+            fontWeight = FontWeight.ExtraBold,
+            textAlign = TextAlign.Center,
+            lineHeight = 64.sp
         )
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(22.dp))
+
+        Text(
+            text = tagline,
+            color = MAUVE.copy(alpha = 0.78f),
+            fontSize = 20.sp,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 12.dp),
+            lineHeight = 24.sp
+        )
+
+        // ✅ Descente PLUS FRANCHE du bloc sliders
+        Spacer(modifier = Modifier.height(62.dp))
     }
 }

@@ -41,18 +41,12 @@ fun TraceJourScreen(
     val bg = BG_SOFT
     val bgSoft = BG_SOFT.copy(alpha = 0.92f)
 
-    // ─────────────────────────────────────────────
-    // ✅ Cycle officiel + verrouillage
-    // ─────────────────────────────────────────────
     val currentCycle: TraceCycle = remember { TraceCycleClock.currentCycle() }
     val lockedCycles = remember(currentCycle) { TraceCycleClock.lockedCycles(currentCycle) }
     val isCurrentCycleEditable: Boolean = remember(currentCycle, lockedCycles) {
         currentCycle !in lockedCycles
     }
 
-    // ─────────────────────────────────────────────
-    // ✅ Branchages utiles “tout de suite”
-    // ─────────────────────────────────────────────
     val cycleKey: String = remember(currentCycle) { currentCycle.name }
     val seedBase: String = remember { "DEBUG" }   // TODO: brancher vraie date (yyyyMMdd)
     val isPremium: Boolean = remember { false }   // TODO: brancher ton état premium
@@ -61,7 +55,7 @@ fun TraceJourScreen(
         containerColor = bg,
         topBar = {
             TopAppBar(
-                title = { /* volontairement vide */ },
+                title = { /* vide */ },
                 navigationIcon = {
                     Surface(
                         shape = RoundedCornerShape(999.dp),
@@ -95,8 +89,6 @@ fun TraceJourScreen(
         }
     ) { padding ->
 
-        // ✅ Mise à jour: le contenu est centré, avec un "rail" max pour éviter
-        // que le layout devienne trop large/serré selon les écrans.
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -108,14 +100,14 @@ fun TraceJourScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    // ✅ Mise à jour: padding vertical un peu plus respirant
-                    .padding(horizontal = 24.dp, vertical = 18.dp)
+                    .padding(horizontal = 24.dp, vertical = 22.dp)
             ) {
+                // ✅ Bloc titre (gère Jour/Soir/Nuit + sous-texte à l’intérieur)
                 TraceJourTitleBlock()
 
-                // ✅ Mise à jour: spacing calibré pour éviter que le 1er slider
-                // “colle” au titre et pour laisser respirer le ring + chip.
-                Spacer(modifier = Modifier.height(30.dp))
+                // ✅ Descend tout le bloc "Humeur globale" + sliders
+                // Ajuste ce nombre si tu veux encore plus bas
+                Spacer(modifier = Modifier.height(18.dp))
 
                 TraceJourSlidersBlock(
                     enabled = isCurrentCycleEditable,
@@ -125,7 +117,6 @@ fun TraceJourScreen(
                     showPremiumLockedRows = true
                 )
 
-                // ✅ Mise à jour: un peu plus de marge en bas (confort scroll)
                 Spacer(modifier = Modifier.height(30.dp))
             }
         }
