@@ -1,74 +1,41 @@
 // FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/slider/TraceMoodSliderRow.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen.slider
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.maxjth.tracememoire.ui.theme.BG_SOFT
-import com.maxjth.tracememoire.ui.theme.MAUVE
-import com.maxjth.tracememoire.ui.theme.TURQUOISE
-import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
-import com.maxjth.tracememoire.ui.tracejour.components.screen.keywords.TraceKeywordChip
-import com.maxjth.tracememoire.ui.tracejour.components.screen.keywords.TraceKeywordPickerSheet
-import com.maxjth.tracememoire.ui.tracejour.components.screen.keywords.TraceKeywordsData
+import com.maxjth.tracememoire.ui.squares.TraceSquaresRow
+import com.maxjth.tracememoire.ui.theme.*
+import com.maxjth.tracememoire.ui.tracejour.components.screen.keywords.*
 import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.random.Random
-
-// ✅ RINGS
-import rings.RingBreathSpec
-import rings.RingEvolution
-import rings.TraceRing
+import rings.*
 
 private data class SliderPersona(
     val breatheMs: Int,
-    val haloBase: Float,
-    val haloAmp: Float,
     val wobbleAmpDp: Float,
     val wobbleMs: Int
 )
+
+private val GAP_AFTER_SECTION = 18.dp
 
 private fun stableSeed(seedBase: String, cycleKey: String, sliderKey: String, title: String): Int {
     val s = "$seedBase|$cycleKey|$sliderKey|$title"
@@ -79,8 +46,6 @@ private fun buildPersona(seed: Int): SliderPersona {
     val r = Random(seed)
     return SliderPersona(
         breatheMs = r.nextInt(2600, 5200),
-        haloBase = r.nextFloat() * 0.10f + 0.14f,
-        haloAmp = r.nextFloat() * 0.10f + 0.06f,
         wobbleAmpDp = r.nextFloat() * 2.0f + 0.4f,
         wobbleMs = r.nextInt(1900, 4200)
     )
@@ -91,44 +56,31 @@ private fun buildPersona(seed: Int): SliderPersona {
 fun TraceMoodSliderRow(
     title: String,
     enabled: Boolean,
+    isPremium: Boolean,
     lockedLabel: String? = null,
     cycleKey: String,
     seedBase: String,
     sliderKey: String
 ) {
-    // ─────────────────────────────────────────
-    // ÉTATS
-    // ─────────────────────────────────────────
-    val value = rememberSaveable(title) { mutableFloatStateOf(50f) }
 
-    var selectedWord by rememberSaveable(sliderKey, cycleKey, seedBase) { mutableStateOf<String?>(null) }
+    val value = rememberSaveable(sliderKey, cycleKey, seedBase) { mutableFloatStateOf(50f) }
+    var selectedWord by rememberSaveable(sliderKey, cycleKey, seedBase, "word") { mutableStateOf<String?>(null) }
     var showKeywords by remember { mutableStateOf(false) }
-
     var note by rememberSaveable(sliderKey, cycleKey, seedBase, "note") { mutableStateOf("") }
 
     val pct = value.floatValue.roundToInt().coerceIn(0, 100)
 
-    // ─────────────────────────────────────────
-    // ✅ MODE STABLE (recommandé)
-    // spec ne change PAS pendant le drag
-    // + ✅ on épaissit légèrement l’anneau ici
-    // ─────────────────────────────────────────
-    val baseSpec: RingBreathSpec = remember(seedBase, cycleKey, sliderKey) {
-        RingEvolution.specForKey(seedBase = seedBase, cycleKey = cycleKey, ringKey = sliderKey)
+    val baseSpec = remember(seedBase, cycleKey, sliderKey) {
+        RingEvolution.specForKey(seedBase, cycleKey, sliderKey)
     }
 
-    // 🔥 Boost épaisseur + mauve plus lisible
-    // (si tes noms sont bien strokeRatioBase/strokeRatioAmp, ça compile direct)
-    val stableSpec: RingBreathSpec = remember(baseSpec) {
+    val stableSpec = remember(baseSpec) {
         baseSpec.copy(
             strokeRatioBase = (baseSpec.strokeRatioBase * 1.65f).coerceIn(0.012f, 0.040f),
-            strokeRatioAmp  = (baseSpec.strokeRatioAmp  * 1.45f).coerceIn(0.004f, 0.028f)
+            strokeRatioAmp = (baseSpec.strokeRatioAmp * 1.45f).coerceIn(0.004f, 0.028f)
         )
     }
 
-    // ─────────────────────────────────────────
-    // “VIE” (respiration + wobble)
-    // ─────────────────────────────────────────
     val persona = remember(seedBase, cycleKey, sliderKey, title) {
         buildPersona(stableSeed(seedBase, cycleKey, sliderKey, title))
     }
@@ -136,26 +88,23 @@ fun TraceMoodSliderRow(
     val infinite = rememberInfiniteTransition(label = "sliderAlive_$sliderKey")
 
     val breathePhase by infinite.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(persona.breatheMs, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "breathe_$sliderKey"
+        0f, 1f,
+        infiniteRepeatable(
+            tween(persona.breatheMs, easing = LinearEasing),
+            RepeatMode.Reverse
+        )
     )
 
     val wobblePhase by infinite.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(persona.wobbleMs, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "wobble_$sliderKey"
+        0f, 1f,
+        infiniteRepeatable(
+            tween(persona.wobbleMs, easing = LinearEasing),
+            RepeatMode.Restart
+        )
     )
 
     var isInteracting by remember { mutableStateOf(false) }
+
     LaunchedEffect(isInteracting) {
         if (isInteracting) {
             delay(520)
@@ -164,29 +113,26 @@ fun TraceMoodSliderRow(
     }
 
     val boost by animateFloatAsState(
-        targetValue = if (isInteracting) 1f else 0f,
-        animationSpec = tween(durationMillis = 360, easing = LinearEasing),
-        label = "boost_$sliderKey"
+        if (isInteracting) 1f else 0f,
+        tween(360, easing = FastOutSlowInEasing)
     )
 
-    // ─────────────────────────────────────────
-    // COULEURS / STYLE
-    // ─────────────────────────────────────────
     val respectRaw = (value.floatValue / 100f).coerceIn(0f, 1f)
     val respect = (0.25f + 0.75f * respectRaw) * (if (enabled) 1f else 0.55f)
 
     val innerGlow = MAUVE.copy(alpha = (0.08f + 0.06f * breathePhase) * respect)
 
     val pillBg = Brush.horizontalGradient(
-        colors = listOf(
-            BG_SOFT.copy(alpha = 0.20f),
-            BG_SOFT.copy(alpha = 0.24f),
-            BG_SOFT.copy(alpha = 0.20f)
+        listOf(
+            BG_SOFT.copy(0.20f),
+            BG_SOFT.copy(0.24f),
+            BG_SOFT.copy(0.20f)
         )
     )
 
     val outerTurqMain =
-        TURQUOISE.copy(alpha = ((0.14f + 0.34f * breathePhase + 0.16f * boost) * respect).coerceIn(0f, 1f))
+        TURQUOISE.copy(alpha = ((0.14f + 0.34f * breathePhase + 0.16f * boost) * respect))
+
     val outerTurqSoft =
         TURQUOISE.copy(alpha = (0.10f + 0.10f * breathePhase) * respect)
 
@@ -194,90 +140,91 @@ fun TraceMoodSliderRow(
     val thumbOffsetX = if (enabled) (wobble * respect).dp else 0.dp
 
     val thumbScale =
-        (0.98f + 0.05f * breathePhase) * (1f + 0.03f * boost) * (0.94f + 0.06f * respect)
+        (0.98f + 0.05f * breathePhase) *
+                (1f + 0.03f * boost) *
+                (0.94f + 0.06f * respect)
 
-    val activeTrackColor = MAUVE.copy(alpha = ((0.88f + 0.10f * boost) * respect).coerceIn(0f, 1f))
-    val inactiveTrackColor = Color.White.copy(alpha = (0.12f * respect).coerceIn(0f, 0.16f))
+    val activeTrackColor = MAUVE.copy(alpha = ((0.88f + 0.10f * boost) * respect))
+    val inactiveTrackColor = Color.White.copy(alpha = (0.12f * respect))
 
-    // ─────────────────────────────────────────
-    // HEADER
-    // ─────────────────────────────────────────
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 4.dp, end = 10.dp)
     ) {
+
+        Text(
+            text = title,
+            color = WHITE_SOFT.copy(alpha = if (enabled) 0.92f else 0.55f),
+            fontSize = 25.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        Spacer(Modifier.height(10.dp))
+
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = title,
-                color = WHITE_SOFT.copy(alpha = if (enabled) 0.92f else 0.55f),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = true)
+
+            TraceKeywordChip(
+                label = selectedWord ?: "Choisir un mot ▾",
+                selected = !selectedWord.isNullOrBlank(),
+                enabled = enabled,
+                onClick = { if (enabled) showKeywords = true },
+                modifier = Modifier.weight(1f)
             )
 
-            Spacer(Modifier.size(12.dp))
+            Spacer(Modifier.width(12.dp))
 
-            // ✅ Cercle moyen (plus visible)
             TraceRing(
                 ringKey = sliderKey,
                 percentText = "$pct%",
-                sizeDp = 90.dp, // ← un peu plus gros qu’avant
-                ringColor = MAUVE.copy(alpha = 0.96f), // ← plus mauve visible
+                sizeDp = 90.dp,
+                ringColor = MAUVE.copy(0.96f),
                 percentColor = TURQUOISE,
                 spec = stableSpec,
                 showInnerPercent = true
             )
         }
 
-        Spacer(Modifier.height(10.dp))
-
-        TraceKeywordChip(
-            label = selectedWord ?: "Choisir un mot ▾",
-            selected = !selectedWord.isNullOrBlank(),
-            enabled = enabled,
-            onClick = { if (enabled) showKeywords = true },
-            modifier = Modifier
-                .clip(RoundedCornerShape(999.dp))
-                .border(
-                    width = 1.dp,
-                    color = TURQUOISE.copy(alpha = if (enabled) 0.75f else 0.35f),
-                    shape = RoundedCornerShape(999.dp)
-                )
-        )
-
         if (!lockedLabel.isNullOrBlank()) {
             Spacer(Modifier.height(6.dp))
             Text(
                 text = lockedLabel,
-                color = WHITE_SOFT.copy(alpha = 0.42f),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                color = WHITE_SOFT.copy(0.42f),
+                fontSize = 12.sp
             )
         }
     }
 
-    Spacer(modifier = Modifier.height(12.dp))
+    Spacer(Modifier.height(10.dp))
 
-    // ─────────────────────────────────────────
-    // PASTILLE (slider)
-    // ─────────────────────────────────────────
+    TraceSquaresRow(
+        sliderKey = sliderKey,
+        seedBase = seedBase,
+        pct = pct,
+        sliderValue = value.floatValue,
+        blink = false,
+        count = 4,
+        size = 14.dp,
+        gap = 8.dp,
+        followAmpY = 6.dp
+    )
+
+    Spacer(Modifier.height(12.dp))
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(46.dp)
             .clip(RoundedCornerShape(999.dp))
             .background(pillBg)
-            .border(width = 1.dp, color = outerTurqSoft, shape = RoundedCornerShape(999.dp))
-            .border(width = 1.dp, color = outerTurqMain, shape = RoundedCornerShape(999.dp))
+            .border(1.dp, outerTurqSoft, RoundedCornerShape(999.dp))
+            .border(1.dp, outerTurqMain, RoundedCornerShape(999.dp))
             .background(Brush.horizontalGradient(listOf(innerGlow, Color.Transparent, innerGlow)))
             .padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center
@@ -293,60 +240,14 @@ fun TraceMoodSliderRow(
             modifier = Modifier.fillMaxWidth(),
             colors = SliderDefaults.colors(
                 activeTrackColor = activeTrackColor,
-                inactiveTrackColor = inactiveTrackColor,
-                thumbColor = MAUVE.copy(alpha = if (enabled) 1.0f else 0.55f),
-                disabledActiveTrackColor = MAUVE.copy(alpha = 0.35f),
-                disabledInactiveTrackColor = Color.White.copy(alpha = 0.07f),
-                disabledThumbColor = MAUVE.copy(alpha = 0.50f)
-            ),
-            thumb = {
-                Box(
-                    modifier = Modifier
-                        .offset(x = thumbOffsetX)
-                        .size(24.dp)
-                        .graphicsLayer(scaleX = thumbScale, scaleY = thumbScale)
-                        .clip(CircleShape)
-                        .background(MAUVE.copy(alpha = if (enabled) 0.98f else 0.60f))
-                        .border(
-                            width = 7.dp,
-                            color = TURQUOISE.copy(
-                                alpha = ((0.14f + 0.34f * breathePhase + 0.14f * boost) * respect).coerceIn(0f, 1f)
-                            ),
-                            shape = CircleShape
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = Color.White.copy(alpha = if (enabled) 0.34f else 0.18f),
-                            shape = CircleShape
-                        )
-                )
-            }
+                inactiveTrackColor = inactiveTrackColor
+            )
         )
     }
 
-    // ─────────────────────────────────────────
-    // Phrase sous le slider
-    // ─────────────────────────────────────────
-    val phrase = TraceSliderPhrases.phraseFor(sliderKey = sliderKey, cycleKey = cycleKey)
+    val phrase = TraceSliderPhrases.phraseFor(sliderKey, cycleKey)
 
-    Spacer(modifier = Modifier.height(10.dp))
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(1.dp)
-            .background(
-                Brush.horizontalGradient(
-                    colors = listOf(
-                        Color.Transparent,
-                        MAUVE.copy(alpha = (0.10f + 0.08f * breathePhase) * respect),
-                        Color.Transparent
-                    )
-                )
-            )
-    )
-
-    Spacer(modifier = Modifier.height(8.dp))
+    Spacer(Modifier.height(10.dp))
 
     Text(
         text = phrase,
@@ -358,7 +259,7 @@ fun TraceMoodSliderRow(
             .padding(start = 6.dp, end = 10.dp)
     )
 
-    Spacer(modifier = Modifier.height(18.dp))
+    Spacer(Modifier.height(GAP_AFTER_SECTION))
 
     TraceKeywordPickerSheet(
         visible = showKeywords,
@@ -367,8 +268,8 @@ fun TraceMoodSliderRow(
         selectedWord = selectedWord,
         note = note,
         onNoteChange = { note = it },
-        onPick = { picked ->
-            selectedWord = picked
+        onPick = {
+            selectedWord = it
             showKeywords = false
         },
         onDismiss = { showKeywords = false }

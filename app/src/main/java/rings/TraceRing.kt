@@ -19,7 +19,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.PI
 import kotlin.math.sin
@@ -74,23 +73,24 @@ fun TraceRing(
 
     // ✅ Anneau plus épais (sans devenir “gros gros”)
     fun strokePx(diameterPx: Float): Float {
-        // ratio un peu plus haut
         val ratio = (spec.strokeRatioBase + spec.strokeRatioAmp * breathe)
             .coerceIn(0.010f, 0.095f)
 
         val px = diameterPx * ratio
 
-        // min/max + permissif
         return px.coerceIn(
             5.0f,
             (sizePx * 0.14f).coerceAtLeast(5f)
         )
     }
 
-    // ✅ Texte: 100% / 0% un peu plus gros (lisibilité)
+    // ✅ Texte: pourcentage plus gros, et qui suit la taille du ring (sizeDp)
     val pctInt = percentText.removeSuffix("%").toIntOrNull() ?: -1
     val isExtreme = (pctInt == 0 || pctInt == 100)
-    val textSize = if (isExtreme) 20.sp else 18.sp
+
+    // Base = 26% du diamètre, extrêmes un peu + gros
+    val base = (sizeDp.value * 0.26f).sp
+    val textSize = if (isExtreme) (sizeDp.value * 0.28f).sp else base
 
     Box(
         modifier = modifier.size(sizeDp),

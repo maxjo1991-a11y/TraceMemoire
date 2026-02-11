@@ -1,8 +1,6 @@
 // FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/TraceJourSlidersBlock.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,16 +9,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
-import com.maxjth.tracememoire.ui.theme.BG_SOFT
-import com.maxjth.tracememoire.ui.theme.MAUVE
-import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
+import com.maxjth.tracememoire.ui.tracejour.components.screen.depth.TraceDepthSection
 import com.maxjth.tracememoire.ui.tracejour.components.screen.slider.TraceMoodSliderRow
 
 private data class SliderDef(
@@ -44,21 +34,11 @@ private val SLIDERS_PREMIUM: List<SliderDef> = listOf(
     SliderDef(key = "charge",   title = "Charge émotionnelle",   isPremiumOnly = true)
 )
 
-// Spacing constants (facile à tweaker sans casser)
+// Spacing constants
 private val ROW_SPACING = 14.dp
 private val BLOCK_END_SPACING = 18.dp
 private val SECTION_GAP = 16.dp
 
-/**
- * enabled   = cycle actif (éditable) -> true ; cycle verrouillé -> false
- * isPremium = accès Premium
- * cycleKey  = "MATIN" / "JOUR" / "SOIR" / "NUIT"
- * seedBase  = clé stable (ex: "20260208") pour une vibe stable dans la journée
- *
- * showPremiumLockedRows:
- *  - true  = on affiche les sliders premium même sans premium (label "Premium", disabled)
- *  - false = on masque la section premium si l’utilisateur n’est pas premium
- */
 @Composable
 fun TraceJourSlidersBlock(
     enabled: Boolean,
@@ -73,16 +53,19 @@ fun TraceJourSlidersBlock(
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
     ) {
+
         // ─────────────────────────────────────────────
-        // 1) GRATUIT
+        // 1) GRATUIT — TOUJOURS VISIBLE (4 sliders)
         // ─────────────────────────────────────────────
         SLIDERS_FREE.forEachIndexed { index, def ->
             key(def.key) {
-                val rowEnabled = enabled // gratuit = toujours allowed
+                val rowEnabled = enabled
+
                 TraceMoodSliderRow(
                     title = def.title,
                     enabled = rowEnabled,
-                    lockedLabel = if (!enabled) "Verrouillé" else null,
+                    isPremium = false,     // ✅ gratuit
+                    lockedLabel = null,
                     cycleKey = cycleKey,
                     seedBase = seedBase,
                     sliderKey = def.key
@@ -97,65 +80,38 @@ fun TraceJourSlidersBlock(
         }
 
         // ─────────────────────────────────────────────
-        // 2) PREMIUM (optionnel)
+        // 2) PREMIUM — UNE SEULE SECTION PLIABLE
         // ─────────────────────────────────────────────
         if (isPremium || showPremiumLockedRows) {
-
             Spacer(Modifier.height(SECTION_GAP))
 
-            PremiumDividerChip(
-                text = if (isPremium) "Section Premium" else "Section Premium (verrouillée)"
-            )
+            TraceDepthSection(
+                isPremium = isPremium,
+                modifier = Modifier.fillMaxWidth()
+            ) { contentEnabled ->
 
-            Spacer(Modifier.height(SECTION_GAP))
+                SLIDERS_PREMIUM.forEachIndexed { index, def ->
+                    key(def.key) {
+                        val rowEnabled = enabled && contentEnabled
 
-            SLIDERS_PREMIUM.forEachIndexed { index, def ->
-                key(def.key) {
-                    val allowed = isPremium
-                    val rowEnabled = enabled && allowed
+                        TraceMoodSliderRow(
+                            title = def.title,
+                            enabled = rowEnabled,
+                            isPremium = true,   // ✅ sliders premium
+                            lockedLabel = null, // ✅ pas de spam "premium" sous chaque slider
+                            cycleKey = cycleKey,
+                            seedBase = seedBase,
+                            sliderKey = def.key
+                        )
+                    }
 
-                    TraceMoodSliderRow(
-                        title = def.title,
-                        enabled = rowEnabled,
-                        lockedLabel = when {
-                            !enabled -> "Verrouillé"
-                            !allowed -> "Premium"
-                            else -> null
-                        },
-                        cycleKey = cycleKey,
-                        seedBase = seedBase,
-                        sliderKey = def.key
+                    Spacer(
+                        Modifier.height(
+                            if (index != SLIDERS_PREMIUM.lastIndex) ROW_SPACING else BLOCK_END_SPACING
+                        )
                     )
                 }
-
-                Spacer(
-                    Modifier.height(
-                        if (index != SLIDERS_PREMIUM.lastIndex) ROW_SPACING else BLOCK_END_SPACING
-                    )
-                )
             }
         }
     }
-}
-
-@Composable
-private fun PremiumDividerChip(
-    text: String
-) {
-    // petite pastille “séparateur” calme, dans ton ADN
-    Text(
-        text = text,
-        color = WHITE_SOFT.copy(alpha = 0.78f),
-        fontSize = 12.sp,
-        fontWeight = FontWeight.Medium,
-        modifier = Modifier
-            .clip(RoundedCornerShape(999.dp))
-            .background(BG_SOFT.copy(alpha = 0.22f))
-            .border(
-                width = 1.dp,
-                color = MAUVE.copy(alpha = 0.22f),
-                shape = RoundedCornerShape(999.dp)
-            )
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-    )
 }

@@ -22,6 +22,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
@@ -93,24 +94,29 @@ fun TraceJourScreen(
             )
         }
     ) { padding ->
+
+        // ✅ Mise à jour: le contenu est centré, avec un "rail" max pour éviter
+        // que le layout devienne trop large/serré selon les écrans.
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Brush.verticalGradient(listOf(bg, bgSoft, bg)))
-                .padding(padding)
+                .padding(padding),
+            contentAlignment = Alignment.TopCenter
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp, vertical = 16.dp)
+                    // ✅ Mise à jour: padding vertical un peu plus respirant
+                    .padding(horizontal = 24.dp, vertical = 18.dp)
             ) {
                 TraceJourTitleBlock()
 
-                // ✅ Espace clair : le slider ne touchera jamais le titre
-                Spacer(modifier = Modifier.height(28.dp))
+                // ✅ Mise à jour: spacing calibré pour éviter que le 1er slider
+                // “colle” au titre et pour laisser respirer le ring + chip.
+                Spacer(modifier = Modifier.height(30.dp))
 
-                // ✅ SLIDERS (c’est là qu’on va intégrer les anneaux “moyens” par ligne)
                 TraceJourSlidersBlock(
                     enabled = isCurrentCycleEditable,
                     isPremium = isPremium,
@@ -119,7 +125,8 @@ fun TraceJourScreen(
                     showPremiumLockedRows = true
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                // ✅ Mise à jour: un peu plus de marge en bas (confort scroll)
+                Spacer(modifier = Modifier.height(30.dp))
             }
         }
     }
