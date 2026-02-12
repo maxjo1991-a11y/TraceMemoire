@@ -171,7 +171,7 @@ fun TraceMoodSliderRow(
         ) {
 
             TraceKeywordChip(
-                label = selectedWord ?: "Choisir un mot ▾",
+                label = selectedWord ?: "Définir état ▾",
                 selected = !selectedWord.isNullOrBlank(),
                 enabled = enabled,
                 onClick = { if (enabled) showKeywords = true },
@@ -223,10 +223,10 @@ fun TraceMoodSliderRow(
             .height(46.dp)
             .clip(RoundedCornerShape(999.dp))
             .background(pillBg)
-            .border(1.dp, outerTurqSoft, RoundedCornerShape(999.dp))
-            .border(1.dp, outerTurqMain, RoundedCornerShape(999.dp))
+            .border(4.6.dp, outerTurqSoft, RoundedCornerShape(999.dp))
+            .border(3.dp, outerTurqMain, RoundedCornerShape(999.dp))
             .background(Brush.horizontalGradient(listOf(innerGlow, Color.Transparent, innerGlow)))
-            .padding(horizontal = 14.dp),
+            .padding(horizontal = 15.dp),
         contentAlignment = Alignment.Center
     ) {
         Slider(
@@ -252,7 +252,7 @@ fun TraceMoodSliderRow(
     Text(
         text = phrase,
         color = WHITE_SOFT.copy(alpha = if (enabled) 0.72f else 0.50f),
-        fontSize = 12.5.sp,
+        fontSize = 14.5.sp,
         fontWeight = FontWeight.Medium,
         modifier = Modifier
             .fillMaxWidth()

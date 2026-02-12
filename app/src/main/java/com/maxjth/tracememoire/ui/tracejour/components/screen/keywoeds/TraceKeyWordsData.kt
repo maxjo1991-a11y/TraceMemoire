@@ -8,15 +8,15 @@ object TraceKeywordsData {
 
             // GRATUIT (socle)
             "humeur", "humeur_globale" -> listOf(
-                "Stable", "Changeant", "Dense", "Léger", "Lucide", "Flou"
+                "Stable", "Oscillant", "montant", "Léger", "Lucide", "Flou","Descendant",
             )
 
             "energie", "energie_rythme", "rythme" -> listOf(
-                "Lent", "Normal", "Rapide", "Haché", "Continu"
+                "Fluide", "Constant", "Soutenu", "Accéléré", "Pulsé", "Irrégulier","Fragmenté"
             )
 
             "corps", "corps_sensations", "sensations" -> listOf(
-                "Tendu", "Relâché", "Lourd", "Léger", "Sensible"
+                "Engourdi", "Relâché", "Lourd", "Léger", "Sensible", "Raide", "Crispé",
             )
 
             "presence", "presence_attention", "attention" -> listOf(

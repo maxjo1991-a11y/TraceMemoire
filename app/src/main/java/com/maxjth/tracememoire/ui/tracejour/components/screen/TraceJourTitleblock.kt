@@ -15,11 +15,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.maxjth.tracememoire.ui.theme.MAUVE
-import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
 import com.maxjth.tracememoire.ui.tracejour.logic.TraceCycle
 import com.maxjth.tracememoire.ui.tracejour.logic.TraceCycleClock
 import java.time.LocalTime
-
+import androidx.compose.ui.graphics.Color
 @Composable
 fun TraceJourTitleBlock(
     modifier: Modifier = Modifier
@@ -37,7 +36,7 @@ fun TraceJourTitleBlock(
         }
     }
 
-    val tagline = "Le temps n’explique pas. Il mémorise"
+    val tagline = "L'expérience intérieure est une réalité silencieuse"
 
     Column(
         modifier = modifier
@@ -49,36 +48,29 @@ fun TraceJourTitleBlock(
 
         Text(
             text = "Trace",
-            color = WHITE_SOFT,
+            color = Color.White,
             fontSize = 64.sp,
             fontWeight = FontWeight.ExtraBold,
             textAlign = TextAlign.Center,
             lineHeight = 64.sp
         )
-
-        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
             text = "d’état d’âme",
-            color = WHITE_SOFT.copy(alpha = 0.92f),
-            fontSize = 48.sp,
+            color = Color.White.copy(alpha = 0.92f),
+            fontSize = 49.sp,
             fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
-            lineHeight = 50.sp
+            textAlign = TextAlign.Center
         )
-
-        Spacer(modifier = Modifier.height(18.dp))
 
         Text(
             text = cycleTitle,
-            color = WHITE_SOFT.copy(alpha = 0.88f),
-            fontSize = 64.sp,
+            color = Color.White,
+            fontSize = 67.sp,
             fontWeight = FontWeight.ExtraBold,
-            textAlign = TextAlign.Center,
-            lineHeight = 64.sp
+            textAlign = TextAlign.Center
         )
-
-        Spacer(modifier = Modifier.height(22.dp))
+        Spacer(modifier = Modifier.height(25.dp))
 
         Text(
             text = tagline,

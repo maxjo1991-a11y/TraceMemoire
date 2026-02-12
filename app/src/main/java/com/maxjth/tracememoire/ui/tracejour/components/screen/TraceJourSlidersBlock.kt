@@ -1,15 +1,21 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/TraceJourSlidersBlock.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
+import com.maxjth.tracememoire.ui.theme.BG_SOFT
+import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.tracejour.components.screen.depth.TraceDepthSection
 import com.maxjth.tracememoire.ui.tracejour.components.screen.slider.TraceMoodSliderRow
 
@@ -19,25 +25,26 @@ private data class SliderDef(
     val isPremiumOnly: Boolean
 )
 
-private val SLIDERS_FREE: List<SliderDef> = listOf(
-    SliderDef(key = "humeur",   title = "Humeur globale",        isPremiumOnly = false),
-    SliderDef(key = "energie",  title = "Énergie / rythme",      isPremiumOnly = false),
-    SliderDef(key = "corps",    title = "Corps / sensations",    isPremiumOnly = false),
-    SliderDef(key = "presence", title = "Présence / attention",  isPremiumOnly = false)
+private val SLIDERS_FREE = listOf(
+    SliderDef("humeur", "Humeur globale", false),
+    SliderDef("energie", "Énergie / rythme", false),
+    SliderDef("corps", "Corps / sensations", false),
+    SliderDef("presence", "Présence / attention", false)
 )
 
-private val SLIDERS_PREMIUM: List<SliderDef> = listOf(
-    SliderDef(key = "typejour", title = "Type de journée",       isPremiumOnly = true),
-    SliderDef(key = "motifs",   title = "Motifs psychiques",     isPremiumOnly = true),
-    SliderDef(key = "environ",  title = "Environnement",         isPremiumOnly = true),
-    SliderDef(key = "clarte",   title = "Clarté mentale",        isPremiumOnly = true),
-    SliderDef(key = "charge",   title = "Charge émotionnelle",   isPremiumOnly = true)
+private val SLIDERS_PREMIUM = listOf(
+    SliderDef("typejour", "Type de journée", true),
+    SliderDef("motifs", "Motifs psychiques", true),
+    SliderDef("environ", "Environnement", true),
+    SliderDef("clarte", "Clarté mentale", true),
+    SliderDef("charge", "Charge émotionnelle", true)
 )
 
-// Spacing constants
-private val ROW_SPACING = 14.dp
-private val BLOCK_END_SPACING = 18.dp
-private val SECTION_GAP = 16.dp
+private val ROW_SPACING = 18.dp
+private val SECTION_GAP = 26.dp
+
+private val CARD_RADIUS = 22.dp
+private val CARD_PADDING = 18.dp
 
 @Composable
 fun TraceJourSlidersBlock(
@@ -54,36 +61,32 @@ fun TraceJourSlidersBlock(
             .padding(horizontal = 24.dp)
     ) {
 
-        // ─────────────────────────────────────────────
-        // 1) GRATUIT — TOUJOURS VISIBLE (4 sliders)
-        // ─────────────────────────────────────────────
+        // ✅ GRATUIT
         SLIDERS_FREE.forEachIndexed { index, def ->
             key(def.key) {
-                val rowEnabled = enabled
 
-                TraceMoodSliderRow(
-                    title = def.title,
-                    enabled = rowEnabled,
-                    isPremium = false,     // ✅ gratuit
-                    lockedLabel = null,
-                    cycleKey = cycleKey,
-                    seedBase = seedBase,
-                    sliderKey = def.key
-                )
+                TraceSliderCard {
+                    TraceMoodSliderRow(
+                        title = def.title,
+                        enabled = enabled,
+                        isPremium = false,
+                        lockedLabel = null,
+                        cycleKey = cycleKey,
+                        seedBase = seedBase,
+                        sliderKey = def.key
+                    )
+                }
             }
 
-            Spacer(
-                Modifier.height(
-                    if (index != SLIDERS_FREE.lastIndex) ROW_SPACING else BLOCK_END_SPACING
-                )
-            )
+            if (index != SLIDERS_FREE.lastIndex) {
+                Spacer(Modifier.padding(top = ROW_SPACING))
+            }
         }
 
-        // ─────────────────────────────────────────────
-        // 2) PREMIUM — UNE SEULE SECTION PLIABLE
-        // ─────────────────────────────────────────────
+        // ✅ PREMIUM SECTION
         if (isPremium || showPremiumLockedRows) {
-            Spacer(Modifier.height(SECTION_GAP))
+
+            Spacer(Modifier.padding(top = SECTION_GAP))
 
             TraceDepthSection(
                 isPremium = isPremium,
@@ -92,26 +95,65 @@ fun TraceJourSlidersBlock(
 
                 SLIDERS_PREMIUM.forEachIndexed { index, def ->
                     key(def.key) {
-                        val rowEnabled = enabled && contentEnabled
 
-                        TraceMoodSliderRow(
-                            title = def.title,
-                            enabled = rowEnabled,
-                            isPremium = true,   // ✅ sliders premium
-                            lockedLabel = null, // ✅ pas de spam "premium" sous chaque slider
-                            cycleKey = cycleKey,
-                            seedBase = seedBase,
-                            sliderKey = def.key
-                        )
+                        TraceSliderCard {
+                            TraceMoodSliderRow(
+                                title = def.title,
+                                enabled = enabled && contentEnabled,
+                                isPremium = true,
+                                lockedLabel = null,
+                                cycleKey = cycleKey,
+                                seedBase = seedBase,
+                                sliderKey = def.key
+                            )
+                        }
                     }
 
-                    Spacer(
-                        Modifier.height(
-                            if (index != SLIDERS_PREMIUM.lastIndex) ROW_SPACING else BLOCK_END_SPACING
-                        )
-                    )
+                    if (index != SLIDERS_PREMIUM.lastIndex) {
+                        Spacer(Modifier.padding(top = ROW_SPACING))
+                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun TraceSliderCard(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
+
+        // ✅ GLOW MAUVE ULTRA SUBTIL (arrière)
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    color = MAUVE.copy(alpha = 0.10f),
+                    shape = RoundedCornerShape(CARD_RADIUS)
+                )
+        )
+
+        // ✅ CARTE
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    color = BG_SOFT.copy(alpha = 0.18f),
+                    shape = RoundedCornerShape(CARD_RADIUS)
+                )
+                .border(
+                    width = 1.dp,
+                    color = MAUVE.copy(alpha = 0.18f),
+                    shape = RoundedCornerShape(CARD_RADIUS)
+                )
+                .padding(CARD_PADDING)
+        ) {
+            content()
         }
     }
 }

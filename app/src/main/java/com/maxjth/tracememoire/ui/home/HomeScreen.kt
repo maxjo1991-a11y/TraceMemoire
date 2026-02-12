@@ -246,7 +246,7 @@ fun HomeScreen(
                         // ✅ MAJ: on enlève la poussée vers le bas du texte (top=2) pour ne pas contredire le “descendre”
                         .padding(top = 0.dp),
                     text = HomeMessages.messageForTraceCount(traceCount),
-                    fontSize = 15.sp,
+                    fontSize = 18.sp,
                     lineHeight = 21.sp,
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
