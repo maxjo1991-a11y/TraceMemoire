@@ -76,6 +76,10 @@ fun TraceJourSlidersBlock(
                         isPremiumSlider = false,
 
                         lockedLabel = null,
+
+                        // ✅ AJOUT : phaseKey obligatoire
+                        phaseKey = cycleKey,
+
                         cycleKey = cycleKey,
                         seedBase = seedBase,
                         sliderKey = def.key
@@ -110,6 +114,10 @@ fun TraceJourSlidersBlock(
                                 isPremiumSlider = true,
 
                                 lockedLabel = null,
+
+                                // ✅ AJOUT : phaseKey obligatoire
+                                phaseKey = cycleKey,
+
                                 cycleKey = cycleKey,
                                 seedBase = seedBase,
                                 sliderKey = def.key

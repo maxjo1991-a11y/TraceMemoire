@@ -195,7 +195,6 @@ fun TraceMoodSliderRow(
     } else {
         TracePhrasesData.phraseForSlider(
             sliderKey = sliderKey,
-            isPremium = userIsPremium,
             phaseKey = phaseKey,
             percent = pct
         )

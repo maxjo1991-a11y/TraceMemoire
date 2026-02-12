@@ -199,12 +199,15 @@ object TracePhrasesData {
     )
 
     // ─────────────────────────────────────────────
-    // BUCKET % → INDEX
+    // BUCKET % → INDEX (INVERSE)
     // ─────────────────────────────────────────────
 
+    // ✅ 100% = meilleur (index 0)
+    // ✅ 0%   = pire    (dernier index)
     private fun bucket(percent: Int, size: Int): Int {
         val p = percent.coerceIn(0, 100)
-        return (p * size) / 101
+        val inverted = 100 - p
+        return (inverted * size) / 101
     }
 
     // ─────────────────────────────────────────────
