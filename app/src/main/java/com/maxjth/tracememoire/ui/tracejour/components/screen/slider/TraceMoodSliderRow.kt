@@ -1,4 +1,3 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/slider/TraceMoodSliderRow.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen.slider
 
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -21,7 +20,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,9 +49,6 @@ import com.maxjth.tracememoire.ui.theme.BG_SOFT
 import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
-import com.maxjth.tracememoire.ui.tracejour.components.screen.keywords.TraceKeywordChip
-import com.maxjth.tracememoire.ui.tracejour.components.screen.keywords.TraceKeywordPickerSheet
-import com.maxjth.tracememoire.ui.tracejour.components.screen.keywords.TraceKeywordsData
 import com.maxjth.tracememoire.ui.tracejour.components.screen.phrases.TracePhrasesData
 import kotlinx.coroutines.delay
 import kotlin.math.PI
@@ -91,25 +86,22 @@ fun TraceMoodSliderRow(
     title: String,
     enabled: Boolean,
 
-    // ✅ premium réel de l'utilisateur
+    // premium réel de l'utilisateur
     userIsPremium: Boolean,
 
-    // ✅ true seulement pour les sliders de la section premium
+    // true seulement pour les sliders de la section premium
     isPremiumSlider: Boolean,
 
     lockedLabel: String? = null,
+
+    // ✅ IMPORTANT : pour les phrases matin/jour/soir/nuit
+    phaseKey: String,
+
     cycleKey: String,
     seedBase: String,
     sliderKey: String
 ) {
     val value = rememberSaveable(sliderKey, cycleKey, seedBase) { mutableFloatStateOf(50f) }
-
-    var selectedWord by rememberSaveable(sliderKey, cycleKey, seedBase, "word") { mutableStateOf<String?>(null) }
-    var selectedPhrase by rememberSaveable(sliderKey, cycleKey, seedBase, "phrase") { mutableStateOf<String?>(null) }
-
-    var showKeywords by remember { mutableStateOf(false) }
-    var note by rememberSaveable(sliderKey, cycleKey, seedBase, "note") { mutableStateOf("") }
-
     val pct = value.floatValue.roundToInt().coerceIn(0, 100)
 
     val baseSpec = remember(seedBase, cycleKey, sliderKey) {
@@ -197,18 +189,17 @@ fun TraceMoodSliderRow(
     val activeTrackColor = MAUVE.copy(alpha = ((0.88f + 0.10f * boost) * respect).coerceIn(0f, 1f))
     val inactiveTrackColor = Color.White.copy(alpha = (0.12f * respect).coerceIn(0f, 0.16f))
 
-    // ✅ Phrase auto (varie avec le %)
-    val autoPhrase = if (isPremiumSlider && !userIsPremium) {
+    // ✅ Phrase auto (matin/jour/soir/nuit + %)
+    val phrase = if (isPremiumSlider && !userIsPremium) {
         "Débloqué avec Premium."
     } else {
         TracePhrasesData.phraseForSlider(
             sliderKey = sliderKey,
             isPremium = userIsPremium,
-            seed = "$seedBase|$cycleKey|$pct"
+            phaseKey = phaseKey,
+            percent = pct
         )
     }
-
-    val phrase = selectedPhrase ?: autoPhrase
 
     Column(
         modifier = Modifier
@@ -218,6 +209,7 @@ fun TraceMoodSliderRow(
             .border(1.dp, cardBorder, RoundedCornerShape(18.dp))
             .padding(horizontal = 14.dp, vertical = 14.dp)
     ) {
+        // ✅ TITRE
         Text(
             text = title,
             color = WHITE_SOFT.copy(alpha = if (enabled) 0.92f else 0.55f),
@@ -229,21 +221,12 @@ fun TraceMoodSliderRow(
 
         Spacer(Modifier.height(10.dp))
 
+        // ✅ LIGNE: cercle %
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TraceKeywordChip(
-                label = selectedWord ?: "Définir état ▾",
-                selected = !selectedWord.isNullOrBlank(),
-                enabled = enabled,
-                onClick = { if (enabled) showKeywords = true },
-                modifier = Modifier.weight(1f, fill = true)
-            )
-
-            Spacer(Modifier.width(12.dp))
-
             TraceRing(
                 ringKey = sliderKey,
                 percentText = "$pct%",
@@ -283,6 +266,7 @@ fun TraceMoodSliderRow(
 
         Spacer(Modifier.height(12.dp))
 
+        // ✅ SLIME / SLIDER
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -297,11 +281,10 @@ fun TraceMoodSliderRow(
         ) {
             Slider(
                 value = value.floatValue,
-                onValueChange = {
-                    value.floatValue = it
-                    if (enabled) isInteracting = true
-                    // ✅ si on bouge le slider → on revient en phrase auto
-                    selectedPhrase = null
+                onValueChange = { newValue ->
+                    if (!enabled) return@Slider // ✅ bloque vraiment si désactivé
+                    value.floatValue = newValue
+                    isInteracting = true
                 },
                 valueRange = 0f..100f,
                 enabled = enabled,
@@ -342,6 +325,7 @@ fun TraceMoodSliderRow(
 
         Spacer(Modifier.height(10.dp))
 
+        // ✅ PHRASE EN BAS
         if (phrase.isNotBlank()) {
             Text(
                 text = phrase,
@@ -373,28 +357,4 @@ fun TraceMoodSliderRow(
     }
 
     Spacer(Modifier.height(GAP_AFTER_SECTION))
-
-    // ✅ Sheet : on passe sliderKey et isPremiumUser, et on récupère phrase pickée
-    TraceKeywordPickerSheet(
-        visible = showKeywords,
-        title = title,
-        sliderKey = sliderKey,
-
-        words = TraceKeywordsData.wordsForSlider(sliderKey),
-        selectedWord = selectedWord,
-        onPick = {
-            selectedWord = it
-            showKeywords = false
-        },
-
-        isPremiumUser = userIsPremium,
-        onPickPhrase = { picked ->
-            selectedPhrase = picked
-            note = picked.take(120)
-        },
-
-        note = note,
-        onNoteChange = { note = it },
-        onDismiss = { showKeywords = false }
-    )
 }
