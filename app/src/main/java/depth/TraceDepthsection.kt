@@ -12,6 +12,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -40,6 +41,16 @@ import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
 
+private val CARD_RADIUS = 22.dp
+
+private fun cardBgBrush() = Brush.verticalGradient(
+    colors = listOf(
+        BG_SOFT.copy(alpha = 0.18f),
+        BG_SOFT.copy(alpha = 0.26f),
+        BG_SOFT.copy(alpha = 0.18f)
+    )
+)
+
 @Composable
 fun TraceDepthSection(
     isPremium: Boolean,
@@ -59,95 +70,129 @@ fun TraceDepthSection(
     ) {
 
         // ─────────────────────────────
-        // HEADER — Approfondissement · Premium
-        // ✅ FIX: SpaceBetween + ellipsis (plus de texte "vertical")
+        // HEADER — "Approfondissement" (carte)
         // ─────────────────────────────
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = indication
-                ) { opened = !opened }
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            BG_SOFT.copy(alpha = 0.22f),
-                            BG_SOFT.copy(alpha = 0.28f),
-                            BG_SOFT.copy(alpha = 0.22f)
-                        )
-                    )
-                )
-                .border(
-                    width = 1.dp,
-                    color = MAUVE.copy(alpha = 0.35f),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+        Box(
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Text(
-                text = "Approfondissement",
-                color = MAUVE.copy(alpha = 0.95f),
-                fontSize = 13.5.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = true)
+            // ✅ glow mauve ultra subtil (derrière la carte)
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(RoundedCornerShape(CARD_RADIUS))
+                    .background(MAUVE.copy(alpha = 0.10f))
+                    .blur(20.dp)
+                    .alpha(0.55f)
             )
 
-            Spacer(Modifier.width(10.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(CARD_RADIUS))
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = indication
+                    ) { opened = !opened }
+                    .background(cardBgBrush())
+                    .border(
+                        width = 1.dp,
+                        color = MAUVE.copy(alpha = 0.22f),
+                        shape = RoundedCornerShape(CARD_RADIUS)
+                    )
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
 
-            Text(
-                text = if (isPremium) "Premium" else "Premium verrouillée",
-                color = TURQUOISE.copy(alpha = if (isPremium) 0.85f else 0.55f),
-                fontSize = 12.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f, fill = true)
+                ) {
+                    Text(
+                        text = "Approfondissement",
+                        color = MAUVE.copy(alpha = 0.95f),
+                        fontSize = 14.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Spacer(Modifier.width(10.dp))
+
+                    Text(
+                        text = if (opened) "▴" else "▾",
+                        color = WHITE_SOFT.copy(alpha = 0.35f),
+                        fontSize = 14.sp,
+                        maxLines = 1
+                    )
+                }
+
+                Spacer(Modifier.width(10.dp))
+
+                Text(
+                    text = if (isPremium) "Premium" else "Premium verrouillée",
+                    color = TURQUOISE.copy(alpha = if (isPremium) 0.85f else 0.55f),
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
 
         // ─────────────────────────────
-        // CONTENU (ouvert / fermé)
+        // CONTENU (ouvert / fermé) — carte identique
         // ─────────────────────────────
         AnimatedVisibility(
             visible = opened,
             enter = expandVertically(animationSpec = tween(260, easing = FastOutSlowInEasing)),
             exit = shrinkVertically(animationSpec = tween(220, easing = FastOutSlowInEasing))
         ) {
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 12.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(BG_SOFT.copy(alpha = 0.26f))
-                    .border(
-                        width = 1.dp,
-                        color = MAUVE.copy(alpha = 0.25f),
-                        shape = RoundedCornerShape(14.dp)
-                    )
-                    .padding(14.dp)
             ) {
+                // ✅ glow mauve ultra subtil (derrière la carte)
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clip(RoundedCornerShape(CARD_RADIUS))
+                        .background(MAUVE.copy(alpha = 0.08f))
+                        .blur(22.dp)
+                        .alpha(0.55f)
+                )
 
-                // ✅ Tes sliders premium ici (floutés + désactivés si pas premium)
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .blur(if (isPremium) 0.dp else 7.dp)
-                        .alpha(if (isPremium) 1f else 0.60f)
+                        .clip(RoundedCornerShape(CARD_RADIUS))
+                        .background(cardBgBrush())
+                        .border(
+                            width = 1.dp,
+                            color = MAUVE.copy(alpha = 0.18f),
+                            shape = RoundedCornerShape(CARD_RADIUS)
+                        )
+                        .padding(16.dp)
                 ) {
-                    content(isPremium)
+
+                    // ✅ Tes sliders premium ici (floutés + désactivés si pas premium)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .blur(if (isPremium) 0.dp else 7.dp)
+                            .alpha(if (isPremium) 1f else 0.60f)
+                    ) {
+                        content(isPremium)
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+
+                    // Phrase ADN (toujours visible)
+                    Text(
+                        text = "Le socle suffit. L’approfondissement est un choix.",
+                        color = WHITE_SOFT.copy(alpha = 0.55f),
+                        fontSize = 12.sp
+                    )
                 }
-
-                Spacer(Modifier.height(14.dp))
-
-                // Phrase ADN (toujours visible)
-                Text(
-                    text = "Le socle suffit. L’approfondissement est un choix.",
-                    color = WHITE_SOFT.copy(alpha = 0.55f),
-                    fontSize = 12.sp
-                )
             }
         }
     }

@@ -1,4 +1,4 @@
-package com.maxjth.tracememoire.ui.tracejour.components.screen.slider
+package com.maxjth.tracememoire.ui.tracejour.components.screen.phrases
 
 // ─────────────────────────────────────────
 // Cycles officiels (jour / soir / nuit)

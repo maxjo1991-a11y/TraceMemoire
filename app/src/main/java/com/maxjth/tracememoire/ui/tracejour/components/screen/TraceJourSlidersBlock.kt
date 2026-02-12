@@ -1,3 +1,4 @@
+// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/TraceJourSlidersBlock.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen
 
 import androidx.compose.foundation.background
@@ -6,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -49,7 +51,7 @@ private val CARD_PADDING = 18.dp
 @Composable
 fun TraceJourSlidersBlock(
     enabled: Boolean,
-    isPremium: Boolean,
+    isPremium: Boolean,          // ✅ premium réel de l'utilisateur
     cycleKey: String,
     seedBase: String,
     modifier: Modifier = Modifier,
@@ -64,12 +66,15 @@ fun TraceJourSlidersBlock(
         // ✅ GRATUIT
         SLIDERS_FREE.forEachIndexed { index, def ->
             key(def.key) {
-
                 TraceSliderCard {
                     TraceMoodSliderRow(
                         title = def.title,
                         enabled = enabled,
-                        isPremium = false,
+
+                        // ✅ NOUVEAU API
+                        userIsPremium = isPremium,
+                        isPremiumSlider = false,
+
                         lockedLabel = null,
                         cycleKey = cycleKey,
                         seedBase = seedBase,
@@ -79,14 +84,14 @@ fun TraceJourSlidersBlock(
             }
 
             if (index != SLIDERS_FREE.lastIndex) {
-                Spacer(Modifier.padding(top = ROW_SPACING))
+                Spacer(modifier = Modifier.height(ROW_SPACING))
             }
         }
 
         // ✅ PREMIUM SECTION
         if (isPremium || showPremiumLockedRows) {
 
-            Spacer(Modifier.padding(top = SECTION_GAP))
+            Spacer(modifier = Modifier.height(SECTION_GAP))
 
             TraceDepthSection(
                 isPremium = isPremium,
@@ -95,12 +100,15 @@ fun TraceJourSlidersBlock(
 
                 SLIDERS_PREMIUM.forEachIndexed { index, def ->
                     key(def.key) {
-
                         TraceSliderCard {
                             TraceMoodSliderRow(
                                 title = def.title,
                                 enabled = enabled && contentEnabled,
-                                isPremium = true,
+
+                                // ✅ NOUVEAU API
+                                userIsPremium = isPremium,
+                                isPremiumSlider = true,
+
                                 lockedLabel = null,
                                 cycleKey = cycleKey,
                                 seedBase = seedBase,
@@ -110,7 +118,7 @@ fun TraceJourSlidersBlock(
                     }
 
                     if (index != SLIDERS_PREMIUM.lastIndex) {
-                        Spacer(Modifier.padding(top = ROW_SPACING))
+                        Spacer(modifier = Modifier.height(ROW_SPACING))
                     }
                 }
             }
@@ -127,13 +135,18 @@ private fun TraceSliderCard(
         modifier = modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {
-
         // ✅ GLOW MAUVE ULTRA SUBTIL (arrière)
         Box(
             modifier = Modifier
                 .matchParentSize()
                 .background(
-                    color = MAUVE.copy(alpha = 0.10f),
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            MAUVE.copy(alpha = 0.14f),
+                            MAUVE.copy(alpha = 0.06f),
+                            MAUVE.copy(alpha = 0.00f)
+                        )
+                    ),
                     shape = RoundedCornerShape(CARD_RADIUS)
                 )
         )
