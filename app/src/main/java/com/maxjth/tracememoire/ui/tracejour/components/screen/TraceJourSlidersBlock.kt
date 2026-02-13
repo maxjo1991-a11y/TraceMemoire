@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -23,23 +24,22 @@ import com.maxjth.tracememoire.ui.tracejour.components.screen.slider.TraceMoodSl
 
 private data class SliderDef(
     val key: String,
-    val title: String,
-    val isPremiumOnly: Boolean
+    val title: String
 )
 
 private val SLIDERS_FREE = listOf(
-    SliderDef("humeur", "Humeur globale", false),
-    SliderDef("energie", "Énergie / rythme", false),
-    SliderDef("corps", "Corps / sensations", false),
-    SliderDef("presence", "Présence / attention", false)
+    SliderDef("humeur", "Humeur globale"),
+    SliderDef("energie", "Énergie / rythme"),
+    SliderDef("corps", "Corps / sensations"),
+    SliderDef("presence", "Présence / attention")
 )
 
 private val SLIDERS_PREMIUM = listOf(
-    SliderDef("typejour", "Type de journée", true),
-    SliderDef("motifs", "Motifs psychiques", true),
-    SliderDef("environ", "Environnement", true),
-    SliderDef("clarte", "Clarté mentale", true),
-    SliderDef("charge", "Charge émotionnelle", true)
+    SliderDef("typejour", "Type de journée"),
+    SliderDef("motifs", "Motifs psychiques"),
+    SliderDef("environ", "Environnement"),
+    SliderDef("clarte", "Clarté mentale"),
+    SliderDef("charge", "Charge émotionnelle")
 )
 
 private val ROW_SPACING = 18.dp
@@ -47,6 +47,10 @@ private val SECTION_GAP = 26.dp
 
 private val CARD_RADIUS = 22.dp
 private val CARD_PADDING = 18.dp
+
+// ✅ TEMPORAIRE : mets à true pour “déflouter” Premium le temps d’arranger.
+// ✅ IMPORTANT : remets à false avant release.
+private const val DEBUG_FORCE_PREMIUM_VISUALS = true
 
 @Composable
 fun TraceJourSlidersBlock(
@@ -57,6 +61,9 @@ fun TraceJourSlidersBlock(
     modifier: Modifier = Modifier,
     showPremiumLockedRows: Boolean = true
 ) {
+    // ✅ “Premium effectif” pour le visuel (brume / blur)
+    val premiumVisualUnlocked = isPremium || DEBUG_FORCE_PREMIUM_VISUALS
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -71,13 +78,13 @@ fun TraceJourSlidersBlock(
                         title = def.title,
                         enabled = enabled,
 
-                        // ✅ NOUVEAU API
+                        // ✅ API
                         userIsPremium = isPremium,
                         isPremiumSlider = false,
 
                         lockedLabel = null,
 
-                        // ✅ AJOUT : phaseKey obligatoire
+                        // ✅ phaseKey (matin/jour/soir/nuit) — ici tu l’utilises comme cycleKey
                         phaseKey = cycleKey,
 
                         cycleKey = cycleKey,
@@ -97,25 +104,29 @@ fun TraceJourSlidersBlock(
 
             Spacer(modifier = Modifier.height(SECTION_GAP))
 
+            // ✅ OPTION A (propre) : si on veut garder le header Premium,
+            // mais sans flou -> on “trompe” TraceDepthSection avec premiumVisualUnlocked
             TraceDepthSection(
-                isPremium = isPremium,
+                isPremium = premiumVisualUnlocked,
                 modifier = Modifier.fillMaxWidth()
             ) { contentEnabled ->
+
+                // ✅ Si debug, on force le contenu actif (sinon ça reste verrouillé si non-premium)
+                val contentOk = if (premiumVisualUnlocked) true else contentEnabled
 
                 SLIDERS_PREMIUM.forEachIndexed { index, def ->
                     key(def.key) {
                         TraceSliderCard {
                             TraceMoodSliderRow(
                                 title = def.title,
-                                enabled = enabled && contentEnabled,
+                                enabled = enabled && contentOk,
 
-                                // ✅ NOUVEAU API
-                                userIsPremium = isPremium,
+                                // ✅ API
+                                userIsPremium = isPremium,   // (ça garde “Débloqué avec Premium.” si non-premium)
                                 isPremiumSlider = true,
 
                                 lockedLabel = null,
 
-                                // ✅ AJOUT : phaseKey obligatoire
                                 phaseKey = cycleKey,
 
                                 cycleKey = cycleKey,

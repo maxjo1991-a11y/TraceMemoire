@@ -19,10 +19,23 @@ object TracePhrasesData {
     private fun normalizeSliderKey(raw: String): String {
         val k = normalize(raw)
         return when {
+            // FREE
             k.startsWith("humeur") -> "humeur"
             k.startsWith("energie") || k.startsWith("rythme") -> "energie"
             k.startsWith("corps") || k.startsWith("sensation") -> "corps"
             k.startsWith("presence") || k.startsWith("attention") || k.startsWith("focus") -> "presence"
+
+            // PREMIUM (déjà dans ton SlidersBlock)
+            k.startsWith("typejour") || k.startsWith("type") -> "typejour"
+            k.startsWith("motifs") || k.startsWith("motif") -> "motifs"
+            k.startsWith("environ") || k.startsWith("environnement") -> "environ"
+            k.startsWith("clarte") || k.startsWith("clarte mentale") || k.startsWith("clarte") -> "clarte"
+            k.startsWith("charge") || k.startsWith("charge emotionnelle") || k.startsWith("chargeemotionnelle") -> "charge"
+
+            // PREMIUM (nouveaux)
+            k.startsWith("emotion") || k.startsWith("emotions") || k.startsWith("architectureemotionnelle") -> "emotion"
+            k.startsWith("sommeil") || k.startsWith("repos") || k.startsWith("qualitedureposvecu") -> "sommeil"
+
             else -> k
         }
     }
@@ -39,7 +52,7 @@ object TracePhrasesData {
     }
 
     // ─────────────────────────────────────────────
-    // HUMEUR GLOBALE
+    // FREE — HUMEUR GLOBALE
     // ─────────────────────────────────────────────
 
     private val HUMEUR_MATIN = listOf(
@@ -79,7 +92,7 @@ object TracePhrasesData {
     )
 
     // ─────────────────────────────────────────────
-    // ÉNERGIE / RYTHME
+    // FREE — ÉNERGIE / RYTHME
     // ─────────────────────────────────────────────
 
     private val ENERGIE_MATIN = listOf(
@@ -119,7 +132,7 @@ object TracePhrasesData {
     )
 
     // ─────────────────────────────────────────────
-    // CORPS / SENSATIONS
+    // FREE — CORPS / SENSATIONS
     // ─────────────────────────────────────────────
 
     private val CORPS_MATIN = listOf(
@@ -159,7 +172,7 @@ object TracePhrasesData {
     )
 
     // ─────────────────────────────────────────────
-    // PRÉSENCE / ATTENTION
+    // FREE — PRÉSENCE / ATTENTION
     // ─────────────────────────────────────────────
 
     private val PRESENCE_MATIN = listOf(
@@ -199,6 +212,240 @@ object TracePhrasesData {
     )
 
     // ─────────────────────────────────────────────
+    // PREMIUM — ÉMOTION (sans cycle)
+    // ─────────────────────────────────────────────
+
+    private val EMOTION = listOf(
+        "Plénitude intérieure.",
+        "Joie présente.",
+        "Élan positif.",
+        "Stabilité émotionnelle.",
+        "État sensible.",
+        "Tension émotionnelle.",
+        "Fragilité intérieure.",
+        "Tristesse diffuse.",
+        "État sombre.",
+        "Vide émotionnel."
+    )
+
+    // ─────────────────────────────────────────────
+    // PREMIUM — SOMMEIL / REPOS (sans cycle)
+    // ─────────────────────────────────────────────
+
+    private val SOMMEIL = listOf(
+        "Sommeil profondément réparateur.",
+        "Repos très stable, récupération nette.",
+        "Bonne nuit, continuité naturelle.",
+        "Sommeil correct, récupération présente.",
+        "Repos léger, récupération partielle.",
+        "Sommeil instable, micro-réveils possibles.",
+        "Nuit agitée, récupération limitée.",
+        "Sommeil fragmenté, fatigue persistante.",
+        "Nuit difficile, repos peu efficace.",
+        "Cauchemars ou sommeil perturbé."
+    )
+
+    // ─────────────────────────────────────────────
+    // PREMIUM — TYPE DE JOURNÉE (avec cycle) — BASE
+    // ─────────────────────────────────────────────
+
+    private val TYPEJOUR_MATIN = listOf(
+        "Départ fluide, intention claire.",
+        "Début stable, bonne tenue.",
+        "Mise en route correcte.",
+        "Début neutre, sans direction nette.",
+        "Départ lourd, résistance intérieure.",
+        "Début difficile, charge immédiate."
+    )
+
+    private val TYPEJOUR_JOUR = listOf(
+        "Journée simple, direction nette.",
+        "Journée structurée, bonne continuité.",
+        "Journée correcte, tenue générale.",
+        "Journée neutre, sans relief.",
+        "Journée lourde, effort constant.",
+        "Journée difficile, tenue fragile."
+    )
+
+    private val TYPEJOUR_SOIR = listOf(
+        "Soirée légère, relâche facile.",
+        "Soirée stable, bonne continuité.",
+        "Soirée correcte, tenue présente.",
+        "Soirée neutre, sans relief.",
+        "Soirée lourde, tension persistante.",
+        "Soirée difficile, charge dominante."
+    )
+
+    private val TYPEJOUR_NUIT = listOf(
+        "Nuit calme, décompression réelle.",
+        "Nuit stable, retombée douce.",
+        "Nuit correcte, état posé.",
+        "Nuit neutre, état passif.",
+        "Nuit lourde, rumination possible.",
+        "Nuit difficile, décompression absente."
+    )
+
+    // ─────────────────────────────────────────────
+    // PREMIUM — MOTIFS PSYCHIQUES (avec cycle) — BASE
+    // ─────────────────────────────────────────────
+
+    private val MOTIFS_MATIN = listOf(
+        "Pensée nette, axe intérieur clair.",
+        "Bonne cohérence mentale.",
+        "Fil mental stable.",
+        "Pensée neutre, sans axe fort.",
+        "Pensée lourde, friction intérieure.",
+        "Pensée envahissante, charge mentale forte."
+    )
+
+    private val MOTIFS_JOUR = listOf(
+        "Clarté psychique, direction facile.",
+        "Bonne cohérence interne.",
+        "Stabilité mentale fonctionnelle.",
+        "Neutre, mécanique du jour.",
+        "Charge mentale, répétitions présentes.",
+        "Boucles mentales, tension psychique."
+    )
+
+    private val MOTIFS_SOIR = listOf(
+        "Relâche mentale, calme interne.",
+        "Bonne stabilité intérieure.",
+        "Pensée stable.",
+        "Neutre, sans relief.",
+        "Retour de tensions, ruminations.",
+        "Envahissement mental, charge forte."
+    )
+
+    private val MOTIFS_NUIT = listOf(
+        "Silence mental, apaisement.",
+        "Nuit stable, esprit posé.",
+        "État neutre, pensées rares.",
+        "Neutre, passage lent.",
+        "Agitation mentale diffuse.",
+        "Nuit envahie, pensées persistantes."
+    )
+
+    // ─────────────────────────────────────────────
+    // PREMIUM — ENVIRONNEMENT (avec cycle) — BASE
+    // ─────────────────────────────────────────────
+
+    private val ENVIRON_MATIN = listOf(
+        "Environnement soutenant.",
+        "Cadre favorable.",
+        "Cadre correct, neutre.",
+        "Cadre neutre, sans effet.",
+        "Cadre pesant.",
+        "Environnement difficile à porter."
+    )
+
+    private val ENVIRON_JOUR = listOf(
+        "Cadre très soutenant.",
+        "Cadre stable, bien géré.",
+        "Cadre correct.",
+        "Cadre neutre.",
+        "Cadre lourd, irritant.",
+        "Cadre hostile ou épuisant."
+    )
+
+    private val ENVIRON_SOIR = listOf(
+        "Cadre apaisant.",
+        "Cadre stable.",
+        "Cadre correct.",
+        "Cadre neutre.",
+        "Cadre lourd.",
+        "Cadre difficile, pression présente."
+    )
+
+    private val ENVIRON_NUIT = listOf(
+        "Cadre calme, sécurisant.",
+        "Cadre stable.",
+        "Cadre correct.",
+        "Cadre neutre.",
+        "Cadre pesant.",
+        "Cadre perturbant ou oppressant."
+    )
+
+    // ─────────────────────────────────────────────
+    // PREMIUM — CLARTÉ MENTALE (avec cycle) — BASE
+    // ─────────────────────────────────────────────
+
+    private val CLARTE_MATIN = listOf(
+        "Clarté nette, esprit lumineux.",
+        "Bonne clarté mentale.",
+        "Clarté stable.",
+        "Clarté neutre.",
+        "Brume mentale présente.",
+        "Esprit embrouillé, clarté faible."
+    )
+
+    private val CLARTE_JOUR = listOf(
+        "Esprit très clair, décisions faciles.",
+        "Bonne clarté, pensée fluide.",
+        "Clarté stable.",
+        "Neutre, sans netteté.",
+        "Brume mentale, effort cognitif.",
+        "Confusion mentale, charge cognitive."
+    )
+
+    private val CLARTE_SOIR = listOf(
+        "Esprit clair malgré la fin du jour.",
+        "Bonne clarté.",
+        "Clarté stable.",
+        "Neutre.",
+        "Brume mentale.",
+        "Esprit confus, clarté faible."
+    )
+
+    private val CLARTE_NUIT = listOf(
+        "Nuit claire, esprit posé.",
+        "Bonne clarté intérieure.",
+        "État stable.",
+        "Neutre.",
+        "Brume mentale diffuse.",
+        "Esprit instable, clarté absente."
+    )
+
+    // ─────────────────────────────────────────────
+    // PREMIUM — CHARGE ÉMOTIONNELLE (avec cycle) — BASE
+    // ─────────────────────────────────────────────
+
+    private val CHARGE_MATIN = listOf(
+        "Charge très basse, légèreté intérieure.",
+        "Charge faible, stable.",
+        "Charge modérée, gérable.",
+        "Charge neutre.",
+        "Charge lourde, pression interne.",
+        "Charge écrasante, poids immédiat."
+    )
+
+    private val CHARGE_JOUR = listOf(
+        "Charge très basse, respiration facile.",
+        "Charge faible, bonne tenue.",
+        "Charge modérée, gérable.",
+        "Charge neutre.",
+        "Charge lourde, effort constant.",
+        "Charge écrasante, poids dominant."
+    )
+
+    private val CHARGE_SOIR = listOf(
+        "Charge basse, relâche facile.",
+        "Charge faible.",
+        "Charge modérée.",
+        "Neutre.",
+        "Charge lourde, tension persistante.",
+        "Charge écrasante, saturation."
+    )
+
+    private val CHARGE_NUIT = listOf(
+        "Charge basse, nuit douce.",
+        "Charge faible, repos possible.",
+        "Charge modérée.",
+        "Neutre.",
+        "Charge lourde, agitation.",
+        "Charge écrasante, nuit difficile."
+    )
+
+    // ─────────────────────────────────────────────
     // BUCKET % → INDEX (INVERSE)
     // ─────────────────────────────────────────────
 
@@ -219,6 +466,8 @@ object TracePhrasesData {
         val p = normalizePhaseKey(phaseKey)
 
         val list = when (s) {
+
+            // FREE
             "humeur" -> when (p) {
                 "matin" -> HUMEUR_MATIN
                 "jour" -> HUMEUR_JOUR
@@ -240,12 +489,54 @@ object TracePhrasesData {
                 else -> CORPS_NUIT
             }
 
-            else -> when (p) {
+            "presence" -> when (p) {
                 "matin" -> PRESENCE_MATIN
                 "jour" -> PRESENCE_JOUR
                 "soir" -> PRESENCE_SOIR
                 else -> PRESENCE_NUIT
             }
+
+            // PREMIUM — sans cycle
+            "emotion" -> EMOTION
+            "sommeil" -> SOMMEIL
+
+            // PREMIUM — avec cycle
+            "typejour" -> when (p) {
+                "matin" -> TYPEJOUR_MATIN
+                "jour" -> TYPEJOUR_JOUR
+                "soir" -> TYPEJOUR_SOIR
+                else -> TYPEJOUR_NUIT
+            }
+
+            "motifs" -> when (p) {
+                "matin" -> MOTIFS_MATIN
+                "jour" -> MOTIFS_JOUR
+                "soir" -> MOTIFS_SOIR
+                else -> MOTIFS_NUIT
+            }
+
+            "environ" -> when (p) {
+                "matin" -> ENVIRON_MATIN
+                "jour" -> ENVIRON_JOUR
+                "soir" -> ENVIRON_SOIR
+                else -> ENVIRON_NUIT
+            }
+
+            "clarte" -> when (p) {
+                "matin" -> CLARTE_MATIN
+                "jour" -> CLARTE_JOUR
+                "soir" -> CLARTE_SOIR
+                else -> CLARTE_NUIT
+            }
+
+            "charge" -> when (p) {
+                "matin" -> CHARGE_MATIN
+                "jour" -> CHARGE_JOUR
+                "soir" -> CHARGE_SOIR
+                else -> CHARGE_NUIT
+            }
+
+            else -> HUMEUR_JOUR // fallback safe
         }
 
         return list[bucket(percent, list.size)]
