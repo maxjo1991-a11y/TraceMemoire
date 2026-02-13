@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -206,30 +207,35 @@ fun TraceMoodSliderRow(
             .clip(RoundedCornerShape(18.dp))
             .background(Brush.horizontalGradient(listOf(cardGlow, cardBg, cardGlow)))
             .border(1.dp, cardBorder, RoundedCornerShape(18.dp))
-            .padding(horizontal = 14.dp, vertical = 14.dp)
+            .padding(horizontal = 14.dp, vertical = 16.dp) // ✅ plus d’air
     ) {
-        // ✅ TITRE
+
+        // ✅ TITRE (Humeur globale) — CORRIGÉ
+        // ✅ TITRE (centré, droit avec le cercle)
         Text(
             text = title,
             color = WHITE_SOFT.copy(alpha = if (enabled) 0.92f else 0.55f),
             fontSize = 25.sp,
             fontWeight = FontWeight.SemiBold,
             maxLines = 2,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center
         )
 
-        Spacer(Modifier.height(10.dp))
+        // ✅ espace titre → cercle (empêche de toucher)
+        Spacer(Modifier.height(20.dp))
 
-        // ✅ LIGNE: cercle %
+        // ✅ CERCLE % AU CENTRE (un peu plus haut = pas de gros gap)
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
             TraceRing(
                 ringKey = sliderKey,
                 percentText = "$pct%",
-                sizeDp = 90.dp,
+                sizeDp = 140.dp,
                 ringColor = MAUVE.copy(alpha = 0.96f),
                 percentColor = TURQUOISE,
                 spec = stableSpec,
@@ -249,21 +255,21 @@ fun TraceMoodSliderRow(
             )
         }
 
-        Spacer(Modifier.height(12.dp))
+        // ✅ phrase : centrée + respiration (pas collée au cercle)
+        if (phrase.isNotBlank()) {
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = phrase,
+                color = WHITE_SOFT.copy(alpha = if (enabled) 0.80f else 0.50f),
+                fontSize = 18.5.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+        }
 
-        TraceSquaresRow(
-            sliderKey = sliderKey,
-            seedBase = seedBase,
-            pct = pct,
-            sliderValue = value.floatValue,
-            blink = false,
-            count = 4,
-            size = 14.dp,
-            gap = 8.dp,
-            followAmpY = 6.dp
-        )
-
-        Spacer(Modifier.height(12.dp))
+        // ✅ respiration avant le slider
+        Spacer(Modifier.height(16.dp))
 
         // ✅ SLIME / SLIDER
         Box(
@@ -281,7 +287,7 @@ fun TraceMoodSliderRow(
             Slider(
                 value = value.floatValue,
                 onValueChange = { newValue ->
-                    if (!enabled) return@Slider // ✅ bloque vraiment si désactivé
+                    if (!enabled) return@Slider
                     value.floatValue = newValue
                     isInteracting = true
                 },
@@ -322,23 +328,25 @@ fun TraceMoodSliderRow(
             )
         }
 
-        Spacer(Modifier.height(10.dp))
+        // ✅ respiration avant les cubes
+        Spacer(Modifier.height(12.dp))
 
-        // ✅ PHRASE EN BAS
-        if (phrase.isNotBlank()) {
-            Text(
-                text = phrase,
-                color = WHITE_SOFT.copy(alpha = if (enabled) 0.72f else 0.50f),
-                fontSize = 14.5.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 6.dp, end = 10.dp)
-            )
-        }
+        // ✅ PETITS CUBES EN BAS
+        TraceSquaresRow(
+            sliderKey = sliderKey,
+            seedBase = seedBase,
+            pct = pct,
+            sliderValue = value.floatValue,
+            blink = false,
+            count = 4,
+            size = 14.dp,
+            gap = 8.dp,
+            followAmpY = 6.dp
+        )
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(12.dp))
 
+        // ✅ séparateur
         Box(
             modifier = Modifier
                 .fillMaxWidth()

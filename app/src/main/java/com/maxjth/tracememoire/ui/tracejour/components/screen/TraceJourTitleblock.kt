@@ -49,7 +49,7 @@ fun TraceJourTitleBlock(
         Text(
             text = "Trace",
             color = Color.White,
-            fontSize = 64.sp,
+            fontSize = 65.sp,
             fontWeight = FontWeight.ExtraBold,
             textAlign = TextAlign.Center,
             lineHeight = 64.sp
@@ -58,7 +58,7 @@ fun TraceJourTitleBlock(
         Text(
             text = "d’état d’âme",
             color = Color.White.copy(alpha = 0.92f),
-            fontSize = 49.sp,
+            fontSize = 34.sp,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center
         )
@@ -66,7 +66,7 @@ fun TraceJourTitleBlock(
         Text(
             text = cycleTitle,
             color = Color.White,
-            fontSize = 67.sp,
+            fontSize = 61.sp,
             fontWeight = FontWeight.ExtraBold,
             textAlign = TextAlign.Center
         )

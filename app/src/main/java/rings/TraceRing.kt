@@ -82,7 +82,7 @@ fun TraceRing(
     // ✅ Texte un peu plus gros (lisibilité)
     val pctInt = percentText.removeSuffix("%").toIntOrNull() ?: -1
     val isExtreme = (pctInt == 0 || pctInt == 100)
-    val textSize = if (isExtreme) 25.sp else 20.sp
+    val textSize = if (isExtreme) 44.sp else 44.sp
 
     Box(
         modifier = modifier.size(sizeDp),

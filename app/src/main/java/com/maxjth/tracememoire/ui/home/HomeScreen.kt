@@ -171,7 +171,7 @@ fun HomeScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Historique",
-                            fontSize = 20.sp,
+                            fontSize = 17.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -213,14 +213,14 @@ fun HomeScreen(
                 // ✅ MAJ: sous-texte du haut MONTE (14.dp -> 6.dp)
                 Spacer(modifier = Modifier.height(6.dp))
 
-                // ✅ Phrase annuelle (mystère)
                 Text(
                     text = subtitle,
-                    fontSize = 16.sp,
-                    lineHeight = 22.sp,
+                    fontSize = 20.sp,
+                    lineHeight = 26.sp,
                     fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.2.sp,
                     textAlign = TextAlign.Center,
-                    color = WHITE_MAUVE.copy(alpha = 0.82f)
+                    color = WHITE_MAUVE.copy(alpha = 0.70f)
                 )
 
                 // ✅ MAJ: on redonne un poil d’air avant le cercle (28.dp -> 30.dp)
