@@ -36,10 +36,14 @@ import com.maxjth.tracememoire.ui.theme.BG_SOFT
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
 import com.maxjth.tracememoire.ui.tracejour.components.ring.PercentRing
 import com.maxjth.tracememoire.ui.tracejour.components.ring.accentForPercent
+import com.maxjth.tracememoire.ui.tracejour.components.screen.notes.TraceNoteBlock
 import com.maxjth.tracememoire.ui.tracejour.components.screen.phrases.TracePhrasesData
 import kotlin.math.roundToInt
 
 private val VIOLET_POSITIVE = Color(0xFF8A5CFF)
+
+private const val NOTE_MAX_FREE = 200
+private const val NOTE_MAX_PREMIUM = 589
 
 @Composable
 fun TraceMoodSliderRow(
@@ -60,17 +64,21 @@ fun TraceMoodSliderRow(
         "$seedBase|$cycleKey|$sliderKey"
     }
 
-    // ✅ FIX IMPORTANT : saveable doit être un Float simple (mutableStateOf), pas mutableFloatStateOf
+    // ✅ Slider state (saveable)
     var value by rememberSaveable(stateKey) { mutableStateOf(0.5f) }
 
     val pct = (value * 100f).roundToInt().coerceIn(0, 100)
     val sliderEnabled = enabled && !locked
 
+    // ✅ NOTE state (saveable) — 1 note par slider
+    val noteKey = remember(stateKey) { "$stateKey|note" }
+    var noteText by rememberSaveable(noteKey) { mutableStateOf("") }
+
     // ✅ DRAG FIABLE
     val interactionSource = remember { MutableInteractionSource() }
     val isDragging by interactionSource.collectIsDraggedAsState()
 
-    // ✅ Accent basé sur % (mauve -> turquoise -> violet)
+    // ✅ Accent basé sur %
     val baseAccent = remember(pct) { accentForPercent(pct) }
 
     // ✅ Petit shift pendant drag (subtil)
@@ -116,7 +124,6 @@ fun TraceMoodSliderRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
         ) {
-            // ✅ IMPORTANT : PercentRing attend "accent" (pas accentOverride)
             PercentRing(
                 ringKey = sliderKey,
                 percent = pct,
@@ -140,6 +147,7 @@ fun TraceMoodSliderRow(
 
         Spacer(Modifier.height(12.dp))
 
+        // ✅ Slider
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -153,7 +161,7 @@ fun TraceMoodSliderRow(
                 onValueChange = { if (sliderEnabled) value = it.coerceIn(0f, 1f) },
                 enabled = sliderEnabled,
                 valueRange = 0f..1f,
-                interactionSource = interactionSource, // ✅ IMPORTANT
+                interactionSource = interactionSource,
                 colors = SliderDefaults.colors(
                     activeTrackColor = uiAccent.copy(alpha = if (isDragging) 0.85f else 0.62f),
                     inactiveTrackColor = Color.White.copy(alpha = 0.10f),
@@ -161,6 +169,18 @@ fun TraceMoodSliderRow(
                 )
             )
         }
+
+        // ✅ NOTE — directement sous le slider
+        Spacer(Modifier.height(12.dp))
+        TraceNoteBlock(
+            note = noteText,
+            onNoteChange = { txt -> noteText = txt }, // limite gérée dans TraceNoteBlock
+            enabled = sliderEnabled,
+            accent = uiAccent,
+            userIsPremium = userIsPremium,     // ✅ IMPORTANT
+            maxCharsFree = NOTE_MAX_FREE,      // ✅ 200
+            maxCharsPremium = NOTE_MAX_PREMIUM // ✅ 589
+        )
 
         if (locked) {
             Spacer(Modifier.height(10.dp))

@@ -85,7 +85,12 @@ fun TraceJourSlidersBlock(
     modifier: Modifier = Modifier,
     showPremiumLockedRows: Boolean = true
 ) {
+    // ✅ Visuel premium (section, glow, etc.)
     val premiumVisualUnlocked = isPremium || DEBUG_FORCE_PREMIUM_VISUALS
+
+    // ✅ IMPORTANT : premium "effectif" pour les notes Premium (589)
+    // -> Free reste Free (200), Premium sliders peuvent tester 589 en debug
+    val premiumEffectiveForPremiumNotes = isPremium || DEBUG_FORCE_PREMIUM_VISUALS
 
     // ✅ Une seule carte ouverte à la fois
     var openKey by remember { mutableStateOf("humeur") }
@@ -93,12 +98,11 @@ fun TraceJourSlidersBlock(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            // ✅ plus large (avant: 24.dp)
             .padding(horizontal = OUTER_HORIZONTAL_PADDING)
     ) {
 
         // ─────────────────────────────
-        // ✅ GRATUIT
+        // ✅ GRATUIT (DOIT RESTER 200)
         // ─────────────────────────────
         SLIDERS_FREE.forEachIndexed { index, def ->
             key(def.key) {
@@ -110,18 +114,19 @@ fun TraceJourSlidersBlock(
                     TraceMoodSliderRow(
                         title = def.title,
                         enabled = enabled,
+
+                        // ✅ Free reste basé sur vrai premium
                         userIsPremium = isPremium,
+
                         isPremiumSlider = false,
                         lockedLabel = null,
 
-                        // ✅ IMPORTANT : phaseKey DOIT être matin/jour/soir/nuit
                         phaseKey = cycleKey,
                         cycleKey = cycleKey,
 
                         seedBase = seedBase,
                         sliderKey = def.key,
 
-                        // ✅ évite le double titre (car la carte affiche déjà le titre)
                         showTitle = false
                     )
                 }
@@ -133,7 +138,7 @@ fun TraceJourSlidersBlock(
         }
 
         // ─────────────────────────────
-        // ✅ PREMIUM
+        // ✅ PREMIUM (peut tester 589 en debug)
         // ─────────────────────────────
         if (isPremium || showPremiumLockedRows) {
             Spacer(modifier = Modifier.height(SECTION_GAP))
@@ -156,18 +161,19 @@ fun TraceJourSlidersBlock(
                             TraceMoodSliderRow(
                                 title = def.title,
                                 enabled = enabled && contentOk,
-                                userIsPremium = isPremium,
+
+                                // ✅ PREMIUM sliders: 589 si debug OU vrai premium
+                                userIsPremium = premiumEffectiveForPremiumNotes,
+
                                 isPremiumSlider = true,
                                 lockedLabel = null,
 
-                                // ✅ IMPORTANT : phaseKey DOIT être matin/jour/soir/nuit
                                 phaseKey = cycleKey,
                                 cycleKey = cycleKey,
 
                                 seedBase = seedBase,
                                 sliderKey = def.key,
 
-                                // ✅ évite le double titre
                                 showTitle = false
                             )
                         }
@@ -195,7 +201,6 @@ private fun CollapsibleSliderCard(
         modifier = Modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {
-        // ✅ Glow “côtés” + halo arrière (plus visible qu’avant)
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -211,7 +216,6 @@ private fun CollapsibleSliderCard(
                 )
         )
 
-        // ✅ Glow latéral subtil (donne l’impression que les côtés illuminent)
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -230,9 +234,7 @@ private fun CollapsibleSliderCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                // ✅ carte un peu plus haute (meilleur pour gros doigts)
                 .heightIn(min = CARD_MIN_HEIGHT)
-                // ✅ Fond moins pâle
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
@@ -242,13 +244,11 @@ private fun CollapsibleSliderCard(
                     ),
                     shape = shape
                 )
-                // ✅ Bordure plus visible (1ère bordure)
                 .border(
                     width = 1.5.dp,
                     color = MAUVE.copy(alpha = 0.28f),
                     shape = shape
                 )
-                // ✅ Bordure intérieure très subtile (effet “double ligne”)
                 .padding(1.dp)
                 .border(
                     width = 1.dp,
@@ -266,7 +266,6 @@ private fun CollapsibleSliderCard(
                         interactionSource = interaction,
                         indication = null
                     ) { onToggle() }
-                    // ✅ header plus haut (hitbox + confort)
                     .padding(vertical = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -278,7 +277,6 @@ private fun CollapsibleSliderCard(
                     fontWeight = FontWeight.SemiBold
                 )
 
-                // ✅ indicateur plus visible
                 Box(
                     modifier = Modifier
                         .size(14.dp)
