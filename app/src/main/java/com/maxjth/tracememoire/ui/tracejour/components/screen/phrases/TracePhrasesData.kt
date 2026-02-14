@@ -1,356 +1,544 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/slider/TraceMoodSliderRow.kt
-package com.maxjth.tracememoire.ui.tracejour.components.screen.slider
+// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/phrases/TracePhrasesData.kt
+package com.maxjth.tracememoire.ui.tracejour.components.screen.phrases
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.drawscope.withTransform
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.maxjth.tracememoire.ui.theme.BG_SOFT
-import com.maxjth.tracememoire.ui.theme.MAUVE
-import com.maxjth.tracememoire.ui.theme.TURQUOISE
-import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
-import com.maxjth.tracememoire.ui.tracejour.components.screen.phrases.TracePhrasesData
-import kotlin.math.PI
-import kotlin.math.abs
-import kotlin.math.roundToInt
+import java.text.Normalizer
 
-@Composable
-fun TraceMoodSliderRow(
-    title: String,
-    enabled: Boolean,
+object TracePhrasesData {
 
-    // API
-    userIsPremium: Boolean,
-    isPremiumSlider: Boolean,
-    lockedLabel: String?,
+    // ─────────────────────────────────────────────
+    // NORMALISATION
+    // ─────────────────────────────────────────────
 
-    // clés
-    phaseKey: String,   // ✅ DOIT être "matin/jour/soir/nuit" (ou proche)
-    cycleKey: String,
-    seedBase: String,
-    sliderKey: String,
-
-    // ✅ pour enlever le double titre dans tes cartes repliables
-    showTitle: Boolean = true
-) {
-    val locked = isPremiumSlider && !userIsPremium
-
-    // Valeur stable par slider (et par cycleKey si tu veux)
-    val stateKey = remember(seedBase, cycleKey, sliderKey) { "$seedBase|$cycleKey|$sliderKey" }
-    var value by rememberSaveable(stateKey) { mutableFloatStateOf(0.5f) } // 0..1
-
-    val pct = (value * 100f).roundToInt().coerceIn(0, 100)
-
-    // Couleurs : Premium = bord turquoise un peu plus présent
-    val borderColor = if (isPremiumSlider) TURQUOISE.copy(alpha = 0.28f) else MAUVE.copy(alpha = 0.18f)
-
-    // ✅ PHRASES OFFICIELLES (tes mots d’avant)
-    val phrase = remember(sliderKey, pct, phaseKey) {
-        TracePhrasesData.phraseForSlider(
-            sliderKey = sliderKey,
-            phaseKey = phaseKey,
-            percent = pct
-        )
+    private fun normalize(raw: String): String {
+        return Normalizer.normalize(raw.trim(), Normalizer.Form.NFD)
+            .replace("\\p{Mn}+".toRegex(), "")
+            .lowercase()
+            .replace("[^a-z]".toRegex(), "")
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(BG_SOFT.copy(alpha = 0.10f))
-            .border(1.dp, borderColor, RoundedCornerShape(18.dp))
-            .padding(14.dp)
-    ) {
+    private fun normalizeSliderKey(raw: String): String {
+        val k = normalize(raw)
+        return when {
+            // FREE
+            k.startsWith("humeur") -> "humeur"
+            k.startsWith("energie") || k.startsWith("rythme") -> "energie"
+            k.startsWith("corps") || k.startsWith("sensation") -> "corps"
+            k.startsWith("presence") || k.startsWith("attention") || k.startsWith("focus") -> "presence"
 
-        if (showTitle) {
-            Text(
-                text = title,
-                color = WHITE_SOFT.copy(alpha = 0.92f),
-                fontSize = 20.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(Modifier.height(10.dp))
-        }
+            // PREMIUM (déjà dans SlidersBlock)
+            k.startsWith("typejour") || k.startsWith("type") -> "typejour"
+            k.startsWith("motifs") || k.startsWith("motif") -> "motifs"
+            k.startsWith("environ") || k.startsWith("environnement") -> "environ"
+            k.startsWith("clarte") -> "clarte"
+            k.startsWith("chargeemotionnelle") || k.startsWith("charge") -> "charge"
 
-        // ───────────────────────────────
-        // Ring + % (respiration du ROND)
-        // ───────────────────────────────
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            PercentRing(
-                ringKey = sliderKey,     // personnalité unique par slider
-                percent = pct,
-                isPremium = isPremiumSlider
-            )
-        }
+            // PREMIUM (nouveaux)
+            k.startsWith("architectureemotionnelle") || k.startsWith("emotions") || k.startsWith("emotion") -> "emotion"
+            k.startsWith("qualitedureposvecu") || k.startsWith("repos") || k.startsWith("sommeil") -> "sommeil"
 
-        Spacer(Modifier.height(10.dp))
-
-        Text(
-            text = phrase,
-            color = WHITE_SOFT.copy(alpha = 0.78f),
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
-
-        Spacer(Modifier.height(12.dp))
-
-        // ───────────────────────────────
-        // Slider
-        // ───────────────────────────────
-        val sliderEnabled = enabled && !locked
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(999.dp))
-                .background(Color.Black.copy(alpha = 0.14f))
-                .border(
-                    width = 1.dp,
-                    color = (if (isPremiumSlider) TURQUOISE else MAUVE).copy(alpha = 0.20f),
-                    shape = RoundedCornerShape(999.dp)
-                )
-                .padding(horizontal = 14.dp, vertical = 10.dp)
-        ) {
-            Slider(
-                value = value,
-                onValueChange = { newValue ->
-                    if (!sliderEnabled) return@Slider
-                    value = newValue.coerceIn(0f, 1f)
-                },
-                enabled = sliderEnabled,
-                valueRange = 0f..1f,
-                colors = SliderDefaults.colors(
-                    activeTrackColor = MAUVE.copy(alpha = if (sliderEnabled) 0.55f else 0.20f),
-                    inactiveTrackColor = Color.White.copy(alpha = 0.10f),
-                    thumbColor = MAUVE.copy(alpha = if (sliderEnabled) 0.90f else 0.35f)
-                )
-            )
-        }
-
-        if (locked) {
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = lockedLabel ?: "Débloqué avec Premium.",
-                color = WHITE_SOFT.copy(alpha = 0.55f),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
-            )
+            else -> k
         }
     }
-}
 
-@Composable
-private fun PercentRing(
-    ringKey: String,
-    percent: Int,
-    isPremium: Boolean
-) {
-    val sizeDp = 140.dp
-    val strokeDp = 10.dp
+    private fun normalizePhaseKey(raw: String): String {
+        val k = normalize(raw)
+        return when {
+            k.startsWith("matin") -> "matin"
+            k.startsWith("jour") || k.startsWith("midi") -> "jour"
+            k.startsWith("soir") -> "soir"
+            k.startsWith("nuit") -> "nuit"
+            else -> "jour"
+        }
+    }
 
-    // ✅ Persona unique (durées/amplitudes) basée sur ringKey
-    val persona = remember(ringKey) { ringPersonaForKey(ringKey) }
+    // ─────────────────────────────────────────────
+    // FREE — HUMEUR GLOBALE
+    // ─────────────────────────────────────────────
 
-    // ✅ Animation TOUJOURS active
-    val infinite = rememberInfiniteTransition(label = "ringAlive_$ringKey")
-
-    // Respiration (0..1..0)
-    val breathe by infinite.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = persona.breatheMs, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "breathe_$ringKey"
+    private val HUMEUR_MATIN = listOf(
+        "Matin léger, esprit clair.",
+        "Bonne dynamique intérieure.",
+        "Sensation plutôt stable.",
+        "Matin neutre, rien de marquant.",
+        "Matin plus lourd, élan réduit.",
+        "Matin dense, tout semble plus difficile."
     )
 
-    // Micro-rotation très légère (donne du vivant sans brume)
-    val drift by infinite.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = persona.driftMs, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "drift_$ringKey"
+    private val HUMEUR_JOUR = listOf(
+        "Journée fluide, tout s’enchaîne naturellement.",
+        "Climat intérieur agréable, bonne stabilité.",
+        "Journée globalement stable.",
+        "Journée neutre, sans relief particulier.",
+        "Journée plus lourde, effort constant.",
+        "Journée difficile, sensation de tension."
     )
 
-    val ringColor = if (isPremium) TURQUOISE else MAUVE
+    private val HUMEUR_SOIR = listOf(
+        "Soirée légère, esprit relâché.",
+        "Bonne transition, état agréable.",
+        "Soirée plutôt stable.",
+        "Soirée neutre, rien de spécial.",
+        "Soirée plus lourde, fatigue présente.",
+        "Soirée difficile, tension persistante."
+    )
 
-    // ✅ C’EST ICI LA “RESPIRATION DU ROND”
-    // Visible à l’œil : 1.00 -> 1.00 + ringScaleAmp
-    val ringScale = 1f + persona.ringScaleAmp * (0.35f + 0.65f * breathe)
+    private val HUMEUR_NUIT = listOf(
+        "Nuit calme, sensation apaisée.",
+        "Bonne stabilité intérieure.",
+        "Nuit correcte, sans perturbation notable.",
+        "Nuit neutre, état passif.",
+        "Nuit plus lourde, agitation de fond.",
+        "Nuit difficile, esprit peu tranquille."
+    )
 
-    // ✅ Brume très réduite (juste une aura)
-    val glowAlpha = (persona.glowBase + persona.glowAmp * (0.35f + 0.65f * breathe))
-        .coerceIn(0.00f, 0.10f)
+    // ─────────────────────────────────────────────
+    // FREE — ÉNERGIE / RYTHME
+    // ─────────────────────────────────────────────
 
-    Box(
-        modifier = Modifier.size(sizeDp),
-        contentAlignment = Alignment.Center
-    ) {
-        // Aura ultra subtile (pas le focus)
-        Canvas(modifier = Modifier.matchParentSize()) {
-            if (glowAlpha > 0.001f) {
-                val r = (size.minDimension / 2f) * 0.92f
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            ringColor.copy(alpha = glowAlpha),
-                            ringColor.copy(alpha = glowAlpha * 0.35f),
-                            Color.Transparent
-                        ),
-                        center = center,
-                        radius = r * 1.28f
-                    ),
-                    radius = r * 1.28f,
-                    center = center
-                )
+    private val ENERGIE_MATIN = listOf(
+        "Énergie claire, mise en route facile.",
+        "Bonne disponibilité mentale et physique.",
+        "Rythme stable, fonctionnement correct.",
+        "Énergie modérée, sans excès.",
+        "Élan faible, démarrage plus lent.",
+        "Manque d’énergie marqué, effort notable."
+    )
+
+    private val ENERGIE_JOUR = listOf(
+        "Très bonne énergie, rythme naturel.",
+        "Bonne dynamique générale.",
+        "Énergie stable, fonctionnement régulier.",
+        "Rythme neutre, sans variation notable.",
+        "Énergie plus basse, fatigue diffuse.",
+        "Journée énergétiquement difficile."
+    )
+
+    private val ENERGIE_SOIR = listOf(
+        "Énergie encore confortable.",
+        "Bonne réserve, soirée fluide.",
+        "Niveau stable, sans tension.",
+        "Énergie neutre, état calme.",
+        "Fatigue présente, rythme ralenti.",
+        "Énergie très basse, lourdeur marquée."
+    )
+
+    private val ENERGIE_NUIT = listOf(
+        "État léger, récupération naturelle.",
+        "Bonne détente globale.",
+        "Niveau neutre, stable.",
+        "Énergie basse mais normale pour la nuit.",
+        "Agitation ou inconfort diffus.",
+        "Nuit peu récupératrice."
+    )
+
+    // ─────────────────────────────────────────────
+    // FREE — CORPS / SENSATIONS
+    // ─────────────────────────────────────────────
+
+    private val CORPS_MATIN = listOf(
+        "Corps léger, sensations agréables.",
+        "Bonne aisance physique.",
+        "État corporel stable.",
+        "Ressenti neutre.",
+        "Corps plus lourd, légère tension.",
+        "Inconfort corporel marqué."
+    )
+
+    private val CORPS_JOUR = listOf(
+        "Très bon confort physique.",
+        "Sensations globalement agréables.",
+        "État stable et fonctionnel.",
+        "Ressenti neutre, sans gêne notable.",
+        "Tensions ou fatigue corporelle.",
+        "Inconfort physique dominant."
+    )
+
+    private val CORPS_SOIR = listOf(
+        "Corps détendu, sensations calmes.",
+        "Bonne relâche physique.",
+        "État stable.",
+        "Ressenti neutre.",
+        "Fatigue corporelle présente.",
+        "Tensions physiques marquées."
+    )
+
+    private val CORPS_NUIT = listOf(
+        "Corps calme, repos naturel.",
+        "Bonne détente physique.",
+        "État neutre et stable.",
+        "Sensations passives.",
+        "Inconfort léger ou diffus.",
+        "Corps agité ou inconfortable."
+    )
+
+    // ─────────────────────────────────────────────
+    // FREE — PRÉSENCE / ATTENTION
+    // ─────────────────────────────────────────────
+
+    private val PRESENCE_MATIN = listOf(
+        "Esprit clair, attention fluide.",
+        "Bonne présence mentale.",
+        "Concentration stable.",
+        "Attention neutre.",
+        "Distraction facile, focus instable.",
+        "Présence mentale difficile."
+    )
+
+    private val PRESENCE_JOUR = listOf(
+        "Très bonne clarté mentale.",
+        "Bonne capacité d’attention.",
+        "Présence stable et fonctionnelle.",
+        "Attention neutre.",
+        "Difficulté légère à rester focus.",
+        "Attention fragmentée, esprit dispersé."
+    )
+
+    private val PRESENCE_SOIR = listOf(
+        "Esprit calme et présent.",
+        "Bonne stabilité mentale.",
+        "Attention stable.",
+        "Présence neutre.",
+        "Esprit plus diffus.",
+        "Difficulté à maintenir l’attention."
+    )
+
+    private val PRESENCE_NUIT = listOf(
+        "Esprit posé, calme mental.",
+        "Bonne tranquillité intérieure.",
+        "État neutre et passif.",
+        "Présence légère.",
+        "Agitation mentale diffuse.",
+        "Esprit instable ou chargé."
+    )
+
+    // ─────────────────────────────────────────────
+    // PREMIUM — ÉMOTION (sans cycle)
+    // ─────────────────────────────────────────────
+
+    private val EMOTION = listOf(
+        "Plénitude intérieure.",
+        "Joie présente.",
+        "Élan positif.",
+        "Stabilité émotionnelle.",
+        "État sensible.",
+        "Tension émotionnelle.",
+        "Fragilité intérieure.",
+        "Tristesse diffuse.",
+        "État sombre.",
+        "Vide émotionnel."
+    )
+
+    // ─────────────────────────────────────────────
+    // PREMIUM — SOMMEIL / REPOS (sans cycle)
+    // ─────────────────────────────────────────────
+
+    private val SOMMEIL = listOf(
+        "Sommeil profondément réparateur.",
+        "Repos très stable, récupération nette.",
+        "Bonne nuit, continuité naturelle.",
+        "Sommeil correct, récupération présente.",
+        "Repos léger, récupération partielle.",
+        "Sommeil instable, micro-réveils possibles.",
+        "Nuit agitée, récupération limitée.",
+        "Sommeil fragmenté, fatigue persistante.",
+        "Nuit difficile, repos peu efficace.",
+        "Cauchemars ou sommeil perturbé."
+    )
+
+    // ─────────────────────────────────────────────
+    // PREMIUM — TYPE DE JOURNÉE (avec cycle)
+    // ─────────────────────────────────────────────
+
+    private val TYPEJOUR_MATIN = listOf(
+        "Départ fluide, intention claire.",
+        "Début stable, bonne tenue.",
+        "Mise en route correcte.",
+        "Début neutre, sans direction nette.",
+        "Départ lourd, résistance intérieure.",
+        "Début difficile, charge immédiate."
+    )
+
+    private val TYPEJOUR_JOUR = listOf(
+        "Journée simple, direction nette.",
+        "Journée structurée, bonne continuité.",
+        "Journée correcte, tenue générale.",
+        "Journée neutre, sans relief.",
+        "Journée lourde, effort constant.",
+        "Journée difficile, tenue fragile."
+    )
+
+    private val TYPEJOUR_SOIR = listOf(
+        "Soirée légère, relâche facile.",
+        "Soirée stable, bonne continuité.",
+        "Soirée correcte, tenue présente.",
+        "Soirée neutre, sans relief.",
+        "Soirée lourde, tension persistante.",
+        "Soirée difficile, charge dominante."
+    )
+
+    private val TYPEJOUR_NUIT = listOf(
+        "Nuit calme, décompression réelle.",
+        "Nuit stable, retombée douce.",
+        "Nuit correcte, état posé.",
+        "Nuit neutre, état passif.",
+        "Nuit lourde, rumination possible.",
+        "Nuit difficile, décompression absente."
+    )
+
+    // ─────────────────────────────────────────────
+    // PREMIUM — MOTIFS PSYCHIQUES (avec cycle)
+    // ─────────────────────────────────────────────
+
+    private val MOTIFS_MATIN = listOf(
+        "Pensée nette, axe intérieur clair.",
+        "Bonne cohérence mentale.",
+        "Fil mental stable.",
+        "Pensée neutre, sans axe fort.",
+        "Pensée lourde, friction intérieure.",
+        "Pensée envahissante, charge mentale forte."
+    )
+
+    private val MOTIFS_JOUR = listOf(
+        "Clarté psychique, direction facile.",
+        "Bonne cohérence interne.",
+        "Stabilité mentale fonctionnelle.",
+        "Neutre, mécanique du jour.",
+        "Charge mentale, répétitions présentes.",
+        "Boucles mentales, tension psychique."
+    )
+
+    private val MOTIFS_SOIR = listOf(
+        "Relâche mentale, calme interne.",
+        "Bonne stabilité intérieure.",
+        "Pensée stable.",
+        "Neutre, sans relief.",
+        "Retour de tensions, ruminations.",
+        "Envahissement mental, charge forte."
+    )
+
+    private val MOTIFS_NUIT = listOf(
+        "Silence mental, apaisement.",
+        "Nuit stable, esprit posé.",
+        "État neutre, pensées rares.",
+        "Neutre, passage lent.",
+        "Agitation mentale diffuse.",
+        "Nuit envahie, pensées persistantes."
+    )
+
+    // ─────────────────────────────────────────────
+    // PREMIUM — ENVIRONNEMENT (avec cycle)
+    // ─────────────────────────────────────────────
+
+    private val ENVIRON_MATIN = listOf(
+        "Environnement soutenant.",
+        "Cadre favorable.",
+        "Cadre correct, neutre.",
+        "Cadre neutre, sans effet.",
+        "Cadre pesant.",
+        "Environnement difficile à porter."
+    )
+
+    private val ENVIRON_JOUR = listOf(
+        "Cadre très soutenant.",
+        "Cadre stable, bien géré.",
+        "Cadre correct.",
+        "Cadre neutre.",
+        "Cadre lourd, irritant.",
+        "Cadre hostile ou épuisant."
+    )
+
+    private val ENVIRON_SOIR = listOf(
+        "Cadre apaisant.",
+        "Cadre stable.",
+        "Cadre correct.",
+        "Cadre neutre.",
+        "Cadre lourd.",
+        "Cadre difficile, pression présente."
+    )
+
+    private val ENVIRON_NUIT = listOf(
+        "Cadre calme, sécurisant.",
+        "Cadre stable.",
+        "Cadre correct.",
+        "Cadre neutre.",
+        "Cadre pesant.",
+        "Cadre perturbant ou oppressant."
+    )
+
+    // ─────────────────────────────────────────────
+    // PREMIUM — CLARTÉ MENTALE (avec cycle)
+    // ─────────────────────────────────────────────
+
+    private val CLARTE_MATIN = listOf(
+        "Clarté nette, esprit lumineux.",
+        "Bonne clarté mentale.",
+        "Clarté stable.",
+        "Clarté neutre.",
+        "Brume mentale présente.",
+        "Esprit embrouillé, clarté faible."
+    )
+
+    private val CLARTE_JOUR = listOf(
+        "Esprit très clair, décisions faciles.",
+        "Bonne clarté, pensée fluide.",
+        "Clarté stable.",
+        "Neutre, sans netteté.",
+        "Brume mentale, effort cognitif.",
+        "Confusion mentale, charge cognitive."
+    )
+
+    private val CLARTE_SOIR = listOf(
+        "Esprit clair malgré la fin du jour.",
+        "Bonne clarté.",
+        "Clarté stable.",
+        "Neutre.",
+        "Brume mentale.",
+        "Esprit confus, clarté faible."
+    )
+
+    private val CLARTE_NUIT = listOf(
+        "Nuit claire, esprit posé.",
+        "Bonne clarté intérieure.",
+        "État stable.",
+        "Neutre.",
+        "Brume mentale diffuse.",
+        "Esprit instable, clarté absente."
+    )
+
+    // ─────────────────────────────────────────────
+    // PREMIUM — CHARGE ÉMOTIONNELLE (avec cycle)
+    // ─────────────────────────────────────────────
+
+    private val CHARGE_MATIN = listOf(
+        "Charge très basse, légèreté intérieure.",
+        "Charge faible, stable.",
+        "Charge modérée, gérable.",
+        "Charge neutre.",
+        "Charge lourde, pression interne.",
+        "Charge écrasante, poids immédiat."
+    )
+
+    private val CHARGE_JOUR = listOf(
+        "Charge très basse, respiration facile.",
+        "Charge faible, bonne tenue.",
+        "Charge modérée, gérable.",
+        "Charge neutre.",
+        "Charge lourde, effort constant.",
+        "Charge écrasante, poids dominant."
+    )
+
+    private val CHARGE_SOIR = listOf(
+        "Charge basse, relâche facile.",
+        "Charge faible.",
+        "Charge modérée.",
+        "Neutre.",
+        "Charge lourde, tension persistante.",
+        "Charge écrasante, saturation."
+    )
+
+    private val CHARGE_NUIT = listOf(
+        "Charge basse, nuit douce.",
+        "Charge faible, repos possible.",
+        "Charge modérée.",
+        "Neutre.",
+        "Charge lourde, agitation.",
+        "Charge écrasante, nuit difficile."
+    )
+
+    // ─────────────────────────────────────────────
+    // BUCKET % → INDEX (INVERSE)
+    // ─────────────────────────────────────────────
+
+    // ✅ 100% = meilleur (index 0)
+    // ✅ 0%   = pire    (dernier index)
+    private fun bucket(percent: Int, size: Int): Int {
+        val p = percent.coerceIn(0, 100)
+        val inverted = 100 - p
+        return (inverted * size) / 101
+    }
+
+    // ─────────────────────────────────────────────
+    // API PRINCIPALE
+    // ─────────────────────────────────────────────
+
+    fun phraseForSlider(sliderKey: String, phaseKey: String, percent: Int): String {
+        val s = normalizeSliderKey(sliderKey)
+        val p = normalizePhaseKey(phaseKey)
+
+        val list = when (s) {
+
+            // FREE
+            "humeur" -> when (p) {
+                "matin" -> HUMEUR_MATIN
+                "jour" -> HUMEUR_JOUR
+                "soir" -> HUMEUR_SOIR
+                else -> HUMEUR_NUIT
             }
-        }
 
-        // Track + Progress (scalés ensemble = respiration du trait)
-        Canvas(modifier = Modifier.matchParentSize()) {
-            val sw = strokeDp.toPx()
-            val p = percent.coerceIn(0, 100) / 100f
-            val sweep = 360f * p
-
-            // rotation minuscule (vivant) -> -1.2°..+1.2°
-            val microRot = (drift - 0.5f) * persona.microRotateDeg
-
-            withTransform({
-                // ✅ SCALE du cercle (c’est ça que tu voulais)
-                scale(scale = ringScale, pivot = center)
-                // Micro-rotation, vraiment subtile
-                rotate(degrees = microRot, pivot = center)
-            }) {
-                // Track
-                drawCircle(
-                    color = Color.White.copy(alpha = 0.10f),
-                    style = Stroke(width = sw, cap = StrokeCap.Round)
-                )
-
-                // Progress (NEON, pas “brume”)
-                val grad = Brush.linearGradient(
-                    colors = listOf(
-                        ringColor.copy(alpha = 0.98f),
-                        ringColor.copy(alpha = 0.70f)
-                    ),
-                    start = Offset(0f, 0f),
-                    end = Offset(size.width, size.height)
-                )
-
-                drawArc(
-                    brush = grad,
-                    startAngle = -90f,
-                    sweepAngle = sweep,
-                    useCenter = false,
-                    style = Stroke(width = sw, cap = StrokeCap.Round)
-                )
+            "energie" -> when (p) {
+                "matin" -> ENERGIE_MATIN
+                "jour" -> ENERGIE_JOUR
+                "soir" -> ENERGIE_SOIR
+                else -> ENERGIE_NUIT
             }
+
+            "corps" -> when (p) {
+                "matin" -> CORPS_MATIN
+                "jour" -> CORPS_JOUR
+                "soir" -> CORPS_SOIR
+                else -> CORPS_NUIT
+            }
+
+            "presence" -> when (p) {
+                "matin" -> PRESENCE_MATIN
+                "jour" -> PRESENCE_JOUR
+                "soir" -> PRESENCE_SOIR
+                else -> PRESENCE_NUIT
+            }
+
+            // PREMIUM — sans cycle
+            "emotion" -> EMOTION
+            "sommeil" -> SOMMEIL
+
+            // PREMIUM — avec cycle
+            "typejour" -> when (p) {
+                "matin" -> TYPEJOUR_MATIN
+                "jour" -> TYPEJOUR_JOUR
+                "soir" -> TYPEJOUR_SOIR
+                else -> TYPEJOUR_NUIT
+            }
+
+            "motifs" -> when (p) {
+                "matin" -> MOTIFS_MATIN
+                "jour" -> MOTIFS_JOUR
+                "soir" -> MOTIFS_SOIR
+                else -> MOTIFS_NUIT
+            }
+
+            "environ" -> when (p) {
+                "matin" -> ENVIRON_MATIN
+                "jour" -> ENVIRON_JOUR
+                "soir" -> ENVIRON_SOIR
+                else -> ENVIRON_NUIT
+            }
+
+            "clarte" -> when (p) {
+                "matin" -> CLARTE_MATIN
+                "jour" -> CLARTE_JOUR
+                "soir" -> CLARTE_SOIR
+                else -> CLARTE_NUIT
+            }
+
+            "charge" -> when (p) {
+                "matin" -> CHARGE_MATIN
+                "jour" -> CHARGE_JOUR
+                "soir" -> CHARGE_SOIR
+                else -> CHARGE_NUIT
+            }
+
+            else -> HUMEUR_JOUR // fallback safe
         }
 
-        // Texte : reste stable (pas besoin de respirer)
-        Text(
-            text = "${percent.coerceIn(0, 100)}%",
-            color = TURQUOISE.copy(alpha = 0.92f),
-            fontSize = 36.sp,
-            fontWeight = FontWeight.Bold
-        )
+        return list[bucket(percent, list.size)]
     }
-}
-
-private data class RingPersona(
-    val breatheMs: Int,
-    val driftMs: Int,
-    val ringScaleAmp: Float,     // ✅ amplitude de respiration du cercle
-    val glowBase: Float,
-    val glowAmp: Float,
-    val microRotateDeg: Float
-)
-
-private fun ringPersonaForKey(key: String): RingPersona {
-    val h = stableHash(key)
-
-    // Durées différentes (évite que tout respire ensemble)
-    val breatheMs = 1350 + (abs(h) % 1200)          // 1350..2549
-    val driftMs = 2400 + (abs(h / 7) % 2200)        // 2400..4599
-
-    // ✅ Respiration VISIBLE (à l’œil) du rond
-    // 0.028..0.050 environ
-    val ringScaleAmp = 0.028f + (abs(h % 100) / 100f) * 0.022f
-
-    // ✅ Brume très faible (juste un halo)
-    val glowBase = 0.010f + (abs(h % 50) / 50f) * 0.020f   // 0.01..0.03
-    val glowAmp  = 0.010f + (abs(h % 60) / 60f) * 0.030f   // 0.01..0.04
-
-    // Micro-rotation (0.8..1.6 degrés)
-    val microRotateDeg = 0.8f + (abs(h % 100) / 100f) * 0.8f
-
-    return RingPersona(
-        breatheMs = breatheMs,
-        driftMs = driftMs,
-        ringScaleAmp = ringScaleAmp,
-        glowBase = glowBase,
-        glowAmp = glowAmp,
-        microRotateDeg = microRotateDeg
-    )
-}
-
-private fun stableHash(s: String): Int {
-    var h = 1125899907
-    for (c in s) h = 31 * h + c.code
-    return h
 }

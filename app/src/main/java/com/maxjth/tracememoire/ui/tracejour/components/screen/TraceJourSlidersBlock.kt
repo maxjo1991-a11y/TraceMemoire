@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -63,8 +64,14 @@ private val SLIDERS_PREMIUM = listOf(
 private val ROW_SPACING = 18.dp
 private val SECTION_GAP = 26.dp
 
-private val CARD_RADIUS = 22.dp
-private val CARD_PADDING = 18.dp
+private val CARD_RADIUS = 24.dp
+
+// ✅ Carte plus “touch-friendly”
+private val CARD_MIN_HEIGHT = 86.dp
+private val CARD_PADDING = 20.dp
+
+// ✅ Rend la section plus large (moins de marge sur les côtés)
+private val OUTER_HORIZONTAL_PADDING = 14.dp
 
 // ✅ TEMP : force visuel Premium (remets false avant release)
 private const val DEBUG_FORCE_PREMIUM_VISUALS = true
@@ -86,7 +93,8 @@ fun TraceJourSlidersBlock(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp)
+            // ✅ plus large (avant: 24.dp)
+            .padding(horizontal = OUTER_HORIZONTAL_PADDING)
     ) {
 
         // ─────────────────────────────
@@ -105,8 +113,11 @@ fun TraceJourSlidersBlock(
                         userIsPremium = isPremium,
                         isPremiumSlider = false,
                         lockedLabel = null,
+
+                        // ✅ IMPORTANT : phaseKey DOIT être matin/jour/soir/nuit
                         phaseKey = cycleKey,
                         cycleKey = cycleKey,
+
                         seedBase = seedBase,
                         sliderKey = def.key,
 
@@ -148,8 +159,11 @@ fun TraceJourSlidersBlock(
                                 userIsPremium = isPremium,
                                 isPremiumSlider = true,
                                 lockedLabel = null,
+
+                                // ✅ IMPORTANT : phaseKey DOIT être matin/jour/soir/nuit
                                 phaseKey = cycleKey,
                                 cycleKey = cycleKey,
+
                                 seedBase = seedBase,
                                 sliderKey = def.key,
 
@@ -175,41 +189,74 @@ private fun CollapsibleSliderCard(
     onToggle: () -> Unit,
     content: @Composable () -> Unit
 ) {
+    val shape = RoundedCornerShape(CARD_RADIUS)
+
     Box(
         modifier = Modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {
-        // ✅ Glow arrière ultra subtil
+        // ✅ Glow “côtés” + halo arrière (plus visible qu’avant)
         Box(
             modifier = Modifier
                 .matchParentSize()
                 .background(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            MAUVE.copy(alpha = 0.14f),
-                            MAUVE.copy(alpha = 0.06f),
-                            MAUVE.copy(alpha = 0.00f)
+                            MAUVE.copy(alpha = 0.22f),
+                            MAUVE.copy(alpha = 0.10f),
+                            Color.Transparent
                         )
                     ),
-                    shape = RoundedCornerShape(CARD_RADIUS)
+                    shape = shape
+                )
+        )
+
+        // ✅ Glow latéral subtil (donne l’impression que les côtés illuminent)
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            TURQUOISE.copy(alpha = 0.10f),
+                            Color.Transparent,
+                            TURQUOISE.copy(alpha = 0.10f)
+                        )
+                    ),
+                    shape = shape
                 )
         )
 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                // ✅ carte un peu plus haute (meilleur pour gros doigts)
+                .heightIn(min = CARD_MIN_HEIGHT)
+                // ✅ Fond moins pâle
                 .background(
-                    color = BG_SOFT.copy(alpha = 0.18f),
-                    shape = RoundedCornerShape(CARD_RADIUS)
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            BG_SOFT.copy(alpha = 0.26f),
+                            BG_SOFT.copy(alpha = 0.18f)
+                        )
+                    ),
+                    shape = shape
                 )
+                // ✅ Bordure plus visible (1ère bordure)
+                .border(
+                    width = 1.5.dp,
+                    color = MAUVE.copy(alpha = 0.28f),
+                    shape = shape
+                )
+                // ✅ Bordure intérieure très subtile (effet “double ligne”)
+                .padding(1.dp)
                 .border(
                     width = 1.dp,
-                    color = MAUVE.copy(alpha = 0.18f),
-                    shape = RoundedCornerShape(CARD_RADIUS)
+                    color = TURQUOISE.copy(alpha = 0.12f),
+                    shape = shape
                 )
                 .padding(CARD_PADDING)
         ) {
-            // ✅ HEADER CLIQUABLE (safe : indication=null)
             val interaction = remember { MutableInteractionSource() }
 
             Row(
@@ -219,33 +266,34 @@ private fun CollapsibleSliderCard(
                         interactionSource = interaction,
                         indication = null
                     ) { onToggle() }
-                    .padding(vertical = 6.dp),
+                    // ✅ header plus haut (hitbox + confort)
+                    .padding(vertical = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = title,
-                    color = WHITE_SOFT.copy(alpha = 0.92f),
+                    color = WHITE_SOFT.copy(alpha = 0.94f),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.SemiBold
                 )
 
-                // ✅ indicateur (pastille)
+                // ✅ indicateur plus visible
                 Box(
                     modifier = Modifier
-                        .size(12.dp)
+                        .size(14.dp)
                         .clip(CircleShape)
-                        .background(if (isOpen) TURQUOISE.copy(alpha = 0.85f) else Color.Transparent)
+                        .background(if (isOpen) TURQUOISE.copy(alpha = 0.90f) else Color.Transparent)
                         .border(
                             width = 1.dp,
-                            color = TURQUOISE.copy(alpha = 0.55f),
+                            color = TURQUOISE.copy(alpha = 0.65f),
                             shape = CircleShape
                         )
                 )
             }
 
             if (isOpen) {
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
                 content()
             }
         }
