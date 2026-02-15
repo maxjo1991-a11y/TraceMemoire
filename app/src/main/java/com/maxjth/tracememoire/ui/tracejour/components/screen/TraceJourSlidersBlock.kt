@@ -12,18 +12,19 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,12 +38,10 @@ import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
 import com.maxjth.tracememoire.ui.tracejour.components.screen.depth.TraceDepthSection
+import com.maxjth.tracememoire.ui.tracejour.components.screen.notes.TraceNoteBlock
 import com.maxjth.tracememoire.ui.tracejour.components.screen.slider.TraceMoodSliderRow
 
-private data class SliderDef(
-    val key: String,
-    val title: String
-)
+private data class SliderDef(val key: String, val title: String)
 
 private val SLIDERS_FREE = listOf(
     SliderDef("humeur", "Humeur globale"),
@@ -63,14 +62,9 @@ private val SLIDERS_PREMIUM = listOf(
 
 private val ROW_SPACING = 18.dp
 private val SECTION_GAP = 26.dp
-
 private val CARD_RADIUS = 24.dp
-
-// ✅ Carte plus “touch-friendly”
 private val CARD_MIN_HEIGHT = 86.dp
 private val CARD_PADDING = 20.dp
-
-// ✅ Rend la section plus large (moins de marge sur les côtés)
 private val OUTER_HORIZONTAL_PADDING = 14.dp
 
 // ✅ TEMP : force visuel Premium (remets false avant release)
@@ -83,17 +77,31 @@ fun TraceJourSlidersBlock(
     cycleKey: String,
     seedBase: String,
     modifier: Modifier = Modifier,
-    showPremiumLockedRows: Boolean = true
-) {
-    // ✅ Visuel premium (section, glow, etc.)
-    val premiumVisualUnlocked = isPremium || DEBUG_FORCE_PREMIUM_VISUALS
+    showPremiumLockedRows: Boolean = true,
 
-    // ✅ IMPORTANT : premium "effectif" pour les notes Premium (589)
-    // -> Free reste Free (200), Premium sliders peuvent tester 589 en debug
+    // ✅ NOUVEAUX PARAMS (pour ton store + persistance)
+    onDirty: (() -> Unit)? = null,
+    externalSliderMap: MutableMap<String, Int>? = null,
+    externalNoteMap: MutableMap<String, String>? = null,
+    externalCapturedMap: MutableMap<String, Boolean>? = null,
+    onSliderValue: ((String, Int) -> Unit)? = null,
+    onNoteValue: ((String, String) -> Unit)? = null,
+    onCaptured: ((String) -> Unit)? = null
+) {
+    val premiumVisualUnlocked = isPremium || DEBUG_FORCE_PREMIUM_VISUALS
     val premiumEffectiveForPremiumNotes = isPremium || DEBUG_FORCE_PREMIUM_VISUALS
 
-    // ✅ Une seule carte ouverte à la fois
     var openKey by remember { mutableStateOf("humeur") }
+
+    // ✅ si tu passes des maps externes, on les utilise.
+    val capturedMap = externalCapturedMap ?: remember { mutableStateMapOf<String, Boolean>() }
+    val noteMap = externalNoteMap ?: remember { mutableStateMapOf<String, String>() }
+
+    // ✅ SLIDERS: si map externe absente, fallback local
+    val sliderMap = externalSliderMap ?: remember { mutableStateMapOf<String, Int>() }
+
+    // accent local (pas besoin de persister)
+    val accentMap = remember { mutableStateMapOf<String, Color>() }
 
     Column(
         modifier = modifier
@@ -101,86 +109,155 @@ fun TraceJourSlidersBlock(
             .padding(horizontal = OUTER_HORIZONTAL_PADDING)
     ) {
 
-        // ─────────────────────────────
-        // ✅ GRATUIT (DOIT RESTER 200)
-        // ─────────────────────────────
+        // ───────── FREE ─────────
         SLIDERS_FREE.forEachIndexed { index, def ->
+            val captured = capturedMap[def.key] == true
+            val note = noteMap[def.key] ?: ""
+            val accent = accentMap[def.key] ?: TURQUOISE
+
+            // ✅ valeur persistée du store (0..100)
+            val persistedPct = sliderMap[def.key] ?: 50
+
             key(def.key) {
                 CollapsibleSliderCard(
                     title = def.title,
                     isOpen = openKey == def.key,
+                    captured = captured,
                     onToggle = { openKey = if (openKey == def.key) "" else def.key }
                 ) {
                     TraceMoodSliderRow(
                         title = def.title,
                         enabled = enabled,
-
-                        // ✅ Free reste basé sur vrai premium
                         userIsPremium = isPremium,
-
                         isPremiumSlider = false,
                         lockedLabel = null,
-
                         phaseKey = cycleKey,
                         cycleKey = cycleKey,
-
                         seedBase = seedBase,
                         sliderKey = def.key,
+                        showTitle = false,
 
-                        showTitle = false
+                        // ✅ cercle/slider se recalent sur store
+                        externalPercent = persistedPct,
+                        onPercentChanged = { newPct ->
+                            sliderMap[def.key] = newPct
+                            onSliderValue?.invoke(def.key, newPct)
+                            onDirty?.invoke()
+                        },
+
+                        onCapturedChanged = { hasCaptured ->
+                            if (hasCaptured) {
+                                capturedMap[def.key] = true
+                                onCaptured?.invoke(def.key)
+                                onDirty?.invoke()
+                            }
+                        },
+                        onAccentChanged = { c ->
+                            accentMap[def.key] = c
+                        }
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    TraceNoteBlock(
+                        note = note,
+                        onNoteChange = { newText ->
+                            noteMap[def.key] = newText
+                            onNoteValue?.invoke(def.key, newText)
+                            onDirty?.invoke()
+                        },
+                        enabled = enabled,
+                        accent = accent,
+                        userIsPremium = isPremium,
+                        title = "Trace écrite",
+                        placeholder = "Écrire une note…",
+                        lockedLabel = "Espace personnel"
                     )
                 }
             }
 
             if (index != SLIDERS_FREE.lastIndex) {
-                Spacer(modifier = Modifier.height(ROW_SPACING))
+                Spacer(Modifier.height(ROW_SPACING))
             }
         }
 
-        // ─────────────────────────────
-        // ✅ PREMIUM (peut tester 589 en debug)
-        // ─────────────────────────────
+        // ───────── PREMIUM ─────────
         if (isPremium || showPremiumLockedRows) {
-            Spacer(modifier = Modifier.height(SECTION_GAP))
+            Spacer(Modifier.height(SECTION_GAP))
 
             TraceDepthSection(
                 isPremium = premiumVisualUnlocked,
                 modifier = Modifier.fillMaxWidth()
             ) { contentEnabled ->
 
-                // ✅ si debug => contenu autorisé
                 val contentOk = if (premiumVisualUnlocked) true else contentEnabled
 
                 SLIDERS_PREMIUM.forEachIndexed { index, def ->
+                    val captured = capturedMap[def.key] == true
+                    val note = noteMap[def.key] ?: ""
+                    val accent = accentMap[def.key] ?: TURQUOISE
+
+                    val persistedPct = sliderMap[def.key] ?: 50
+
                     key(def.key) {
                         CollapsibleSliderCard(
                             title = def.title,
                             isOpen = openKey == def.key,
+                            captured = captured,
                             onToggle = { openKey = if (openKey == def.key) "" else def.key }
                         ) {
                             TraceMoodSliderRow(
                                 title = def.title,
                                 enabled = enabled && contentOk,
-
-                                // ✅ PREMIUM sliders: 589 si debug OU vrai premium
                                 userIsPremium = premiumEffectiveForPremiumNotes,
-
                                 isPremiumSlider = true,
                                 lockedLabel = null,
-
                                 phaseKey = cycleKey,
                                 cycleKey = cycleKey,
-
                                 seedBase = seedBase,
                                 sliderKey = def.key,
+                                showTitle = false,
 
-                                showTitle = false
+                                externalPercent = persistedPct,
+                                onPercentChanged = { newPct ->
+                                    sliderMap[def.key] = newPct
+                                    onSliderValue?.invoke(def.key, newPct)
+                                    onDirty?.invoke()
+                                },
+
+                                onCapturedChanged = { hasCaptured ->
+                                    if (hasCaptured) {
+                                        capturedMap[def.key] = true
+                                        onCaptured?.invoke(def.key)
+                                        onDirty?.invoke()
+                                    }
+                                },
+                                onAccentChanged = { c ->
+                                    accentMap[def.key] = c
+                                }
+                            )
+
+                            Spacer(Modifier.height(12.dp))
+
+                            TraceNoteBlock(
+                                note = note,
+                                onNoteChange = { newText ->
+                                    noteMap[def.key] = newText
+                                    onNoteValue?.invoke(def.key, newText)
+                                    onDirty?.invoke()
+                                },
+                                enabled = enabled && contentOk,
+                                accent = accent,
+                                userIsPremium = premiumEffectiveForPremiumNotes,
+                                title = "Trace écrite",
+                                placeholder = "Écrire une note…",
+                                lockedLabel = "Espace personnel"
                             )
                         }
                     }
 
                     if (index != SLIDERS_PREMIUM.lastIndex) {
-                        Spacer(modifier = Modifier.height(ROW_SPACING))
+                        Spacer(Modifier.height(ROW_SPACING))
                     }
                 }
             }
@@ -192,10 +269,12 @@ fun TraceJourSlidersBlock(
 private fun CollapsibleSliderCard(
     title: String,
     isOpen: Boolean,
+    captured: Boolean,
     onToggle: () -> Unit,
     content: @Composable () -> Unit
 ) {
     val shape = RoundedCornerShape(CARD_RADIUS)
+    val interaction = remember { MutableInteractionSource() }
 
     Box(
         modifier = Modifier.fillMaxWidth(),
@@ -244,24 +323,15 @@ private fun CollapsibleSliderCard(
                     ),
                     shape = shape
                 )
-                .border(
-                    width = 1.5.dp,
-                    color = MAUVE.copy(alpha = 0.28f),
-                    shape = shape
-                )
+                .border(1.5.dp, MAUVE.copy(alpha = 0.28f), shape)
                 .padding(1.dp)
-                .border(
-                    width = 1.dp,
-                    color = TURQUOISE.copy(alpha = 0.12f),
-                    shape = shape
-                )
+                .border(1.dp, TURQUOISE.copy(alpha = 0.12f), shape)
                 .padding(CARD_PADDING)
         ) {
-            val interaction = remember { MutableInteractionSource() }
-
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
                     .clickable(
                         interactionSource = interaction,
                         indication = null
@@ -270,18 +340,45 @@ private fun CollapsibleSliderCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = title,
-                    color = WHITE_SOFT.copy(alpha = 0.94f),
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Column {
+                    Text(
+                        text = title,
+                        color = WHITE_SOFT.copy(alpha = 0.94f),
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    if (captured) {
+                        Spacer(Modifier.height(6.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(7.dp)
+                                    .clip(CircleShape)
+                                    .background(MAUVE.copy(alpha = 0.95f))
+                            )
+                            Spacer(Modifier.size(8.dp))
+                            Text(
+                                text = "Mémoire créée",
+                                color = MAUVE.copy(alpha = 0.90f),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
 
                 Box(
                     modifier = Modifier
                         .size(14.dp)
                         .clip(CircleShape)
-                        .background(if (isOpen) TURQUOISE.copy(alpha = 0.90f) else Color.Transparent)
+                        .background(
+                            when {
+                                isOpen -> TURQUOISE.copy(alpha = 0.90f)
+                                captured -> MAUVE.copy(alpha = 0.28f)
+                                else -> Color.Transparent
+                            }
+                        )
                         .border(
                             width = 1.dp,
                             color = TURQUOISE.copy(alpha = 0.65f),

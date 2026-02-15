@@ -18,7 +18,9 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -36,14 +38,11 @@ import com.maxjth.tracememoire.ui.theme.BG_SOFT
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
 import com.maxjth.tracememoire.ui.tracejour.components.ring.PercentRing
 import com.maxjth.tracememoire.ui.tracejour.components.ring.accentForPercent
-import com.maxjth.tracememoire.ui.tracejour.components.screen.notes.TraceNoteBlock
 import com.maxjth.tracememoire.ui.tracejour.components.screen.phrases.TracePhrasesData
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private val VIOLET_POSITIVE = Color(0xFF8A5CFF)
-
-private const val NOTE_MAX_FREE = 200
-private const val NOTE_MAX_PREMIUM = 589
 
 @Composable
 fun TraceMoodSliderRow(
@@ -56,7 +55,13 @@ fun TraceMoodSliderRow(
     cycleKey: String,
     seedBase: String,
     sliderKey: String,
-    showTitle: Boolean = true
+    showTitle: Boolean = true,
+    onCapturedChanged: (Boolean) -> Unit = {},
+    onAccentChanged: (Color) -> Unit = {},
+
+    // ✅ NOUVEAU: valeur persistée venant du store (0..100)
+    externalPercent: Int? = null,
+    onPercentChanged: ((Int) -> Unit)? = null
 ) {
     val locked = isPremiumSlider && !userIsPremium
 
@@ -64,33 +69,41 @@ fun TraceMoodSliderRow(
         "$seedBase|$cycleKey|$sliderKey"
     }
 
-    // ✅ Slider state (saveable)
-    var value by rememberSaveable(stateKey) { mutableStateOf(0.5f) }
+    // Valeur UI (0..1)
+    var value by rememberSaveable(stateKey) { mutableFloatStateOf(0.5f) }
+    var capturedLocal by rememberSaveable(stateKey + "|captured") { mutableStateOf(false) }
+
+    val interactionSource = remember { MutableInteractionSource() }
+    val isDragging by interactionSource.collectIsDraggedAsState()
+
+    // ✅ SYNC: quand le store charge une valeur persistée, on met à jour le slider + cercle
+    LaunchedEffect(externalPercent) {
+        val p = externalPercent ?: return@LaunchedEffect
+        if (!isDragging) {
+            val v = (p.coerceIn(0, 100) / 100f).coerceIn(0f, 1f)
+            value = v
+            if (!capturedLocal && p != 50) {
+                capturedLocal = true
+                onCapturedChanged(true)
+            }
+        }
+    }
 
     val pct = (value * 100f).roundToInt().coerceIn(0, 100)
     val sliderEnabled = enabled && !locked
 
-    // ✅ NOTE state (saveable) — 1 note par slider
-    val noteKey = remember(stateKey) { "$stateKey|note" }
-    var noteText by rememberSaveable(noteKey) { mutableStateOf("") }
-
-    // ✅ DRAG FIABLE
-    val interactionSource = remember { MutableInteractionSource() }
-    val isDragging by interactionSource.collectIsDraggedAsState()
-
-    // ✅ Accent basé sur %
     val baseAccent = remember(pct) { accentForPercent(pct) }
-
-    // ✅ Petit shift pendant drag (subtil)
     val uiAccent = remember(baseAccent, isDragging) {
         if (isDragging) lerp(baseAccent, VIOLET_POSITIVE, 0.16f) else baseAccent
     }
+
+    // ✅ Remonte l’accent au parent (pour colorer TraceNoteBlock)
+    LaunchedEffect(uiAccent) { onAccentChanged(uiAccent) }
 
     val borderColor =
         if (isPremiumSlider) uiAccent.copy(alpha = 0.26f)
         else uiAccent.copy(alpha = 0.18f)
 
-    // ✅ Phrase
     val phrase = remember(pct, sliderKey, phaseKey) {
         TracePhrasesData.phraseForSlider(
             sliderKey = sliderKey,
@@ -147,7 +160,6 @@ fun TraceMoodSliderRow(
 
         Spacer(Modifier.height(12.dp))
 
-        // ✅ Slider
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -158,7 +170,19 @@ fun TraceMoodSliderRow(
         ) {
             Slider(
                 value = value,
-                onValueChange = { if (sliderEnabled) value = it.coerceIn(0f, 1f) },
+                onValueChange = { newValue ->
+                    if (!sliderEnabled) return@Slider
+                    val v = newValue.coerceIn(0f, 1f)
+                    value = v
+
+                    val newPct = (v * 100f).roundToInt().coerceIn(0, 100)
+                    onPercentChanged?.invoke(newPct)
+
+                    if (!capturedLocal && abs(v - 0.5f) >= 0.01f) {
+                        capturedLocal = true
+                        onCapturedChanged(true)
+                    }
+                },
                 enabled = sliderEnabled,
                 valueRange = 0f..1f,
                 interactionSource = interactionSource,
@@ -169,18 +193,6 @@ fun TraceMoodSliderRow(
                 )
             )
         }
-
-        // ✅ NOTE — directement sous le slider
-        Spacer(Modifier.height(12.dp))
-        TraceNoteBlock(
-            note = noteText,
-            onNoteChange = { txt -> noteText = txt }, // limite gérée dans TraceNoteBlock
-            enabled = sliderEnabled,
-            accent = uiAccent,
-            userIsPremium = userIsPremium,     // ✅ IMPORTANT
-            maxCharsFree = NOTE_MAX_FREE,      // ✅ 200
-            maxCharsPremium = NOTE_MAX_PREMIUM // ✅ 589
-        )
 
         if (locked) {
             Spacer(Modifier.height(10.dp))
