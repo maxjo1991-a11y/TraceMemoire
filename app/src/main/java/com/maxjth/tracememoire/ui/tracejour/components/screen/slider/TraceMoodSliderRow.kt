@@ -1,4 +1,3 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/slider/TraceMoodSliderRow.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen.slider
 
 import androidx.compose.foundation.background
@@ -25,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -34,10 +34,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.maxjth.tracememoire.ui.theme.BG_SOFT
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
 import com.maxjth.tracememoire.ui.tracejour.components.ring.PercentRing
 import com.maxjth.tracememoire.ui.tracejour.components.ring.accentForPercent
+import com.maxjth.tracememoire.ui.tracejour.components.screen.dots.TraceDotState
+import com.maxjth.tracememoire.ui.tracejour.components.screen.dots.TraceStatusDot
+import com.maxjth.tracememoire.ui.tracejour.components.screen.header.TraceMemoryStamp
 import com.maxjth.tracememoire.ui.tracejour.components.screen.phrases.TracePhrasesData
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -59,11 +61,24 @@ fun TraceMoodSliderRow(
     onCapturedChanged: (Boolean) -> Unit = {},
     onAccentChanged: (Color) -> Unit = {},
 
-    // ✅ NOUVEAU: valeur persistée venant du store (0..100)
+    // ✅ valeur persistée venant du store (0..100)
     externalPercent: Int? = null,
-    onPercentChanged: ((Int) -> Unit)? = null
+    onPercentChanged: ((Int) -> Unit)? = null,
+
+    // ✅ NOUVEAU (store) : affichage + lock one-shot
+    externalCaptured: Boolean? = null,
+    externalCreatedAtMillis: Long? = null,
+    externalLocked: Boolean? = null,
+    onLock: (() -> Unit)? = null
 ) {
-    val locked = isPremiumSlider && !userIsPremium
+    // 🔒 lock Premium (comme avant)
+    val premiumLocked = isPremiumSlider && !userIsPremium
+
+    // 🔒 lock “one-shot” par carte (store)
+    val cycleLocked = (externalLocked == true)
+
+    // 🔒 lock final
+    val fullyLocked = premiumLocked || cycleLocked
 
     val stateKey = remember(seedBase, cycleKey, sliderKey) {
         "$seedBase|$cycleKey|$sliderKey"
@@ -71,18 +86,30 @@ fun TraceMoodSliderRow(
 
     // Valeur UI (0..1)
     var value by rememberSaveable(stateKey) { mutableFloatStateOf(0.5f) }
+
+    // captured local (fallback) — mais on préfère externalCaptured si fourni
     var capturedLocal by rememberSaveable(stateKey + "|captured") { mutableStateOf(false) }
 
     val interactionSource = remember { MutableInteractionSource() }
     val isDragging by interactionSource.collectIsDraggedAsState()
 
-    // ✅ SYNC: quand le store charge une valeur persistée, on met à jour le slider + cercle
+    // ✅ SYNC captured (store -> UI)
+    LaunchedEffect(externalCaptured) {
+        if (externalCaptured != null) {
+            capturedLocal = externalCaptured == true
+        }
+    }
+
+    // ✅ SYNC percent (store -> UI)
     LaunchedEffect(externalPercent) {
         val p = externalPercent ?: return@LaunchedEffect
         if (!isDragging) {
             val v = (p.coerceIn(0, 100) / 100f).coerceIn(0f, 1f)
             value = v
-            if (!capturedLocal && p != 50) {
+
+            // Si le store a déjà capturé, capturedLocal sera synchronisé via externalCaptured.
+            // Sinon on garde la logique locale (si p != 50) pour un fallback.
+            if (externalCaptured == null && !capturedLocal && p != 50) {
                 capturedLocal = true
                 onCapturedChanged(true)
             }
@@ -90,18 +117,18 @@ fun TraceMoodSliderRow(
     }
 
     val pct = (value * 100f).roundToInt().coerceIn(0, 100)
-    val sliderEnabled = enabled && !locked
+    val sliderEnabled = enabled && !fullyLocked
 
     val baseAccent = remember(pct) { accentForPercent(pct) }
     val uiAccent = remember(baseAccent, isDragging) {
-        if (isDragging) lerp(baseAccent, VIOLET_POSITIVE, 0.16f) else baseAccent
+        if (isDragging) lerp(baseAccent, VIOLET_POSITIVE, 0.30f) else baseAccent
     }
 
-    // ✅ Remonte l’accent au parent (pour colorer TraceNoteBlock)
+    // ✅ Remonte l’accent au parent
     LaunchedEffect(uiAccent) { onAccentChanged(uiAccent) }
 
     val borderColor =
-        if (isPremiumSlider) uiAccent.copy(alpha = 0.26f)
+        if (isPremiumSlider) uiAccent.copy(alpha = 0.0f)
         else uiAccent.copy(alpha = 0.18f)
 
     val phrase = remember(pct, sliderKey, phaseKey) {
@@ -112,24 +139,50 @@ fun TraceMoodSliderRow(
         )
     }
 
+    // ✅ DOT STATE
+    val dotState = when {
+        premiumLocked -> TraceDotState.DISABLED
+        capturedLocal -> TraceDotState.ON
+        else -> TraceDotState.OFF
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(BG_SOFT.copy(alpha = 0.10f))
+            .background(Color.Black.copy(alpha = 0.14f))
             .border(1.dp, borderColor, RoundedCornerShape(18.dp))
             .padding(14.dp)
     ) {
 
         if (showTitle) {
-            Text(
-                text = title,
-                color = WHITE_SOFT.copy(alpha = 0.92f),
-                fontSize = 20.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = title,
+                    color = WHITE_SOFT.copy(alpha = 0.92f),
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+
+                TraceStatusDot(state = dotState)
+            }
+
+            // ✅ STAMP (Mémoire créée + date/heure + Cycle verrouillé + chip Verrouiller)
+            Spacer(Modifier.height(8.dp))
+            TraceMemoryStamp(
+                captured = capturedLocal,
+                createdAtMillis = externalCreatedAtMillis,
+                locked = cycleLocked,
+                onLock = if (!premiumLocked && !cycleLocked) onLock else null,
+                showLockChip = (!premiumLocked && !cycleLocked)
             )
+
             Spacer(Modifier.height(10.dp))
         }
 
@@ -145,7 +198,7 @@ fun TraceMoodSliderRow(
             )
         }
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(35.dp))
 
         Text(
             text = phrase,
@@ -164,14 +217,15 @@ fun TraceMoodSliderRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(999.dp))
-                .background(Color.Black.copy(alpha = 0.14f))
-                .border(1.dp, uiAccent.copy(alpha = 0.20f), RoundedCornerShape(999.dp))
-                .padding(horizontal = 14.dp, vertical = 10.dp)
+                .background(Color.Black.copy(alpha = 0.12f))
+                .border(1.6.dp, uiAccent.copy(alpha = 0.20f), RoundedCornerShape(10.dp))
+                .padding(horizontal = 6.dp, vertical = 7.dp)
         ) {
             Slider(
                 value = value,
                 onValueChange = { newValue ->
                     if (!sliderEnabled) return@Slider
+
                     val v = newValue.coerceIn(0f, 1f)
                     value = v
 
@@ -194,7 +248,7 @@ fun TraceMoodSliderRow(
             )
         }
 
-        if (locked) {
+        if (premiumLocked) {
             Spacer(Modifier.height(10.dp))
             Text(
                 text = lockedLabel ?: "Débloqué avec Premium.",

@@ -1,4 +1,3 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/logic/TraceCycleClock.kt
 package com.maxjth.tracememoire.ui.tracejour.logic
 
 import java.time.LocalDateTime
@@ -8,11 +7,11 @@ enum class TraceCycle { NUIT, MATIN, JOUR, SOIR }
 
 object TraceCycleClock {
 
-    // ✅ Horaires verrouillés
     private val MATIN_START: LocalTime = LocalTime.of(5, 0)
     private val JOUR_START: LocalTime  = LocalTime.of(12, 0)
     private val SOIR_START: LocalTime  = LocalTime.of(18, 0)
-    // Nuit = 00:00 -> 04:59 (donc “avant MATIN_START”)
+
+    fun now(): LocalDateTime = LocalDateTime.now()
 
     fun currentCycle(now: LocalTime = LocalTime.now()): TraceCycle {
         return when {
@@ -23,7 +22,9 @@ object TraceCycleClock {
         }
     }
 
-    fun currentCycle(now: LocalDateTime): TraceCycle = currentCycle(now.toLocalTime())
+    fun cycleForDateTime(now: LocalDateTime = LocalDateTime.now()): TraceCycle {
+        return currentCycle(now.toLocalTime())
+    }
 
     fun subtitleForCycle(cycle: TraceCycle): String = when (cycle) {
         TraceCycle.NUIT  -> "Nuit"
@@ -32,7 +33,24 @@ object TraceCycleClock {
         TraceCycle.SOIR  -> "Soir"
     }
 
-    // Cycles passés = verrouillés
+    fun formatStamp(dt: LocalDateTime): String {
+        val day = dt.dayOfMonth
+        val month = dt.month.name.lowercase().replaceFirstChar { it.uppercase() }
+        val year = dt.year
+
+        val hour = dt.hour
+        val minute = dt.minute.toString().padStart(2, '0')
+
+        val ampm = if (hour < 12) "AM" else "PM"
+        val displayHour = when {
+            hour == 0 -> 12
+            hour > 12 -> hour - 12
+            else -> hour
+        }
+
+        return "$day $month $year $displayHour:$minute $ampm"
+    }
+
     private val ORDER = listOf(TraceCycle.NUIT, TraceCycle.MATIN, TraceCycle.JOUR, TraceCycle.SOIR)
 
     fun lockedCycles(current: TraceCycle): Set<TraceCycle> {

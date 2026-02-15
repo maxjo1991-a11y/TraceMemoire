@@ -1,4 +1,3 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/save/TraceSaveStore.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen.save
 
 import android.content.Context
@@ -20,6 +19,14 @@ class TraceSaveStore {
     val noteMap = mutableStateMapOf<String, String>()      // "humeur" -> "..."
     val capturedMap = mutableStateMapOf<String, Boolean>() // "humeur" -> true
 
+    // ✅ NOUVEAU : timestamp de création par carte (quand captured devient true)
+    // "humeur" -> epochMillis
+    val createdAtMap = mutableStateMapOf<String, Long>()
+
+    // ✅ NOUVEAU : verrouillage par carte (bouton "Verrouiller le cycle")
+    // "humeur" -> true/false
+    val lockedMap = mutableStateMapOf<String, Boolean>()
+
     fun setCanSave(enabled: Boolean) {
         canSaveEnabled.value = enabled
     }
@@ -36,6 +43,25 @@ class TraceSaveStore {
         state.value = state.value.savedNow(LocalDateTime.now(), cycleKey)
     }
 
+    // ✅ NOUVEAU : on marque "mémoire créée" avec une date si absent
+    fun markCaptured(key: String, nowMillis: Long = System.currentTimeMillis()) {
+        capturedMap[key] = true
+        if ((createdAtMap[key] ?: 0L) <= 0L) {
+            createdAtMap[key] = nowMillis
+        }
+        // Si tu veux : dès qu’une mémoire est créée on “dirty”
+        markDirty()
+    }
+
+    // ✅ NOUVEAU : verrouiller une carte (et on ne la retouche plus après)
+    fun lockCycle(key: String) {
+        lockedMap[key] = true
+        markDirty()
+    }
+
+    fun isLocked(key: String): Boolean = lockedMap[key] == true
+    fun createdAtMillis(key: String): Long? = createdAtMap[key]?.takeIf { it > 0L }
+
     // ─────────────────────────────────────────────
     // PERSISTENCE
     // ─────────────────────────────────────────────
@@ -44,6 +70,10 @@ class TraceSaveStore {
             sliderMap[k] = TraceJourPrefs.getInt(context, seedBase, cycleKey, "slider_$k", 50)
             noteMap[k] = TraceJourPrefs.getString(context, seedBase, cycleKey, "note_$k", "")
             capturedMap[k] = TraceJourPrefs.getBool(context, seedBase, cycleKey, "cap_$k", false)
+
+            // ✅ NOUVEAU : charge createdAt + locked
+            createdAtMap[k] = TraceJourPrefs.getLong(context, seedBase, cycleKey, "createdAt_$k", 0L)
+            lockedMap[k] = TraceJourPrefs.getBool(context, seedBase, cycleKey, "locked_$k", false)
         }
 
         val lastSavedEpoch = TraceJourPrefs.getLong(context, seedBase, cycleKey, "lastSavedEpoch", 0L)
@@ -74,6 +104,14 @@ class TraceSaveStore {
         }
         capturedMap.forEach { (k, v) ->
             TraceJourPrefs.putBool(context, seedBase, cycleKey, "cap_$k", v)
+        }
+
+        // ✅ NOUVEAU : persist createdAt + locked
+        createdAtMap.forEach { (k, v) ->
+            TraceJourPrefs.putLong(context, seedBase, cycleKey, "createdAt_$k", v)
+        }
+        lockedMap.forEach { (k, v) ->
+            TraceJourPrefs.putBool(context, seedBase, cycleKey, "locked_$k", v)
         }
 
         val st = state.value

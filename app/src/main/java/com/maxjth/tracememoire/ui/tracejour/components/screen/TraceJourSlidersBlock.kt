@@ -1,4 +1,3 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/TraceJourSlidersBlock.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen
 
 import androidx.compose.foundation.background
@@ -38,6 +37,9 @@ import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
 import com.maxjth.tracememoire.ui.tracejour.components.screen.depth.TraceDepthSection
+import com.maxjth.tracememoire.ui.tracejour.components.screen.dots.TraceDotState
+import com.maxjth.tracememoire.ui.tracejour.components.screen.dots.TraceStatusDot
+import com.maxjth.tracememoire.ui.tracejour.components.screen.header.TraceMemoryStamp
 import com.maxjth.tracememoire.ui.tracejour.components.screen.notes.TraceNoteBlock
 import com.maxjth.tracememoire.ui.tracejour.components.screen.slider.TraceMoodSliderRow
 
@@ -79,26 +81,38 @@ fun TraceJourSlidersBlock(
     modifier: Modifier = Modifier,
     showPremiumLockedRows: Boolean = true,
 
-    // ✅ NOUVEAUX PARAMS (pour ton store + persistance)
+    // ✅ store + persistance
     onDirty: (() -> Unit)? = null,
     externalSliderMap: MutableMap<String, Int>? = null,
     externalNoteMap: MutableMap<String, String>? = null,
     externalCapturedMap: MutableMap<String, Boolean>? = null,
+
+    // ✅ NOUVEAU : maps pour date/heure + verrouillage
+    externalCreatedAtMap: MutableMap<String, Long>? = null,
+    externalLockedMap: MutableMap<String, Boolean>? = null,
+
     onSliderValue: ((String, Int) -> Unit)? = null,
     onNoteValue: ((String, String) -> Unit)? = null,
-    onCaptured: ((String) -> Unit)? = null
+
+    // ✅ IMPORTANT : onCaptured doit être branché à saveStore.markCaptured(key)
+    onCaptured: ((String) -> Unit)? = null,
+
+    // ✅ NOUVEAU : verrouiller une carte
+    onLock: ((String) -> Unit)? = null
 ) {
     val premiumVisualUnlocked = isPremium || DEBUG_FORCE_PREMIUM_VISUALS
     val premiumEffectiveForPremiumNotes = isPremium || DEBUG_FORCE_PREMIUM_VISUALS
 
     var openKey by remember { mutableStateOf("humeur") }
 
-    // ✅ si tu passes des maps externes, on les utilise.
+    // ✅ maps externes si dispo
     val capturedMap = externalCapturedMap ?: remember { mutableStateMapOf<String, Boolean>() }
     val noteMap = externalNoteMap ?: remember { mutableStateMapOf<String, String>() }
-
-    // ✅ SLIDERS: si map externe absente, fallback local
     val sliderMap = externalSliderMap ?: remember { mutableStateMapOf<String, Int>() }
+
+    // ✅ NOUVEAU
+    val createdAtMap = externalCreatedAtMap ?: remember { mutableStateMapOf<String, Long>() }
+    val lockedMap = externalLockedMap ?: remember { mutableStateMapOf<String, Boolean>() }
 
     // accent local (pas besoin de persister)
     val accentMap = remember { mutableStateMapOf<String, Color>() }
@@ -111,23 +125,39 @@ fun TraceJourSlidersBlock(
 
         // ───────── FREE ─────────
         SLIDERS_FREE.forEachIndexed { index, def ->
+
             val captured = capturedMap[def.key] == true
             val note = noteMap[def.key] ?: ""
             val accent = accentMap[def.key] ?: TURQUOISE
-
-            // ✅ valeur persistée du store (0..100)
             val persistedPct = sliderMap[def.key] ?: 50
+
+            val createdAtMillis: Long? =
+                createdAtMap[def.key]?.takeIf { it > 0L }
+
+            val isLockedCard: Boolean =
+                lockedMap[def.key] == true
+
+            // ✅ si carte verrouillée => plus modifiable
+            val enabledCard = enabled && !isLockedCard
 
             key(def.key) {
                 CollapsibleSliderCard(
                     title = def.title,
                     isOpen = openKey == def.key,
                     captured = captured,
+                    createdAtMillis = createdAtMillis,
+                    locked = isLockedCard,
+                    enabledForDot = enabled,
+                    onLockClick = {
+                        // ✅ verrouillage one-shot
+                        onLock?.invoke(def.key)
+                        onDirty?.invoke()
+                    },
                     onToggle = { openKey = if (openKey == def.key) "" else def.key }
                 ) {
                     TraceMoodSliderRow(
                         title = def.title,
-                        enabled = enabled,
+                        enabled = enabledCard,
                         userIsPremium = isPremium,
                         isPremiumSlider = false,
                         lockedLabel = null,
@@ -137,9 +167,9 @@ fun TraceJourSlidersBlock(
                         sliderKey = def.key,
                         showTitle = false,
 
-                        // ✅ cercle/slider se recalent sur store
                         externalPercent = persistedPct,
                         onPercentChanged = { newPct ->
+                            if (!enabledCard) return@TraceMoodSliderRow
                             sliderMap[def.key] = newPct
                             onSliderValue?.invoke(def.key, newPct)
                             onDirty?.invoke()
@@ -148,13 +178,14 @@ fun TraceJourSlidersBlock(
                         onCapturedChanged = { hasCaptured ->
                             if (hasCaptured) {
                                 capturedMap[def.key] = true
+
+                                // ✅ CRITIQUE : doit appeler markCaptured pour date/heure
                                 onCaptured?.invoke(def.key)
+
                                 onDirty?.invoke()
                             }
                         },
-                        onAccentChanged = { c ->
-                            accentMap[def.key] = c
-                        }
+                        onAccentChanged = { c -> accentMap[def.key] = c }
                     )
 
                     Spacer(Modifier.height(12.dp))
@@ -162,11 +193,12 @@ fun TraceJourSlidersBlock(
                     TraceNoteBlock(
                         note = note,
                         onNoteChange = { newText ->
+                            if (!enabledCard) return@TraceNoteBlock
                             noteMap[def.key] = newText
                             onNoteValue?.invoke(def.key, newText)
                             onDirty?.invoke()
                         },
-                        enabled = enabled,
+                        enabled = enabledCard,
                         accent = accent,
                         userIsPremium = isPremium,
                         title = "Trace écrite",
@@ -193,22 +225,38 @@ fun TraceJourSlidersBlock(
                 val contentOk = if (premiumVisualUnlocked) true else contentEnabled
 
                 SLIDERS_PREMIUM.forEachIndexed { index, def ->
+
                     val captured = capturedMap[def.key] == true
                     val note = noteMap[def.key] ?: ""
                     val accent = accentMap[def.key] ?: TURQUOISE
-
                     val persistedPct = sliderMap[def.key] ?: 50
+
+                    val createdAtMillis: Long? =
+                        createdAtMap[def.key]?.takeIf { it > 0L }
+
+                    val isLockedCard: Boolean =
+                        lockedMap[def.key] == true
+
+                    // ✅ verrouillage carte (one-shot) + règles section depth
+                    val enabledCard = (enabled && contentOk) && !isLockedCard
 
                     key(def.key) {
                         CollapsibleSliderCard(
                             title = def.title,
                             isOpen = openKey == def.key,
                             captured = captured,
+                            createdAtMillis = createdAtMillis,
+                            locked = isLockedCard,
+                            enabledForDot = enabled && contentOk,
+                            onLockClick = {
+                                onLock?.invoke(def.key)
+                                onDirty?.invoke()
+                            },
                             onToggle = { openKey = if (openKey == def.key) "" else def.key }
                         ) {
                             TraceMoodSliderRow(
                                 title = def.title,
-                                enabled = enabled && contentOk,
+                                enabled = enabledCard,
                                 userIsPremium = premiumEffectiveForPremiumNotes,
                                 isPremiumSlider = true,
                                 lockedLabel = null,
@@ -220,6 +268,7 @@ fun TraceJourSlidersBlock(
 
                                 externalPercent = persistedPct,
                                 onPercentChanged = { newPct ->
+                                    if (!enabledCard) return@TraceMoodSliderRow
                                     sliderMap[def.key] = newPct
                                     onSliderValue?.invoke(def.key, newPct)
                                     onDirty?.invoke()
@@ -228,13 +277,11 @@ fun TraceJourSlidersBlock(
                                 onCapturedChanged = { hasCaptured ->
                                     if (hasCaptured) {
                                         capturedMap[def.key] = true
-                                        onCaptured?.invoke(def.key)
+                                        onCaptured?.invoke(def.key) // ✅ markCaptured
                                         onDirty?.invoke()
                                     }
                                 },
-                                onAccentChanged = { c ->
-                                    accentMap[def.key] = c
-                                }
+                                onAccentChanged = { c -> accentMap[def.key] = c }
                             )
 
                             Spacer(Modifier.height(12.dp))
@@ -242,11 +289,12 @@ fun TraceJourSlidersBlock(
                             TraceNoteBlock(
                                 note = note,
                                 onNoteChange = { newText ->
+                                    if (!enabledCard) return@TraceNoteBlock
                                     noteMap[def.key] = newText
                                     onNoteValue?.invoke(def.key, newText)
                                     onDirty?.invoke()
                                 },
-                                enabled = enabled && contentOk,
+                                enabled = enabledCard,
                                 accent = accent,
                                 userIsPremium = premiumEffectiveForPremiumNotes,
                                 title = "Trace écrite",
@@ -270,11 +318,25 @@ private fun CollapsibleSliderCard(
     title: String,
     isOpen: Boolean,
     captured: Boolean,
+
+    // ✅ NOUVEAU
+    createdAtMillis: Long?,
+    locked: Boolean,
+    onLockClick: (() -> Unit)?,
+
+    enabledForDot: Boolean,
     onToggle: () -> Unit,
     content: @Composable () -> Unit
 ) {
     val shape = RoundedCornerShape(CARD_RADIUS)
     val interaction = remember { MutableInteractionSource() }
+
+    // ✅ DOT STATE
+    val dotState = when {
+        !enabledForDot -> TraceDotState.DISABLED
+        captured -> TraceDotState.ON
+        else -> TraceDotState.OFF
+    }
 
     Box(
         modifier = Modifier.fillMaxWidth(),
@@ -328,6 +390,7 @@ private fun CollapsibleSliderCard(
                 .border(1.dp, TURQUOISE.copy(alpha = 0.12f), shape)
                 .padding(CARD_PADDING)
         ) {
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -336,54 +399,37 @@ private fun CollapsibleSliderCard(
                         interactionSource = interaction,
                         indication = null
                     ) { onToggle() }
-                    .padding(vertical = 10.dp),
+                    .padding(start = 2.dp, end = 10.dp, top = 10.dp, bottom = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f, fill = true)) {
                     Text(
                         text = title,
-                        color = WHITE_SOFT.copy(alpha = 0.94f),
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.SemiBold
+                        color = WHITE_SOFT.copy(alpha = 0.99f),
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        style = androidx.compose.ui.text.TextStyle.Default
                     )
 
-                    if (captured) {
-                        Spacer(Modifier.height(6.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(7.dp)
-                                    .clip(CircleShape)
-                                    .background(MAUVE.copy(alpha = 0.95f))
-                            )
-                            Spacer(Modifier.size(8.dp))
-                            Text(
-                                text = "Mémoire créée",
-                                color = MAUVE.copy(alpha = 0.90f),
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
+                    // ✅ REMPLACE l’ancien “Mémoire créée” par le vrai stamp (date + lock)
+                    TraceMemoryStamp(
+                        captured = captured,
+                        createdAtMillis = createdAtMillis,
+                        locked = locked,
+                        onLock = onLockClick,
+                        showLockChip = true,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
                 }
 
-                Box(
-                    modifier = Modifier
-                        .size(14.dp)
-                        .clip(CircleShape)
-                        .background(
-                            when {
-                                isOpen -> TURQUOISE.copy(alpha = 0.90f)
-                                captured -> MAUVE.copy(alpha = 0.28f)
-                                else -> Color.Transparent
-                            }
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = TURQUOISE.copy(alpha = 0.65f),
-                            shape = CircleShape
-                        )
+                Spacer(Modifier.size(10.dp))
+
+                TraceStatusDot(
+                    state = dotState,
+                    glowSize = 18.dp
                 )
             }
 

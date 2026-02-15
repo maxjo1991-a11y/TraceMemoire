@@ -59,7 +59,7 @@ fun PercentRing(
     val dragStrokeExtra = if (isDragging) 6f else 0f
 
     Box(
-        modifier = Modifier.size(140.dp),
+        modifier = Modifier.size(200.dp),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.matchParentSize()) {
