@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.maxjth.tracememoire.BuildConfig
 import com.maxjth.tracememoire.ui.theme.BG_SOFT
 import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
@@ -89,6 +90,11 @@ fun CollapsibleSliderCard(
 
     val titleSize = if (isHero) heroTitleSizeSp.sp else 26.sp
     val titleLine = if (isHero) (heroTitleSizeSp + 6).sp else 31.sp
+
+    // ✅ DEBUG FORCE : si ton écran réel oublie de passer percent (null),
+    // on force 75 en DEBUG pour prouver que le badge fonctionne.
+    // Quand tu auras branché ta vraie valeur, tu pourras enlever ça.
+    val shownPercent: Int? = percent ?: if (BuildConfig.DEBUG) 75 else null
 
     Box(
         modifier = Modifier.fillMaxWidth(),
@@ -194,10 +200,10 @@ fun CollapsibleSliderCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // ✅ Badge : il s’affiche seulement si tu PASSES une valeur
-                    if (percent != null) {
+                    // ✅ Badge diamant : s’affiche si percent est fourni OU si DEBUG force
+                    if (shownPercent != null) {
                         PercentBadgeDiamond(
-                            percent = percent.coerceIn(0, 100),
+                            percent = shownPercent.coerceIn(0, 100),
                             badgeSize = if (isHero) 34.dp else 30.dp,
                             breathe = true
                         )

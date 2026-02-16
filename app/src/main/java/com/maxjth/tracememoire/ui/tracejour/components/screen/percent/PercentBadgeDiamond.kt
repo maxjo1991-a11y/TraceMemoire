@@ -12,104 +12,91 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material3.Text
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material3.Text
 import com.maxjth.tracememoire.ui.theme.MAUVE
+import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
 
 @Composable
 fun PercentBadgeDiamond(
     percent: Int,
     badgeSize: Dp = 30.dp,
-    breathe: Boolean = true,
-    alpha: Float = 1f
+    breathe: Boolean = false,
+    modifier: Modifier = Modifier
 ) {
-    val p = percent.coerceIn(0, 100)
+    val pct = percent.coerceIn(0, 100)
 
-    // micro respiration (presque imperceptible)
-    val infinite = rememberInfiniteTransition(label = "badgeBreath")
-    val breatheAlpha by infinite.animateFloat(
-        initialValue = 0.92f,
-        targetValue = 1.00f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 4200),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "badgeBreathAlpha"
-    )
-
-    val finalAlpha = (alpha * (if (breathe) breatheAlpha else 1f)).coerceIn(0f, 1f)
-
-    val glow = MAUVE.copy(alpha = 0.20f * finalAlpha)
-    val stroke = Color.White.copy(alpha = 0.22f * finalAlpha)
-    val textColor = Color.White.copy(alpha = 0.92f * finalAlpha)
+    val breatheAlpha: Float = if (breathe) {
+        val t = rememberInfiniteTransition(label = "diamond_breathe")
+        val a by t.animateFloat(
+            initialValue = 0.80f,
+            targetValue = 1.00f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1400),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "diamond_breathe_alpha"
+        )
+        a
+    } else 1f
 
     Box(
-        modifier = Modifier.size(badgeSize),
+        modifier = modifier.size(badgeSize),
         contentAlignment = Alignment.Center
     ) {
-        Canvas(modifier = Modifier.matchParentSize()) {
+        Canvas(modifier = Modifier.size(badgeSize)) {
             val w = size.width
             val h = size.height
             val cx = w / 2f
             val cy = h / 2f
+            val dx = w * 0.40f
+            val dy = h * 0.40f
 
             fun diamondPath(scale: Float): Path {
-                val dx = (w * 0.48f) * scale
-                val dy = (h * 0.48f) * scale
+                val sdx = dx * scale
+                val sdy = dy * scale
                 return Path().apply {
-                    moveTo(cx, cy - dy)
-                    lineTo(cx + dx, cy)
-                    lineTo(cx, cy + dy)
-                    lineTo(cx - dx, cy)
+                    moveTo(cx, cy - sdy)
+                    lineTo(cx + sdx, cy)
+                    lineTo(cx, cy + sdy)
+                    lineTo(cx - sdx, cy)
                     close()
                 }
             }
 
-            // glow doux (derrière)
+            // Glow (simple, visible)
             drawPath(
-                path = diamondPath(scale = 1.03f),
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        glow,
-                        Color.Transparent
-                    ),
-                    center = androidx.compose.ui.geometry.Offset(cx, cy),
-                    radius = w * 0.90f
-                )
+                path = diamondPath(1.02f),
+                color = MAUVE.copy(alpha = 0.22f * breatheAlpha),
+                style = Stroke(width = 3.dp.toPx())
             )
 
-            // fill léger (optionnel mais classe)
+            // Stroke principal
             drawPath(
-                path = diamondPath(scale = 1.00f),
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.06f * finalAlpha),
-                        Color.Transparent
-                    ),
-                    start = androidx.compose.ui.geometry.Offset(0f, 0f),
-                    end = androidx.compose.ui.geometry.Offset(w, h)
-                )
-            )
-
-            // stroke
-            drawPath(
-                path = diamondPath(scale = 0.98f),
-                color = stroke,
+                path = diamondPath(0.98f),
+                color = Color.White.copy(alpha = 0.70f * breatheAlpha),
                 style = Stroke(width = 1.6.dp.toPx())
+            )
+
+            // Petit éclat (diagonal)
+            drawLine(
+                color = MAUVE.copy(alpha = 0.18f * breatheAlpha),
+                start = Offset(0f, 0f),
+                end = Offset(w, h),
+                strokeWidth = 1.2.dp.toPx()
             )
         }
 
-        // ✅ ICI: plus de roundToInt() (p est Int)
         Text(
-            text = "$p",
-            color = textColor,
+            text = "$pct%",
+            color = WHITE_SOFT.copy(alpha = 0.95f * breatheAlpha),
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold
         )
