@@ -1,4 +1,3 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/depth/TraceDepthSection.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen.depth
 
 import androidx.compose.animation.AnimatedVisibility
@@ -70,12 +69,11 @@ fun TraceDepthSection(
     ) {
 
         // ─────────────────────────────
-        // HEADER — "Approfondissement" (carte)
+        // HEADER — carte cliquable
         // ─────────────────────────────
-        Box(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            // ✅ glow mauve ultra subtil (derrière la carte)
+        Box(modifier = Modifier.fillMaxWidth()) {
+
+            // glow mauve derrière header
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -89,16 +87,16 @@ fun TraceDepthSection(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(CARD_RADIUS))
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = indication
-                    ) { opened = !opened }
                     .background(cardBgBrush())
                     .border(
                         width = 1.dp,
                         color = MAUVE.copy(alpha = 0.22f),
                         shape = RoundedCornerShape(CARD_RADIUS)
                     )
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = indication
+                    ) { opened = !opened }
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -139,7 +137,7 @@ fun TraceDepthSection(
         }
 
         // ─────────────────────────────
-        // CONTENU (ouvert / fermé) — carte identique
+        // CONTENU — visible quand opened
         // ─────────────────────────────
         AnimatedVisibility(
             visible = opened,
@@ -151,7 +149,8 @@ fun TraceDepthSection(
                     .fillMaxWidth()
                     .padding(top = 12.dp)
             ) {
-                // ✅ glow mauve ultra subtil (derrière la carte)
+
+                // glow mauve derrière contenu
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -174,7 +173,7 @@ fun TraceDepthSection(
                         .padding(16.dp)
                 ) {
 
-                    // ✅ Tes sliders premium ici (floutés + désactivés si pas premium)
+                    // Contenu injecté
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -186,7 +185,6 @@ fun TraceDepthSection(
 
                     Spacer(Modifier.height(14.dp))
 
-                    // Phrase ADN (toujours visible)
                     Text(
                         text = "Le socle suffit. L’approfondissement est un choix.",
                         color = WHITE_SOFT.copy(alpha = 0.55f),

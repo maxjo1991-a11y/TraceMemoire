@@ -8,7 +8,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.maxjth.tracememoire.ui.tracejour.components.screen.buttons.TracePrimaryPillButton
 
 @Composable
 fun BottomSaveBar(
@@ -19,19 +18,14 @@ fun BottomSaveBar(
 ) {
     val canSave = state.canSave(enabled)
 
-    // ✅ Pas de Surface = pas d’effet “barre noire”
     Box(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 18.dp, vertical = 14.dp),
+            .padding(horizontal = 18.dp, vertical = 18.dp),
         contentAlignment = Alignment.Center
     ) {
-        TracePrimaryPillButton(
-            text = "ENREGISTRER",
-            enabled = canSave,
-            onClick = onSave,
-            modifier = Modifier.fillMaxWidth()
-        )
+        // ✅ volontairement vide
+        // (ancien bouton supprimé)
     }
 }

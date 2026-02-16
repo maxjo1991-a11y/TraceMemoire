@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -28,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -40,11 +42,38 @@ import com.maxjth.tracememoire.ui.tracejour.components.ring.accentForPercent
 import com.maxjth.tracememoire.ui.tracejour.components.screen.dots.TraceDotState
 import com.maxjth.tracememoire.ui.tracejour.components.screen.dots.TraceStatusDot
 import com.maxjth.tracememoire.ui.tracejour.components.screen.header.TraceMemoryStamp
+import com.maxjth.tracememoire.ui.tracejour.components.screen.lock.TraceLockConfirmButton
 import com.maxjth.tracememoire.ui.tracejour.components.screen.phrases.TracePhrasesData
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private val VIOLET_POSITIVE = Color(0xFF8A5CFF)
+
+@Composable
+private fun PercentBadgeDiamond(
+    percent: Int,
+    accent: Color,
+    modifier: Modifier = Modifier
+) {
+    // Losange: carré tourné à 45°
+    Box(
+        modifier = modifier
+            .size(34.dp)
+            .graphicsLayer { rotationZ = 45f }
+            .clip(RoundedCornerShape(9.dp))
+            .background(Color.Black.copy(alpha = 0.20f))
+            .border(1.2.dp, accent.copy(alpha = 0.30f), RoundedCornerShape(9.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "$percent",
+            color = WHITE_SOFT.copy(alpha = 0.92f),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.graphicsLayer { rotationZ = -45f } // remettre le texte droit
+        )
+    }
+}
 
 @Composable
 fun TraceMoodSliderRow(
@@ -65,16 +94,16 @@ fun TraceMoodSliderRow(
     externalPercent: Int? = null,
     onPercentChanged: ((Int) -> Unit)? = null,
 
-    // ✅ NOUVEAU (store) : affichage + lock one-shot
+    // ✅ store : affichage + lock
     externalCaptured: Boolean? = null,
     externalCreatedAtMillis: Long? = null,
     externalLocked: Boolean? = null,
     onLock: (() -> Unit)? = null
 ) {
-    // 🔒 lock Premium (comme avant)
+    // 🔒 lock Premium
     val premiumLocked = isPremiumSlider && !userIsPremium
 
-    // 🔒 lock “one-shot” par carte (store)
+    // 🔒 lock one-shot (store)
     val cycleLocked = (externalLocked == true)
 
     // 🔒 lock final
@@ -87,7 +116,7 @@ fun TraceMoodSliderRow(
     // Valeur UI (0..1)
     var value by rememberSaveable(stateKey) { mutableFloatStateOf(0.5f) }
 
-    // captured local (fallback) — mais on préfère externalCaptured si fourni
+    // captured local (fallback) — on préfère externalCaptured si fourni
     var capturedLocal by rememberSaveable(stateKey + "|captured") { mutableStateOf(false) }
 
     val interactionSource = remember { MutableInteractionSource() }
@@ -107,8 +136,7 @@ fun TraceMoodSliderRow(
             val v = (p.coerceIn(0, 100) / 100f).coerceIn(0f, 1f)
             value = v
 
-            // Si le store a déjà capturé, capturedLocal sera synchronisé via externalCaptured.
-            // Sinon on garde la logique locale (si p != 50) pour un fallback.
+            // fallback capture si le store n'a pas "captured"
             if (externalCaptured == null && !capturedLocal && p != 50) {
                 capturedLocal = true
                 onCapturedChanged(true)
@@ -170,17 +198,24 @@ fun TraceMoodSliderRow(
                     modifier = Modifier.weight(1f)
                 )
 
+                // ✅ Badge % (losange) — lisible même si la carte est “fermée”
+                PercentBadgeDiamond(
+                    percent = pct,
+                    accent = uiAccent,
+                    modifier = Modifier.padding(end = 10.dp)
+                )
+
                 TraceStatusDot(state = dotState)
             }
 
-            // ✅ STAMP (Mémoire créée + date/heure + Cycle verrouillé + chip Verrouiller)
             Spacer(Modifier.height(8.dp))
+
             TraceMemoryStamp(
                 captured = capturedLocal,
                 createdAtMillis = externalCreatedAtMillis,
                 locked = cycleLocked,
-                onLock = if (!premiumLocked && !cycleLocked) onLock else null,
-                showLockChip = (!premiumLocked && !cycleLocked)
+                onLock = null,
+                showLockChip = false
             )
 
             Spacer(Modifier.height(10.dp))
@@ -203,11 +238,11 @@ fun TraceMoodSliderRow(
         Text(
             text = phrase,
             color = WHITE_SOFT.copy(alpha = 0.88f),
-            fontSize = 18.sp,
+            fontSize = 22.sp,
             fontWeight = FontWeight.Medium,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
-            maxLines = 2,
+            maxLines = 3,
             overflow = TextOverflow.Ellipsis
         )
 
@@ -245,6 +280,16 @@ fun TraceMoodSliderRow(
                     inactiveTrackColor = Color.White.copy(alpha = 0.10f),
                     thumbColor = uiAccent.copy(alpha = if (isDragging) 1.00f else 0.92f)
                 )
+            )
+        }
+
+        // ✅ BOUTON VERROUILLER — sous le slider
+        if (!premiumLocked && !cycleLocked && onLock != null) {
+            Spacer(Modifier.height(10.dp))
+            TraceLockConfirmButton(
+                text = "VERROUILLER",
+                enabled = sliderEnabled,
+                onClick = { onLock.invoke() }
             )
         }
 

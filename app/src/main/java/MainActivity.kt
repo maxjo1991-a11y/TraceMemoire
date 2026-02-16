@@ -1,4 +1,4 @@
-package com.maxjth.tracememoire.ui
+package com.maxjth.tracememoire
 
 import android.os.Bundle
 import android.util.Log
@@ -6,22 +6,16 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.maxjth.tracememoire.ui.history.HistoryScreen
 import com.maxjth.tracememoire.ui.home.HomeScreen
+import com.maxjth.tracememoire.ui.deepen.TraceDeepenScreen
 import com.maxjth.tracememoire.ui.theme.TraceMemoireTheme
 import com.maxjth.tracememoire.ui.tracejour.components.screen.TraceJourScreen
 
 class MainActivity : ComponentActivity() {
-
-    companion object {
-        private const val TAG = "TraceMemoireNav"
-
-        private const val SCREEN_HOME = "HOME"
-        private const val SCREEN_TRACE_JOUR = "TRACE_JOUR"
-        private const val SCREEN_HISTORY = "HISTORY"
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,14 +23,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             TraceMemoireTheme {
 
-                var currentScreen by rememberSaveable { mutableStateOf(SCREEN_HOME) }
+                var screen by rememberSaveable { mutableStateOf(SCREEN_HOME) }
 
-                fun go(screen: String) {
-                    Log.d(TAG, "NAV -> $screen")
-                    currentScreen = screen
+                fun go(dest: String) {
+                    screen = dest
                 }
 
-                when (currentScreen) {
+                when (screen) {
 
                     SCREEN_HOME -> HomeScreen(
                         onAddTrace = {
@@ -50,7 +43,12 @@ class MainActivity : ComponentActivity() {
                     )
 
                     SCREEN_TRACE_JOUR -> TraceJourScreen(
-                        onBack = { go(SCREEN_HOME) }
+                        onBack = { go(SCREEN_HOME) },
+                        onDeepen = { go(SCREEN_DEEPEN) } // ✅ FIX: param manquant
+                    )
+
+                    SCREEN_DEEPEN -> TraceDeepenScreen(
+                        onBack = { go(SCREEN_TRACE_JOUR) } // ou SCREEN_HOME si tu préfères
                     )
 
                     SCREEN_HISTORY -> HistoryScreen(
@@ -59,5 +57,14 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    companion object {
+        private const val TAG = "TraceMemoire"
+
+        private const val SCREEN_HOME = "home"
+        private const val SCREEN_TRACE_JOUR = "trace_jour"
+        private const val SCREEN_DEEPEN = "deepen"
+        private const val SCREEN_HISTORY = "history"
     }
 }

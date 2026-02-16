@@ -1,5 +1,6 @@
-package com.maxjth.tracememoire.ui.tracejour.components.screen.buttons
+package com.maxjth.tracememoire.ui.tracejour.components.screen.deepen
 
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -10,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -27,14 +29,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.maxjth.tracememoire.ui.theme.MAUVE
-import com.maxjth.tracememoire.ui.theme.TURQUOISE
 
 @Composable
-fun TracePrimaryPillButton(
+fun DeePenMemoryButton(
     text: String,
     enabled: Boolean,
     onClick: () -> Unit,
@@ -42,52 +42,58 @@ fun TracePrimaryPillButton(
 ) {
     val shape = RoundedCornerShape(999.dp)
 
-    // ✅ Glow plus “LED”
-    val inf = rememberInfiniteTransition(label = "pillGlow")
-    val glow by inf.animateFloat(
-        initialValue = 0.22f,
-        targetValue = 0.42f,
+    // ✅ Animation glow CALME / premium
+    val inf = rememberInfiniteTransition(label = "deepenGlow")
+
+    // ✅ Plus stable et “luxueux” (moins agressif que 0.35 → 0.75)
+    val glowAlpha by inf.animateFloat(
+        initialValue = 0.28f,
+        targetValue = 0.58f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2400),
+            animation = tween(durationMillis = 2400, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "glowAlpha"
     )
 
-    val baseBg = Color(0xFF0A0A0A)
-    val innerBg = Color(0xFF0D0D10)
+    // ✅ Quand désactivé : on baisse l’intensité au lieu de “mauve full”
+    val enabledFactor = if (enabled) 1f else 0.55f
 
-    // ✅ Dégradé interne un peu plus présent
-    val mauveDeep = MAUVE.copy(alpha = if (enabled) 0.28f else 0.10f)
-    val turquoiseDeep = TURQUOISE.copy(alpha = if (enabled) 0.20f else 0.08f)
-    val premiumBrush = Brush.horizontalGradient(listOf(turquoiseDeep, mauveDeep))
+    val borderColor = MAUVE.copy(alpha = 0.55f * enabledFactor)
+    val glowColor = MAUVE.copy(alpha = glowAlpha * enabledFactor)
 
-    // ✅ Bordure + halo plus lumineux (mais toujours calme)
-    val borderColor = if (enabled) MAUVE.copy(alpha = 0.52f) else Color.White.copy(alpha = 0.10f)
-    val glowColor = if (enabled) MAUVE.copy(alpha = glow) else Color.White.copy(alpha = 0.05f)
+    // ✅ Gradient un peu plus profond + cohérent
+    val gradient = Brush.horizontalGradient(
+        colors = listOf(
+            Color(0xFF141418),
+            Color(0xFF1A1623),
+            Color(0xFF201233)
+        )
+    )
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .height(66.dp) // un poil plus “premium”
+            .height(66.dp)
             .clip(shape)
-            .background(baseBg)
             .clickable(
                 enabled = enabled,
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() }
             ) { onClick() }
             .drawBehind {
-                // ✅ halo externe (un peu plus épais)
-                val stroke = 3.0.dp.toPx()
+                // ✅ Glow LED externe (moins épais, plus fin)
                 drawRoundRect(
                     color = glowColor,
-                    style = Stroke(width = stroke),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(999.dp.toPx(), 999.dp.toPx())
+                    style = Stroke(width = 2.6.dp.toPx()),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(
+                        999.dp.toPx(),
+                        999.dp.toPx()
+                    )
                 )
             },
         color = Color.Transparent,
-        border = BorderStroke(1.dp, borderColor),
+        border = BorderStroke(1.2.dp, borderColor),
         shape = shape,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp
@@ -96,20 +102,27 @@ fun TracePrimaryPillButton(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(66.dp)
-                .clip(shape)
-                .background(innerBg)
-                .background(premiumBrush)
-                .padding(horizontal = 22.dp),
+                .background(gradient)
+                .padding(horizontal = 24.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = text,
-                fontSize = 19.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 0.4.sp,
-                textAlign = TextAlign.Center,
-                color = if (enabled) Color.White.copy(alpha = 0.95f) else Color.White.copy(alpha = 0.32f)
-            )
+            // ✅ Centré + flèche, mais sans décaler visuellement
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = text,
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.4.sp,
+                    color = Color.White.copy(alpha = if (enabled) 0.96f else 0.70f)
+                )
+                Text(
+                    text = "  →",
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.4.sp,
+                    color = Color.White.copy(alpha = if (enabled) 0.92f else 0.66f)
+                )
+            }
         }
     }
 }

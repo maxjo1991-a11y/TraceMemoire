@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.maxjth.tracememoire.ui.theme.BG_SOFT
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
+import com.maxjth.tracememoire.ui.tracejour.components.screen.deepen.BottomDeepenBar
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.BottomSaveBar
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.TraceSaveStore
 import com.maxjth.tracememoire.ui.tracejour.logic.TraceCycle
@@ -25,7 +26,8 @@ import com.maxjth.tracememoire.ui.tracejour.logic.TraceCycleClock
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TraceJourScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onDeepen: () -> Unit = {} // ✅ IMPORTANT : compat ancienne signature -> plus de crash
 ) {
     val context = LocalContext.current
 
@@ -42,10 +44,8 @@ fun TraceJourScreen(
     val seedBase: String = remember { "DEBUG" } // TODO: vraie date (yyyyMMdd)
     val isPremium: Boolean = remember { false }
 
-    // ✅ store persistant
     val saveStore = remember { TraceSaveStore() }
 
-    // Liste des sliders (FREE + PREMIUM) pour load/save
     val allSliderKeys = remember {
         listOf(
             "humeur", "energie", "corps", "presence",
@@ -53,17 +53,14 @@ fun TraceJourScreen(
         )
     }
 
-    // ✅ set canSave
     LaunchedEffect(isCurrentCycleEditable) {
         saveStore.setCanSave(isCurrentCycleEditable)
     }
 
-    // ✅ LOAD quand on arrive (ou quand cycle change)
     LaunchedEffect(seedBase, cycleKey) {
         saveStore.loadFromPrefs(context, seedBase, cycleKey, allSliderKeys)
     }
 
-    // ✅ AUTO-PERSIST quand on quitte l’écran
     DisposableEffect(seedBase, cycleKey, isCurrentCycleEditable) {
         onDispose {
             if (isCurrentCycleEditable) {
@@ -78,7 +75,6 @@ fun TraceJourScreen(
         topBar = {
             TopAppBar(
                 title = { /* rien */ },
-
                 navigationIcon = {
                     TextButton(
                         onClick = {
@@ -99,9 +95,7 @@ fun TraceJourScreen(
                         )
                     }
                 },
-
                 actions = { },
-
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Transparent,
                     scrolledContainerColor = Color.Transparent
@@ -110,24 +104,29 @@ fun TraceJourScreen(
         },
 
         bottomBar = {
-            BottomSaveBar(
-                state = saveStore.state.value,
-                enabled = saveStore.canSaveEnabled.value,
-                onSave = {
-                    // ✅ on garde ton save global (bar du bas)
-                    if (saveStore.canSaveEnabled.value && isCurrentCycleEditable) {
-                        saveStore.setSaving()
+            Column(modifier = Modifier.fillMaxWidth()) {
 
-                        // ✅ figer global du cycle (si tu gardes ce comportement)
-                        saveStore.persistAllToPrefs(context, seedBase, cycleKey)
+                BottomDeepenBar(
+                    isCycleLocked = !isCurrentCycleEditable,
+                    onDeepen = onDeepen,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-                        saveStore.setSaved(cycleKey)
+                BottomSaveBar(
+                    state = saveStore.state.value,
+                    enabled = saveStore.canSaveEnabled.value,
+                    onSave = {
+                        if (saveStore.canSaveEnabled.value && isCurrentCycleEditable) {
+                            saveStore.setSaving()
 
-                        // ✅ persist encore pour lastSavedAt / status
-                        saveStore.persistAllToPrefs(context, seedBase, cycleKey)
+                            saveStore.persistAllToPrefs(context, seedBase, cycleKey)
+                            saveStore.setSaved(cycleKey)
+
+                            saveStore.persistAllToPrefs(context, seedBase, cycleKey)
+                        }
                     }
-                }
-            )
+                )
+            }
         }
     ) { padding ->
 
@@ -154,30 +153,22 @@ fun TraceJourScreen(
                     seedBase = seedBase,
                     showPremiumLockedRows = true,
 
-                    // ✅ dirty
                     onDirty = { saveStore.markDirty() },
 
-                    // ✅ maps persistantes
                     externalSliderMap = saveStore.sliderMap,
                     externalNoteMap = saveStore.noteMap,
                     externalCapturedMap = saveStore.capturedMap,
 
-                    // ✅ NOUVEAU : maps date/heure + verrouillage
                     externalCreatedAtMap = saveStore.createdAtMap,
                     externalLockedMap = saveStore.lockedMap,
 
-                    // ✅ update maps
                     onSliderValue = { key, value -> saveStore.sliderMap[key] = value },
                     onNoteValue = { key, text -> saveStore.noteMap[key] = text },
 
-                    // ✅ CRITIQUE : captured doit passer par markCaptured()
                     onCaptured = { key -> saveStore.markCaptured(key) },
 
-                    // ✅ NOUVEAU : verrouiller une carte (one-shot)
                     onLock = { key ->
                         saveStore.lockCycle(key)
-
-                        // ✅ optionnel mais recommandé: persister tout de suite
                         saveStore.persistAllToPrefs(context, seedBase, cycleKey)
                     }
                 )
