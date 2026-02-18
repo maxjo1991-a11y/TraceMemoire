@@ -10,20 +10,20 @@ import androidx.compose.ui.graphics.Brush
 
 @Composable
 fun AppScreenBackground(
+    modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
     val bg = BG_SOFT
     val bgSoft = BG_SOFT.copy(alpha = 0.92f)
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    listOf(bg, bgSoft, bg)
+                    colors = listOf(bg, bgSoft, bg)
                 )
             ),
         content = content
     )
 }
-

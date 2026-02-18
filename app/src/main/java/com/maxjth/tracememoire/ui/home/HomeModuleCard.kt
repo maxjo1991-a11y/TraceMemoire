@@ -8,8 +8,17 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,10 +29,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.gestures.detectTapGestures
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -33,7 +47,7 @@ fun HomeModuleCard(
     subtitle: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    accent: Color = Color(0xFF2ED1C3),         // turquoise doux
+    accent: Color = Color(0xFF2ED1C3), // turquoise doux
     cardBg: Color = Color.White.copy(alpha = 0.045f),
     textColor: Color = Color(0xFFF5F5F5)
 ) {
@@ -96,7 +110,11 @@ fun HomeModuleCard(
             )
             .clip(RoundedCornerShape(20.dp))
             .background(cardBg)
-            .clickable(onClick = onClick)
+            // ✅ ZERO clickable() => ZERO crash Indication
+            .semantics { role = Role.Button }
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { onClick() })
+            }
             .padding(horizontal = 18.dp, vertical = 16.dp)
     ) {
         // Glow interne (radial) pour effet “flottant”

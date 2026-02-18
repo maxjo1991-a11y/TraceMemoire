@@ -2,8 +2,6 @@ package com.maxjth.tracememoire.ui.tracejour.components.screen.cards
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,7 +25,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.maxjth.tracememoire.BuildConfig
 import com.maxjth.tracememoire.ui.theme.BG_SOFT
 import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
@@ -35,7 +32,8 @@ import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
 import com.maxjth.tracememoire.ui.tracejour.components.screen.dots.TraceDotState
 import com.maxjth.tracememoire.ui.tracejour.components.screen.dots.TraceStatusDot
 import com.maxjth.tracememoire.ui.tracejour.components.screen.header.TraceMemoryStamp
-import com.maxjth.tracememoire.ui.tracejour.components.screen.percent.PercentBadgeDiamond
+import com.maxjth.tracememoire.ui.tracejour.components.screen.percent.PercentBadge
+import com.maxjth.tracememoire.ui.tracejour.components.screen.utils.safeClickable
 
 private val CARD_RADIUS = 24.dp
 private val CARD_MIN_HEIGHT = 86.dp
@@ -58,7 +56,7 @@ fun CollapsibleSliderCard(
     onToggle: () -> Unit,
     content: @Composable () -> Unit,
 
-    // ✅ % affiché sur la carte (badge diamant)
+    // ✅ % affiché sur la carte
     percent: Int? = null,
 
     // ✅ mode hero
@@ -68,7 +66,6 @@ fun CollapsibleSliderCard(
     heroTitleSizeSp: Int = 35
 ) {
     val shape = RoundedCornerShape(CARD_RADIUS)
-    val interaction = remember { MutableInteractionSource() }
 
     val dotState = when {
         !enabledForDot -> TraceDotState.DISABLED
@@ -88,13 +85,47 @@ fun CollapsibleSliderCard(
     val bgBottom = if (isHero) 0.20f else 0.18f
     val borderMauve = if (isHero) 0.33f else 0.28f
 
-    val titleSize = if (isHero) heroTitleSizeSp.sp else 26.sp
-    val titleLine = if (isHero) (heroTitleSizeSp + 6).sp else 31.sp
+    // ✅ Anti “Environnemen t”
+    val titleStyleKey = remember(displayTitle, isHero) {
+        val singleWord = !displayTitle.contains(" ")
+        val longSingleWord = singleWord && displayTitle.length >= 12
+        val longTitle = displayTitle.length >= 22
+        Triple(longSingleWord, longTitle, singleWord)
+    }
 
-    // ✅ DEBUG FORCE : si ton écran réel oublie de passer percent (null),
-    // on force 75 en DEBUG pour prouver que le badge fonctionne.
-    // Quand tu auras branché ta vraie valeur, tu pourras enlever ça.
-    val shownPercent: Int? = percent ?: if (BuildConfig.DEBUG) 75 else null
+    val (longSingleWord, longTitle, _) = titleStyleKey
+
+    val baseTitleSize = if (isHero) heroTitleSizeSp.sp else 26.sp
+    val baseLineHeight = if (isHero) (heroTitleSizeSp + 6).sp else 31.sp
+
+    val titleSize = when {
+        isHero -> baseTitleSize
+        longSingleWord -> 23.sp
+        longTitle -> 24.sp
+        else -> 26.sp
+    }
+
+    val titleLine = when {
+        isHero -> baseLineHeight
+        longSingleWord -> 28.sp
+        longTitle -> 29.sp
+        else -> 31.sp
+    }
+
+    val shownPercent = percent?.coerceIn(0, 100)
+
+    // ✅ si la carte a des métas => on TOP-align le % + dot
+    val hasMeta = remember(captured, createdAtMillis, locked) {
+        captured || (createdAtMillis != null) || locked
+    }
+
+    val rowVerticalAlignment = if (hasMeta) Alignment.Top else Alignment.CenterVertically
+    val rightTopPadding = if (hasMeta) 18.dp else 0.dp
+
+    // ✅ LOGIQUE CLIC:
+    // - si locked: on ne toggle PAS (sinon tu te bats avec le chip lock)
+    // - mais on laisse l’utilisateur cliquer le chip lock (onLockClick) pour déverrouiller / action premium
+    val cardClickable = !locked
 
     Box(
         modifier = Modifier.fillMaxWidth(),
@@ -152,16 +183,17 @@ fun CollapsibleSliderCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
-                    .clickable(
-                        interactionSource = interaction,
-                        indication = null
-                    ) { onToggle() }
+                    // ✅ Anti-crash: on utilise safeClickable (pointerInput)
+                    .safeClickable(enabled = cardClickable) { onToggle() }
                     .padding(start = 2.dp, end = 10.dp, top = 10.dp, bottom = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = rowVerticalAlignment
             ) {
-                Column(modifier = Modifier.weight(1f, fill = true)) {
-
+                Column(
+                    modifier = Modifier
+                        .weight(2f, fill = true)
+                        .heightIn(min = 72.dp)
+                ) {
                     if (isHero && !heroSubtitle.isNullOrBlank()) {
                         Text(
                             text = heroSubtitle,
@@ -181,6 +213,7 @@ fun CollapsibleSliderCard(
                         lineHeight = titleLine,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 2,
+                        softWrap = true,
                         overflow = TextOverflow.Clip
                     )
 
@@ -194,25 +227,24 @@ fun CollapsibleSliderCard(
                     )
                 }
 
-                Spacer(Modifier.size(10.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.Top,
+                    modifier = Modifier.padding(top = rightTopPadding)
                 ) {
-                    // ✅ Badge diamant : s’affiche si percent est fourni OU si DEBUG force
-                    if (shownPercent != null) {
-                        PercentBadgeDiamond(
-                            percent = shownPercent.coerceIn(0, 100),
-                            badgeSize = if (isHero) 34.dp else 30.dp,
-                            breathe = true
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        if (shownPercent != null) {
+                            PercentBadge(percent = shownPercent)
+                        }
+
+                        TraceStatusDot(
+                            state = dotState,
+                            glowSize = if (isHero) 20.dp else 18.dp
                         )
                     }
-
-                    TraceStatusDot(
-                        state = dotState,
-                        glowSize = if (isHero) 20.dp else 18.dp
-                    )
                 }
             }
 

@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
@@ -72,6 +75,7 @@ fun TraceMemoryStamp(
 
         // Ligne 3 : état cycle (minimal, sans pollution)
         Row(
+            modifier = Modifier.padding(top = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Start
         ) {
@@ -79,7 +83,8 @@ fun TraceMemoryStamp(
                 Icon(
                     imageVector = Icons.Filled.Lock,
                     contentDescription = "Cycle verrouillé",
-                    tint = MAUVE.copy(alpha = 0.82f)
+                    tint = MAUVE.copy(alpha = 0.82f),
+                    modifier = Modifier.size(18.dp)
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
@@ -89,7 +94,7 @@ fun TraceMemoryStamp(
                     fontWeight = FontWeight.Medium
                 )
             } else {
-                // ✅ Chip seulement (pas de "Cycle modifiable" -> ça faisait “bruit visuel”)
+                // ✅ Chip seulement (pas de "Cycle modifiable" -> bruit visuel)
                 if (showLockChip && onLock != null) {
                     AssistChip(
                         onClick = onLock,
@@ -103,7 +108,8 @@ fun TraceMemoryStamp(
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Filled.LockOpen,
-                                contentDescription = "Verrouiller le cycle"
+                                contentDescription = "Verrouiller le cycle",
+                                modifier = Modifier.size(18.dp)
                             )
                         },
                         colors = AssistChipDefaults.assistChipColors(
@@ -123,7 +129,9 @@ fun TraceMemoryStamp(
                             hoveredElevation = 0.dp,
                             draggedElevation = 0.dp,
                             disabledElevation = 0.dp
-                        )
+                        ),
+                        // ✅ option compact (si tu veux que ça prenne moins de place)
+                        modifier = Modifier.heightIn(min = 28.dp)
                     )
                 }
             }
@@ -136,12 +144,11 @@ fun TraceMemoryStamp(
    "15 fév 2026 9:15 AM"
 ------------------------------ */
 private fun formatStampFr(millis: Long): String {
-    val locale = Locale.FRENCH
     val zone = ZoneId.systemDefault()
     val dt = Instant.ofEpochMilli(millis).atZone(zone)
 
     val day = dt.dayOfMonth
-    val month = frMonthAbbrev(dt.monthValue, locale)
+    val month = frMonthAbbrev(dt.monthValue)
     val year = dt.year
 
     val hour24 = dt.hour
@@ -157,7 +164,7 @@ private fun formatStampFr(millis: Long): String {
     return "$day $month $year $hour12:$minute $ampm"
 }
 
-private fun frMonthAbbrev(month: Int, locale: Locale): String {
+private fun frMonthAbbrev(month: Int): String {
     // ✅ Abréviations stables (évite "févr." sur certains devices)
     return when (month) {
         1 -> "jan"

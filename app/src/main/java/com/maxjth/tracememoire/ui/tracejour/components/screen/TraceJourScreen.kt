@@ -1,23 +1,20 @@
 package com.maxjth.tracememoire.ui.tracejour.components.screen
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.maxjth.tracememoire.ui.theme.BG_SOFT
-import com.maxjth.tracememoire.ui.theme.TURQUOISE
-import com.maxjth.tracememoire.ui.tracejour.components.screen.deepen.BottomDeepenBar
+import com.maxjth.tracememoire.ui.theme.BG_DEEP
+import com.maxjth.tracememoire.ui.tracejour.components.screen.navigation.TraceBottomNavBar
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.BottomSaveBar
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.TraceSaveStore
 import com.maxjth.tracememoire.ui.tracejour.logic.TraceCycle
@@ -27,12 +24,12 @@ import com.maxjth.tracememoire.ui.tracejour.logic.TraceCycleClock
 @Composable
 fun TraceJourScreen(
     onBack: () -> Unit,
-    onDeepen: () -> Unit = {} // ✅ IMPORTANT : compat ancienne signature -> plus de crash
+    onHistory: () -> Unit = {},
+    onDeepen: () -> Unit = {},
+    saveStore: TraceSaveStore // ✅ IMPORTANT: store partagé (Home <-> TraceJour)
 ) {
     val context = LocalContext.current
-
-    val bg = BG_SOFT
-    val bgSoft = BG_SOFT.copy(alpha = 0.92f)
+    val bg = BG_DEEP
 
     val currentCycle: TraceCycle = remember { TraceCycleClock.currentCycle() }
     val lockedCycles = remember(currentCycle) { TraceCycleClock.lockedCycles(currentCycle) }
@@ -43,8 +40,6 @@ fun TraceJourScreen(
     val cycleKey: String = remember(currentCycle) { currentCycle.name }
     val seedBase: String = remember { "DEBUG" } // TODO: vraie date (yyyyMMdd)
     val isPremium: Boolean = remember { false }
-
-    val saveStore = remember { TraceSaveStore() }
 
     val allSliderKeys = remember {
         listOf(
@@ -69,48 +64,36 @@ fun TraceJourScreen(
         }
     }
 
+    fun safePersistIfEditable() {
+        if (isCurrentCycleEditable) {
+            saveStore.persistAllToPrefs(context, seedBase, cycleKey)
+        }
+    }
+
     Scaffold(
-        containerColor = bg,
-
-        topBar = {
-            TopAppBar(
-                title = { /* rien */ },
-                navigationIcon = {
-                    TextButton(
-                        onClick = {
-                            if (isCurrentCycleEditable) {
-                                saveStore.persistAllToPrefs(context, seedBase, cycleKey)
-                            }
-                            onBack()
-                        },
-                        interactionSource = remember { MutableInteractionSource() },
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-                        modifier = Modifier.padding(start = 8.dp)
-                    ) {
-                        Text(
-                            text = "← En arrière",
-                            color = TURQUOISE.copy(alpha = 0.85f),
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                },
-                actions = { },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    scrolledContainerColor = Color.Transparent
-                )
-            )
-        },
-
+        containerColor = Color.Transparent,
+        topBar = {},
         bottomBar = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-
-                BottomDeepenBar(
-                    isCycleLocked = !isCurrentCycleEditable,
-                    onDeepen = onDeepen,
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                    .navigationBarsPadding()
+            ) {
+                TraceBottomNavBar(
+                    onBack = {
+                        safePersistIfEditable()
+                        onBack()
+                    },
+                    onHistory = {
+                        safePersistIfEditable()
+                        onHistory()
+                    },
+                    onDeepen = { onDeepen() },
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                Spacer(modifier = Modifier.height(10.dp))
 
                 BottomSaveBar(
                     state = saveStore.state.value,
@@ -118,11 +101,10 @@ fun TraceJourScreen(
                     onSave = {
                         if (saveStore.canSaveEnabled.value && isCurrentCycleEditable) {
                             saveStore.setSaving()
-
                             saveStore.persistAllToPrefs(context, seedBase, cycleKey)
+
+                            // ✅ enregistre + marque le cycle complété (NUIT/MATIN/JOUR/SOIR)
                             saveStore.setSaved(cycleKey)
-
-                            saveStore.persistAllToPrefs(context, seedBase, cycleKey)
                         }
                     }
                 )
@@ -133,7 +115,11 @@ fun TraceJourScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Brush.verticalGradient(listOf(bg, bgSoft, bg)))
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(bg, bg, bg)
+                    )
+                )
                 .padding(padding),
             contentAlignment = Alignment.TopCenter
         ) {
@@ -168,7 +154,8 @@ fun TraceJourScreen(
                     onCaptured = { key -> saveStore.markCaptured(key) },
 
                     onLock = { key ->
-                        saveStore.lockCycle(key)
+                        // ✅ on verrouille une CARTE (pas un cycle)
+                        saveStore.lockCard(key)
                         saveStore.persistAllToPrefs(context, seedBase, cycleKey)
                     }
                 )

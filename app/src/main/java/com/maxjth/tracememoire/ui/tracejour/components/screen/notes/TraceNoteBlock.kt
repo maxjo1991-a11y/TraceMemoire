@@ -2,13 +2,12 @@ package com.maxjth.tracememoire.ui.tracejour.components.screen.notes
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -23,11 +22,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
-
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
@@ -35,13 +38,11 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.geometry.Offset
-
 import com.maxjth.tracememoire.ui.theme.BG_SOFT
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
+import com.maxjth.tracememoire.ui.tracejour.components.screen.utils.safeClickable
 
 @Composable
 fun TraceNoteBlock(
@@ -50,21 +51,16 @@ fun TraceNoteBlock(
     enabled: Boolean,
     accent: Color,
     modifier: Modifier = Modifier,
-
     userIsPremium: Boolean = false,
     maxCharsFree: Int = 200,
     maxCharsPremium: Int = 589,
-
     title: String = "Trace écrite",
     placeholder: String = "Écrire une note…",
-
     footerMessageFree: String =
         "Tout ne demande pas à être écrit. Mais tout peut l'être.",
-
     footerMessagePremium: String =
         "Ici, tout peut exister. Sans filtre."
 ) {
-
     val freeCap = maxCharsFree.coerceAtLeast(1)
     val premiumCap = maxCharsPremium.coerceAtLeast(freeCap)
 
@@ -77,10 +73,9 @@ fun TraceNoteBlock(
     }
 
     val hasContent = safeNote.isNotBlank()
-
     var isOpen by remember { mutableStateOf(false) }
-    val scroll = rememberScrollState()
 
+    val scroll = rememberScrollState()
     val shapeOuter = RoundedCornerShape(18.dp)
     val shapeInner = RoundedCornerShape(16.dp)
 
@@ -110,38 +105,27 @@ fun TraceNoteBlock(
             .border(1.dp, noteAccent.copy(alpha = 0.20f), shapeOuter)
             .padding(12.dp)
     ) {
-
-        val interaction = remember { MutableInteractionSource() }
-
         // ───────── HEADER ─────────
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(14.dp))
-                .clickable(
-                    enabled = enabled,
-                    interactionSource = interaction,
-                    indication = null
-                ) { isOpen = !isOpen }
+                // ✅ FIX CRASH: on remplace clickable() par safeClickable()
+                .safeClickable {
+                    if (enabled) isOpen = !isOpen
+                }
                 .padding(horizontal = 10.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-
             Row(verticalAlignment = Alignment.CenterVertically) {
-
                 Icon(
                     imageVector = Icons.Outlined.EditNote,
                     contentDescription = null,
                     tint = noteAccent.copy(alpha = 0.90f)
                 )
-
                 Spacer(Modifier.size(10.dp))
-
                 Column {
-
-                    // ✅ TITRE TOUJOURS PROPRE SUR 2 LIGNES
                     Text(
                         text = title,
                         color = WHITE_SOFT.copy(alpha = 0.96f),
@@ -151,9 +135,7 @@ fun TraceNoteBlock(
                         overflow = TextOverflow.Clip,
                         lineHeight = 20.sp
                     )
-
                     Spacer(Modifier.height(2.dp))
-
                     if (hasContent) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
@@ -187,9 +169,7 @@ fun TraceNoteBlock(
         }
 
         // ───────── CONTENU ─────────
-
         if (isOpen) {
-
             Spacer(Modifier.height(10.dp))
 
             Box(
@@ -206,7 +186,6 @@ fun TraceNoteBlock(
                     )
                     .padding(horizontal = 18.dp, vertical = 14.dp)
             ) {
-
                 BasicTextField(
                     value = safeNote,
                     onValueChange = { raw ->
@@ -244,11 +223,10 @@ fun TraceNoteBlock(
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
-                    .clickable(
-                        enabled = enabled,
-                        interactionSource = interaction,
-                        indication = null
-                    ) { isOpen = false }
+                    // ✅ FIX CRASH: safeClickable aussi ici
+                    .safeClickable {
+                        if (enabled) isOpen = false
+                    }
                     .padding(horizontal = 12.dp, vertical = 8.dp)
             )
 

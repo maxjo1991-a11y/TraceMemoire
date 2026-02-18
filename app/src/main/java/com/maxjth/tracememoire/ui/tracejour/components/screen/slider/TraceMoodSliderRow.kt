@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -55,14 +56,15 @@ private fun PercentBadgeDiamond(
     accent: Color,
     modifier: Modifier = Modifier
 ) {
-    // Losange: carré tourné à 45°
+    val shape = RoundedCornerShape(9.dp)
+
     Box(
         modifier = modifier
             .size(34.dp)
             .graphicsLayer { rotationZ = 45f }
-            .clip(RoundedCornerShape(9.dp))
+            .clip(shape)
             .background(Color.Black.copy(alpha = 0.20f))
-            .border(1.2.dp, accent.copy(alpha = 0.30f), RoundedCornerShape(9.dp)),
+            .border(1.2.dp, accent.copy(alpha = 0.30f), shape),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -70,7 +72,7 @@ private fun PercentBadgeDiamond(
             color = WHITE_SOFT.copy(alpha = 0.92f),
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.graphicsLayer { rotationZ = -45f } // remettre le texte droit
+            modifier = Modifier.graphicsLayer { rotationZ = -45f }
         )
     }
 }
@@ -86,7 +88,14 @@ fun TraceMoodSliderRow(
     cycleKey: String,
     seedBase: String,
     sliderKey: String,
+
     showTitle: Boolean = true,
+
+    // ✅ Nouveaux toggles utiles
+    showRing: Boolean = true,
+    forceCenterIfNotCaptured: Boolean = false,
+    onDragStateChanged: (Boolean) -> Unit = {},
+
     onCapturedChanged: (Boolean) -> Unit = {},
     onAccentChanged: (Color) -> Unit = {},
 
@@ -122,6 +131,9 @@ fun TraceMoodSliderRow(
     val interactionSource = remember { MutableInteractionSource() }
     val isDragging by interactionSource.collectIsDraggedAsState()
 
+    // ✅ remonte l’info au parent si besoin
+    LaunchedEffect(isDragging) { onDragStateChanged(isDragging) }
+
     // ✅ SYNC captured (store -> UI)
     LaunchedEffect(externalCaptured) {
         if (externalCaptured != null) {
@@ -144,6 +156,13 @@ fun TraceMoodSliderRow(
         }
     }
 
+    // ✅ Option : forcer center tant que pas capturé
+    LaunchedEffect(forceCenterIfNotCaptured, capturedLocal) {
+        if (forceCenterIfNotCaptured && !capturedLocal && !isDragging) {
+            value = 0.5f
+        }
+    }
+
     val pct = (value * 100f).roundToInt().coerceIn(0, 100)
     val sliderEnabled = enabled && !fullyLocked
 
@@ -155,9 +174,12 @@ fun TraceMoodSliderRow(
     // ✅ Remonte l’accent au parent
     LaunchedEffect(uiAccent) { onAccentChanged(uiAccent) }
 
-    val borderColor =
-        if (isPremiumSlider) uiAccent.copy(alpha = 0.0f)
-        else uiAccent.copy(alpha = 0.18f)
+    // ✅ Bordure carte: légère même premium (au lieu de 0.0f)
+    val borderColor = when {
+        premiumLocked -> Color.White.copy(alpha = 0.06f)
+        isPremiumSlider -> uiAccent.copy(alpha = 0.10f)
+        else -> uiAccent.copy(alpha = 0.18f)
+    }
 
     val phrase = remember(pct, sliderKey, phaseKey) {
         TracePhrasesData.phraseForSlider(
@@ -174,12 +196,14 @@ fun TraceMoodSliderRow(
         else -> TraceDotState.OFF
     }
 
+    val cardShape = RoundedCornerShape(18.dp)
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .clip(cardShape)
             .background(Color.Black.copy(alpha = 0.14f))
-            .border(1.dp, borderColor, RoundedCornerShape(18.dp))
+            .border(1.dp, borderColor, cardShape)
             .padding(14.dp)
     ) {
 
@@ -198,7 +222,6 @@ fun TraceMoodSliderRow(
                     modifier = Modifier.weight(1f)
                 )
 
-                // ✅ Badge % (losange) — lisible même si la carte est “fermée”
                 PercentBadgeDiamond(
                     percent = pct,
                     accent = uiAccent,
@@ -221,19 +244,21 @@ fun TraceMoodSliderRow(
             Spacer(Modifier.height(10.dp))
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            PercentRing(
-                ringKey = sliderKey,
-                percent = pct,
-                accent = uiAccent,
-                isDragging = isDragging
-            )
-        }
+        if (showRing) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                PercentRing(
+                    ringKey = sliderKey,
+                    percent = pct,
+                    accent = uiAccent,
+                    isDragging = isDragging
+                )
+            }
 
-        Spacer(Modifier.height(35.dp))
+            Spacer(Modifier.height(35.dp))
+        }
 
         Text(
             text = phrase,
@@ -248,12 +273,14 @@ fun TraceMoodSliderRow(
 
         Spacer(Modifier.height(12.dp))
 
+        val pillShape = RoundedCornerShape(999.dp)
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(999.dp))
+                .clip(pillShape)
                 .background(Color.Black.copy(alpha = 0.12f))
-                .border(1.6.dp, uiAccent.copy(alpha = 0.20f), RoundedCornerShape(10.dp))
+                .border(1.6.dp, uiAccent.copy(alpha = 0.20f), pillShape)
                 .padding(horizontal = 6.dp, vertical = 7.dp)
         ) {
             Slider(

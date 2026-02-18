@@ -27,10 +27,14 @@ fun BottomDeepenBar(
 ) {
     val shape = RoundedCornerShape(999.dp)
 
+    val alpha = if (enabled) 0.85f else 0.35f
+    val borderAlpha = if (enabled) 0.14f else 0.08f
+    val textAlpha = if (enabled) 0.92f else 0.45f
+
     val bgBrush = Brush.horizontalGradient(
         colors = listOf(
-            Color(0xFF0E3B3A).copy(alpha = if (enabled) 0.85f else 0.35f),
-            Color(0xFF2A1740).copy(alpha = if (enabled) 0.85f else 0.35f)
+            Color(0xFF0E3B3A).copy(alpha = alpha),
+            Color(0xFF2A1740).copy(alpha = alpha)
         )
     )
 
@@ -42,16 +46,17 @@ fun BottomDeepenBar(
             .background(bgBrush)
             .border(
                 width = 1.dp,
-                color = Color.White.copy(alpha = if (enabled) 0.14f else 0.08f),
+                color = Color.White.copy(alpha = borderAlpha),
                 shape = shape
             )
-            .clickable(enabled = enabled) { onClick() }
+            // ✅ clickable simple = le plus safe
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 18.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "Approfondir la mémoire →  →",
-            color = Color.White.copy(alpha = if (enabled) 0.92f else 0.45f),
+            text = "Approfondir la mémoire →",
+            color = Color.White.copy(alpha = textAlpha),
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold
         )

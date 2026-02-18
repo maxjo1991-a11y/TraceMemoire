@@ -8,8 +8,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,7 +18,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.maxjth.tracememoire.ui.theme.MAUVE
+import com.maxjth.tracememoire.ui.tracejour.components.screen.utils.safeClickable
 
 @Composable
 fun DeePenMemoryButton(
@@ -45,7 +43,6 @@ fun DeePenMemoryButton(
     // ✅ Animation glow CALME / premium
     val inf = rememberInfiniteTransition(label = "deepenGlow")
 
-    // ✅ Plus stable et “luxueux” (moins agressif que 0.35 → 0.75)
     val glowAlpha by inf.animateFloat(
         initialValue = 0.28f,
         targetValue = 0.58f,
@@ -56,13 +53,12 @@ fun DeePenMemoryButton(
         label = "glowAlpha"
     )
 
-    // ✅ Quand désactivé : on baisse l’intensité au lieu de “mauve full”
+    // ✅ Quand désactivé : on baisse l’intensité
     val enabledFactor = if (enabled) 1f else 0.55f
 
     val borderColor = MAUVE.copy(alpha = 0.55f * enabledFactor)
     val glowColor = MAUVE.copy(alpha = glowAlpha * enabledFactor)
 
-    // ✅ Gradient un peu plus profond + cohérent
     val gradient = Brush.horizontalGradient(
         colors = listOf(
             Color(0xFF141418),
@@ -76,13 +72,11 @@ fun DeePenMemoryButton(
             .fillMaxWidth()
             .height(66.dp)
             .clip(shape)
-            .clickable(
-                enabled = enabled,
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() }
-            ) { onClick() }
+            // ✅ FIX CRASH : on remplace clickable() par safeClickable()
+            .safeClickable(enabled = enabled) {
+                onClick()
+            }
             .drawBehind {
-                // ✅ Glow LED externe (moins épais, plus fin)
                 drawRoundRect(
                     color = glowColor,
                     style = Stroke(width = 2.6.dp.toPx()),
@@ -106,7 +100,6 @@ fun DeePenMemoryButton(
                 .padding(horizontal = 24.dp),
             contentAlignment = Alignment.Center
         ) {
-            // ✅ Centré + flèche, mais sans décaler visuellement
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = text,

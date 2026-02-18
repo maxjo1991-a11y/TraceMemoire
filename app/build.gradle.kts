@@ -61,7 +61,8 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.animation)
 
-    // ✅ ICÔNES MATERIAL (CalendarToday, etc.)
+    // ✅ ICÔNES (Extended) — LA BONNE DÉPENDANCE
+    // (Oui c’est "material" et pas "material3" : c’est normal)
     implementation("androidx.compose.material:material-icons-extended")
 
     // Tests

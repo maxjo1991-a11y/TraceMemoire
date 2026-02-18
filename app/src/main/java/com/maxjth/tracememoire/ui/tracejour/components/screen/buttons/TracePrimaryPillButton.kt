@@ -7,8 +7,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,11 +16,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -32,17 +30,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
+import com.maxjth.tracememoire.ui.tracejour.components.screen.utils.safeClickable
 
 @Composable
 fun TracePrimaryPillButton(
     text: String,
     enabled: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    accent: Color = MAUVE,
+
+    // ✅ plus safe que (accent == TURQUOISE)
+    accentIsTurquoise: Boolean = false
 ) {
     val shape = RoundedCornerShape(999.dp)
 
-    // ✅ Glow plus “LED”
+    // ✅ Glow LED
     val inf = rememberInfiniteTransition(label = "pillGlow")
     val glow by inf.animateFloat(
         initialValue = 0.22f,
@@ -54,36 +57,55 @@ fun TracePrimaryPillButton(
         label = "glowAlpha"
     )
 
-    val baseBg = Color(0xFF0A0A0A)
     val innerBg = Color(0xFF0D0D10)
 
-    // ✅ Dégradé interne un peu plus présent
-    val mauveDeep = MAUVE.copy(alpha = if (enabled) 0.28f else 0.10f)
+    // ✅ Dégradé interne (turquoise + accent)
+    val accentDeep = accent.copy(alpha = if (enabled) 0.28f else 0.10f)
     val turquoiseDeep = TURQUOISE.copy(alpha = if (enabled) 0.20f else 0.08f)
-    val premiumBrush = Brush.horizontalGradient(listOf(turquoiseDeep, mauveDeep))
 
-    // ✅ Bordure + halo plus lumineux (mais toujours calme)
-    val borderColor = if (enabled) MAUVE.copy(alpha = 0.52f) else Color.White.copy(alpha = 0.10f)
-    val glowColor = if (enabled) MAUVE.copy(alpha = glow) else Color.White.copy(alpha = 0.05f)
+    val premiumBrush = if (accentIsTurquoise) {
+        Brush.horizontalGradient(listOf(accentDeep, turquoiseDeep))
+    } else {
+        Brush.horizontalGradient(listOf(turquoiseDeep, accentDeep))
+    }
+
+    // ✅ Bordure + halo
+    val borderColor =
+        if (enabled) accent.copy(alpha = 0.52f) else Color.White.copy(alpha = 0.10f)
+
+    val haloOuter =
+        if (enabled) accent.copy(alpha = glow * 0.55f) else Color.Transparent
+
+    val haloInner =
+        if (enabled) accent.copy(alpha = glow) else Color.White.copy(alpha = 0.05f)
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .height(66.dp) // un poil plus “premium”
+            .height(66.dp)
             .clip(shape)
-            .background(baseBg)
-            .clickable(
-                enabled = enabled,
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() }
-            ) { onClick() }
+
+            // ✅ IMPORTANT: c’est safeClickable QUI DOIT GÉRER enabled
+            // (sinon tu peux encore avoir des comportements bizarres)
+            .safeClickable(enabled = enabled) {
+                onClick()
+            }
+
             .drawBehind {
-                // ✅ halo externe (un peu plus épais)
-                val stroke = 3.0.dp.toPx()
+                val r = CornerRadius(999.dp.toPx(), 999.dp.toPx())
+
+                // ✅ halo externe (plus large, très doux)
                 drawRoundRect(
-                    color = glowColor,
-                    style = Stroke(width = stroke),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(999.dp.toPx(), 999.dp.toPx())
+                    color = haloOuter,
+                    style = Stroke(width = 6.dp.toPx()),
+                    cornerRadius = r
+                )
+
+                // ✅ halo interne (plus fin, plus net)
+                drawRoundRect(
+                    color = haloInner,
+                    style = Stroke(width = 3.dp.toPx()),
+                    cornerRadius = r
                 )
             },
         color = Color.Transparent,
@@ -108,7 +130,8 @@ fun TracePrimaryPillButton(
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 0.4.sp,
                 textAlign = TextAlign.Center,
-                color = if (enabled) Color.White.copy(alpha = 0.95f) else Color.White.copy(alpha = 0.32f)
+                color = if (enabled) Color.White.copy(alpha = 0.95f)
+                else Color.White.copy(alpha = 0.32f)
             )
         }
     }

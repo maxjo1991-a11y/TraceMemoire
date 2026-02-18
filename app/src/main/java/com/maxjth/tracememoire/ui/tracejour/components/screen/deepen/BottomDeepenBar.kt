@@ -13,11 +13,19 @@ fun BottomDeepenBar(
     onDeepen: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // ✅ Toujours cliquable : si cycle verrouillé, on laisse TraceDeePenScreen gérer l’avertissement
     DeePenMemoryButton(
         text = "Approfondir la mémoire →",
+
+        // ✅ Logique propre
+        // Si tu veux VRAIMENT toujours cliquable → laisse true
+        // Si tu veux bloquer physiquement → utilise !isCycleLocked
         enabled = true,
-        onClick = { onDeepen() },
+
+        onClick = {
+            // ✅ Défensif / lisible / stable
+            onDeepen()
+        },
+
         modifier = modifier
             .fillMaxWidth()
             .padding(

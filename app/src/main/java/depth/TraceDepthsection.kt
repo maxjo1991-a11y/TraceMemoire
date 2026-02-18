@@ -5,11 +5,8 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,6 +36,7 @@ import com.maxjth.tracememoire.ui.theme.BG_SOFT
 import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
+import com.maxjth.tracememoire.ui.tracejour.components.screen.utils.safeClickable
 
 private val CARD_RADIUS = 22.dp
 
@@ -54,18 +52,12 @@ private fun cardBgBrush() = Brush.verticalGradient(
 fun TraceDepthSection(
     isPremium: Boolean,
     modifier: Modifier = Modifier,
-    // ✅ contenu injecté (tes sliders premium)
     content: @Composable (contentEnabled: Boolean) -> Unit
 ) {
     var opened by remember { mutableStateOf(false) }
 
-    val interactionSource = remember { MutableInteractionSource() }
-    val indication = LocalIndication.current
-
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 6.dp)
+        modifier = modifier.fillMaxWidth()
     ) {
 
         // ─────────────────────────────
@@ -73,7 +65,6 @@ fun TraceDepthSection(
         // ─────────────────────────────
         Box(modifier = Modifier.fillMaxWidth()) {
 
-            // glow mauve derrière header
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -93,10 +84,8 @@ fun TraceDepthSection(
                         color = MAUVE.copy(alpha = 0.22f),
                         shape = RoundedCornerShape(CARD_RADIUS)
                     )
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = indication
-                    ) { opened = !opened }
+                    // ✅ FIX CRASH: plus de clickable + LocalIndication
+                    .safeClickable { opened = !opened }
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -150,7 +139,6 @@ fun TraceDepthSection(
                     .padding(top = 12.dp)
             ) {
 
-                // glow mauve derrière contenu
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -170,10 +158,9 @@ fun TraceDepthSection(
                             color = MAUVE.copy(alpha = 0.18f),
                             shape = RoundedCornerShape(CARD_RADIUS)
                         )
-                        .padding(16.dp)
+                        .padding(horizontal = 18.dp, vertical = 15.dp)
                 ) {
 
-                    // Contenu injecté
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
