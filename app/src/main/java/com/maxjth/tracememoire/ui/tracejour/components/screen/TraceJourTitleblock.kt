@@ -90,7 +90,7 @@ fun TraceJourTitleBlock(
 
         Text(
             text = tagline,
-            color = MAUVE.copy(alpha = 0.78f),
+            color = MAUVE.copy(alpha = 0.9f),
             fontSize = 20.sp,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,

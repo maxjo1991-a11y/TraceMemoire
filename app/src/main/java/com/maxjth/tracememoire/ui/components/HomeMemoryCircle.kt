@@ -48,7 +48,7 @@ fun HomeMemoryCircle(
     // ✅ optionnel : pour tests/preview. Si null => horloge réelle.
     nowOverride: LocalDateTime? = null
 ) {
-    // ✅ Horloge réelle qui tick -> la couleur se met à jour toute seule
+    // ✅ Horloge réelle qui tick -> la couleur + lumière se met à jour toute seule
     val now by produceState(initialValue = nowOverride ?: LocalDateTime.now(), key1 = nowOverride) {
         if (nowOverride != null) {
             value = nowOverride
@@ -143,15 +143,33 @@ fun HomeMemoryCircle(
     )
     val tiltDeg = lerpFloat(0.25f, 0.45f, strokeBoost) * tiltPhase
 
-    // ✅ Couleur pilotée par l’horloge (maintenant ça change vraiment dans le temps)
+    // ✅ Couleur pilotée par l’horloge
     val baseRingColor = remember(now) { ringColorForCycle(now) }
 
-    val haloA = 0.028f + 0.055f * strokeBoost
-    val haloOuter = 1.16f
-    val haloMid = 1.08f
+    // ✅ Boost lumière la nuit (ton screenshot "4h49" était trop éteint)
+    val isNight = (now.hour < 5)
+    val lightBoost = if (isNight) 1.18f else 1.00f
 
-    val haloColorMain = baseRingColor.copy(alpha = haloA)
-    val haloColorSoft = baseRingColor.copy(alpha = haloA * 0.55f)
+    // ✅ Halo plus présent + ring plus clair (sans "néon cheap")
+    val haloA = 0.0f + 0.0f * strokeBoost
+    val haloOuter = 1.00f
+    val haloMid = 1.0f
+    val baseRingAlpha = 1.80f
+
+    val ringBright = androidx.compose.ui.graphics.lerp(
+        baseRingColor,
+        WHITE_SOFT.copy(alpha = 0.95f),
+        0.22f
+    ).copy(alpha = (0.95f * lightBoost).coerceIn(0.86f, 0.98f))
+
+    val ringBase = androidx.compose.ui.graphics.lerp(
+        baseRingColor,
+        WHITE_SOFT.copy(alpha = 0.85f),
+        0.10f
+    ).copy(alpha = (baseRingAlpha * lightBoost).coerceIn(0.28f, 0.60f))
+
+    val haloColorMain = baseRingColor.copy(alpha = (haloA * lightBoost).coerceIn(0.10f, 0.55f))
+    val haloColorSoft = baseRingColor.copy(alpha = (haloA * 0.58f * lightBoost).coerceIn(0.06f, 0.38f))
 
     val sweep = ((pct ?: 0) / 100f) * 360f
 
@@ -171,12 +189,13 @@ fun HomeMemoryCircle(
         Canvas(modifier = Modifier.matchParentSize()) {
             val r = size.minDimension / 2f
 
+            // Halo externe (plus visible)
             drawCircle(
                 brush = Brush.radialGradient(
                     colorStops = arrayOf(
                         0.00f to Color.Transparent,
-                        0.86f to Color.Transparent,
-                        0.94f to haloColorMain,
+                        0.84f to Color.Transparent,
+                        0.93f to haloColorMain,
                         1.00f to Color.Transparent
                     ),
                     center = center,
@@ -186,12 +205,13 @@ fun HomeMemoryCircle(
                 center = center
             )
 
+            // Halo mid (plus visible)
             drawCircle(
                 brush = Brush.radialGradient(
                     colorStops = arrayOf(
                         0.00f to Color.Transparent,
-                        0.84f to Color.Transparent,
-                        0.93f to haloColorSoft,
+                        0.82f to Color.Transparent,
+                        0.92f to haloColorSoft,
                         1.00f to Color.Transparent
                     ),
                     center = center,
@@ -201,16 +221,31 @@ fun HomeMemoryCircle(
                 center = center
             )
 
-            // Base ring
+            // ✅ Glow interne (donne le côté "vivant" même quand le ring est sombre)
             drawCircle(
-                color = baseRingColor.copy(alpha = 0.22f),
+                brush = Brush.radialGradient(
+                    colorStops = arrayOf(
+                        0.00f to baseRingColor.copy(alpha = (0.05f * lightBoost).coerceIn(0.03f, 0.09f)),
+                        0.55f to baseRingColor.copy(alpha = (0.02f * lightBoost).coerceIn(0.01f, 0.05f)),
+                        1.00f to Color.Transparent
+                    ),
+                    center = center,
+                    radius = r * 0.98f
+                ),
+                radius = r * 0.98f,
+                center = center
+            )
+
+            // Base ring (plus visible)
+            drawCircle(
+                color = ringBase,
                 style = Stroke(width = strokeDp.toPx(), cap = StrokeCap.Round)
             )
 
-            // Progress arc OR full ring
+            // Progress arc OR full ring (plus lumineux)
             if (pct != null) {
                 drawArc(
-                    color = baseRingColor.copy(alpha = 0.92f),
+                    color = ringBright,
                     startAngle = -90f,
                     sweepAngle = sweep,
                     useCenter = false,
@@ -218,7 +253,7 @@ fun HomeMemoryCircle(
                 )
             } else {
                 drawCircle(
-                    color = baseRingColor.copy(alpha = 0.92f),
+                    color = ringBright,
                     style = Stroke(width = strokeDp.toPx(), cap = StrokeCap.Round)
                 )
             }

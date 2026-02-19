@@ -1,4 +1,4 @@
-// BLOC 2 — FILE: app/src/main/java/com/maxjth/tracememoire/ui/home/HomeScreen.kt
+// FILE: app/src/main/java/com/maxjth/tracememoire/ui/home/HomeScreen.kt
 package com.maxjth.tracememoire.ui.home
 
 import androidx.compose.animation.AnimatedContent
@@ -8,12 +8,30 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -47,16 +65,14 @@ fun HomeScreen(
     val changeMs = 20_000L
 
     val doneCycles = saveStore.completedTodaySet().size.coerceIn(0, 4)
-
-    // ✅ FIX: si 0, on passe null → cercle plein (pas arc “vide” à 0%)
-    val progressPercent: Int? = if (doneCycles == 0) null else doneCycles * 25
+    val progressPercent = doneCycles * 25
 
     var tickerUi by remember {
         mutableStateOf(
             HomeCycleTickerLogic.HomeTickerUi(
                 title = "Cycle ACTIF",
                 subtitle = "Cycle disponible.",
-                rightHint = "$doneCycles/4"
+                rightHint = "0/4"
             )
         )
     }
@@ -65,10 +81,7 @@ fun HomeScreen(
         HomeCycleTickerLogic.tickerFlow(
             intervalMs = changeMs,
             provider = { saveStore.buildHomeTickerSnapshot(LocalDateTime.now()) }
-        ).collect { ui ->
-            // ✅ On force juste le rightHint à suivre tes cycles
-            tickerUi = ui.copy(rightHint = "${saveStore.completedTodaySet().size.coerceIn(0, 4)}/4")
-        }
+        ).collect { ui -> tickerUi = ui }
     }
 
     Scaffold(containerColor = BG_DEEP) { padding ->
@@ -107,17 +120,23 @@ fun HomeScreen(
 
                 Text(
                     text = subtitle,
+                    color = MAUVE.copy(alpha = 0.9f),
                     fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
-                    color = WHITE_MAUVE.copy(alpha = 0.7f)
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                    lineHeight = 24.sp
                 )
+
 
                 Spacer(Modifier.height(30.dp))
 
                 HomeMemoryCircle(
                     traceCount = traceCount,
-                    progressPercent = progressPercent, // ✅ maintenant nullable
-                    nowOverride = null,                // ✅ horloge réelle
+                    progressPercent = progressPercent,
+                    // ✅ FIX: HomeMemoryCircle n’a PAS "now". Il utilise "nowOverride".
+                    // null = horloge réelle => couleur pilotée par l’heure automatiquement.
+                    nowOverride = null,
                     modifier = Modifier.size(300.dp)
                 )
             }
@@ -137,10 +156,10 @@ fun HomeScreen(
                     onClick = onAddTrace,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(60.dp)
+                        .height(72.dp)
                         .border(
-                            1.dp,
-                            MAUVE.copy(alpha = 0.35f),
+                            3.dp,
+                            MAUVE.copy(alpha = 0.70f),
                             RoundedCornerShape(32.dp)
                         ),
                     shape = RoundedCornerShape(32.dp),
@@ -150,7 +169,7 @@ fun HomeScreen(
                     )
                 ) {
                     Icon(Icons.Filled.Add, null)
-                    Spacer(Modifier.width(10.dp))
+                    Spacer(Modifier.size(14.dp))
                     Text("Ajouter une Mémoire")
                 }
 

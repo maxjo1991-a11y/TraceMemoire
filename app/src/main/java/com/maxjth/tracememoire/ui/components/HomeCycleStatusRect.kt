@@ -77,12 +77,12 @@ fun HomeCycleStatusRect(
             // halo externe
             .clip(shape)
             .background(glowBrush)
-            .padding(1.5.dp) // un peu plus épais = plus “présent”
+            .padding(2.00.dp) // un peu plus épais = plus “présent”
             // carte interne
             .clip(shape)
             .background(cardBrush)
             .border(1.2.dp, borderColor, shape)
-            .padding(horizontal = 18.dp, vertical = 14.dp)
+            .padding(horizontal = 15.dp, vertical = 11.dp)
     ) {
 
         Row(
@@ -91,23 +91,23 @@ fun HomeCycleStatusRect(
         ) {
             Text(
                 text = title,
-                fontSize = 16.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = WHITE_SOFT.copy(alpha = 0.96f)
             )
             Text(
                 text = rightHint,
-                fontSize = 14.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = TURQUOISE.copy(alpha = 0.94f)
             )
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(5.dp))
 
         Text(
             text = subtitle,
-            fontSize = 15.sp,
+            fontSize = 17.sp,
             color = WHITE_SOFT.copy(alpha = 0.80f),
             style = MaterialTheme.typography.bodyMedium
         )

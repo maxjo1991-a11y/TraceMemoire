@@ -12,7 +12,7 @@ val TURQUOISE = Color(0xFF2EC4B6)
 val MAUVE = Color(0xFF7E5BEF)
 
 /* ✅ Fonds principaux */
-val BG_DEEP = Color(0xFF0A0A0A)
+val BG_DEEP = Color(0xFF000000)
 val BG_SOFT = Color(0xFF141414)
 
 /* ✅ Blanc principal */
