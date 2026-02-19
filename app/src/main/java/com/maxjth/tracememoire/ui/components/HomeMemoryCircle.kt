@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,19 +37,32 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import kotlinx.coroutines.delay
 
 @Composable
 fun HomeMemoryCircle(
     traceCount: Int,
-    progressPercent: Int? = null,         // ✅ NOUVEAU : % de progression (0..100)
+    progressPercent: Int? = null,          // % (0..100) si tu veux un arc
     modifier: Modifier = Modifier,
     numberEntryScale: Float = 1f,
-    now: LocalDateTime = LocalDateTime.now() // ✅ NOUVEAU : pour la couleur par cycle
+    // ✅ optionnel : pour tests/preview. Si null => horloge réelle.
+    nowOverride: LocalDateTime? = null
 ) {
+    // ✅ Horloge réelle qui tick -> la couleur se met à jour toute seule
+    val now by produceState(initialValue = nowOverride ?: LocalDateTime.now(), key1 = nowOverride) {
+        if (nowOverride != null) {
+            value = nowOverride
+            return@produceState
+        }
+        while (true) {
+            value = LocalDateTime.now()
+            delay(30_000L) // tick 30s (léger + fiable)
+        }
+    }
+
     val pct = progressPercent?.coerceIn(0, 100)
     val centerText = (pct?.toString() ?: traceCount.toString())
 
-    // Taille du chiffre central (selon longueur)
     val numberSize = when (centerText.length) {
         1 -> 108.sp
         2 -> 96.sp
@@ -61,7 +75,6 @@ fun HomeMemoryCircle(
         else -> (-4).dp
     }
 
-    // ✅ Respiration mensuelle + micro-drift
     val breath = remember { currentMonthlyBreath() }
     val tr = rememberInfiniteTransition(label = "home_circle_life")
 
@@ -90,13 +103,11 @@ fun HomeMemoryCircle(
 
     val finalScale = mainBreath * (1f + (microDrift * 0.0065f))
 
-    // Stroke qui vit un peu avec la respiration
     val strokeBase = 8.dp
     val strokeBoost =
         ((finalScale - breath.minScale) / (breath.maxScale - breath.minScale)).coerceIn(0f, 1f)
     val strokeDp = strokeBase + (2.dp * strokeBoost)
 
-    // Orbite (ultra légère)
     val orbitPhase by tr.animateFloat(
         initialValue = 0f,
         targetValue = (PI * 2).toFloat(),
@@ -118,7 +129,6 @@ fun HomeMemoryCircle(
     val orbitXpx = with(density) { orbitXdp.dp.toPx() }
     val orbitYpx = with(density) { orbitYdp.dp.toPx() }
 
-    // Tilt (très faible)
     val tiltPhase by tr.animateFloat(
         initialValue = -1f,
         targetValue = 1f,
@@ -133,10 +143,9 @@ fun HomeMemoryCircle(
     )
     val tiltDeg = lerpFloat(0.25f, 0.45f, strokeBoost) * tiltPhase
 
-    // ✅ Couleur par cycle (matin/jour/soir/nuit) — jamais agressif
+    // ✅ Couleur pilotée par l’horloge (maintenant ça change vraiment dans le temps)
     val baseRingColor = remember(now) { ringColorForCycle(now) }
 
-    // Halo (calme)
     val haloA = 0.028f + 0.055f * strokeBoost
     val haloOuter = 1.16f
     val haloMid = 1.08f
@@ -144,7 +153,6 @@ fun HomeMemoryCircle(
     val haloColorMain = baseRingColor.copy(alpha = haloA)
     val haloColorSoft = baseRingColor.copy(alpha = haloA * 0.55f)
 
-    // ✅ Progression (arc)
     val sweep = ((pct ?: 0) / 100f) * 360f
 
     Box(
@@ -163,7 +171,6 @@ fun HomeMemoryCircle(
         Canvas(modifier = Modifier.matchParentSize()) {
             val r = size.minDimension / 2f
 
-            // Halo externe
             drawCircle(
                 brush = Brush.radialGradient(
                     colorStops = arrayOf(
@@ -179,7 +186,6 @@ fun HomeMemoryCircle(
                 center = center
             )
 
-            // Halo secondaire
             drawCircle(
                 brush = Brush.radialGradient(
                     colorStops = arrayOf(
@@ -195,13 +201,13 @@ fun HomeMemoryCircle(
                 center = center
             )
 
-            // Anneau "base" discret (arrière)
+            // Base ring
             drawCircle(
                 color = baseRingColor.copy(alpha = 0.22f),
                 style = Stroke(width = strokeDp.toPx(), cap = StrokeCap.Round)
             )
 
-            // Anneau progression (arc) si on a un % (sinon on laisse juste le cercle)
+            // Progress arc OR full ring
             if (pct != null) {
                 drawArc(
                     color = baseRingColor.copy(alpha = 0.92f),
@@ -211,7 +217,6 @@ fun HomeMemoryCircle(
                     style = Stroke(width = strokeDp.toPx(), cap = StrokeCap.Round)
                 )
             } else {
-                // Mode "simple" (full ring)
                 drawCircle(
                     color = baseRingColor.copy(alpha = 0.92f),
                     style = Stroke(width = strokeDp.toPx(), cap = StrokeCap.Round)
@@ -219,12 +224,10 @@ fun HomeMemoryCircle(
             }
         }
 
-        // ✅ Texte central (nombre)
         Text(
             text = centerText,
             fontSize = numberSize,
             fontWeight = FontWeight.ExtraBold,
-            // texte toujours lisible (turquoise calme)
             color = TURQUOISE.copy(alpha = 0.98f),
             modifier = Modifier
                 .offset(y = offsetY)
@@ -234,56 +237,49 @@ fun HomeMemoryCircle(
                 }
         )
 
-        // ✅ Petit symbole % à droite (doux)
         if (pct != null) {
             Text(
                 text = "%",
                 fontSize = (numberSize.value * 0.34f).sp,
                 fontWeight = FontWeight.SemiBold,
                 color = WHITE_SOFT.copy(alpha = 0.78f),
-                modifier = Modifier
-                    // positionnée à droite du chiffre, sans agresser
-                    .offset(
-                        x = when (centerText.length) {
-                            1 -> 44.dp
-                            2 -> 52.dp
-                            else -> 58.dp
-                        },
-                        y = (-10).dp
-                    )
+                modifier = Modifier.offset(
+                    x = when (centerText.length) {
+                        1 -> 44.dp
+                        2 -> 52.dp
+                        else -> 58.dp
+                    },
+                    y = (-10).dp
+                )
             )
         }
     }
 }
 
 /**
- * ✅ Palette cycle (calme / galaxie / jamais aveuglante)
- * - Matin : turquoise
- * - Jour  : turquoise + lait blanc
- * - Soir  : transition vers mauve doux
- * - Nuit  : mauve nuit "espace"
+ * ✅ Palette cycle (pilotée par l’horloge)
+ * - Nuit : mauve nuit
+ * - Matin : turquoise doux
+ * - Jour : turquoise + “lait”
+ * - Soir : transition vers mauve velours
  */
 private fun ringColorForCycle(now: LocalDateTime): Color {
     val minutes = now.hour * 60 + now.minute
 
-    // petit blanc "lait"
     val milk = WHITE_SOFT.copy(alpha = 0.90f)
-
-    // mauve nuit profond (sans être neon)
     val mauveNight = androidx.compose.ui.graphics.lerp(MAUVE, Color(0xFF2A1840), 0.55f)
-
-    // mauve soir : plus “velours”, moins sombre que la nuit
     val mauveEvening = androidx.compose.ui.graphics.lerp(MAUVE, Color(0xFF3A2460), 0.35f)
 
     return when {
         // NUIT 00:00 -> 04:59
-        minutes in 0..(4 * 60 + 59) -> mauveNight.copy(alpha = 0.95f)
+        minutes in 0..(4 * 60 + 59) ->
+            mauveNight.copy(alpha = 0.95f)
 
         // MATIN 05:00 -> 11:59
         minutes in (5 * 60)..(11 * 60 + 59) ->
             androidx.compose.ui.graphics.lerp(TURQUOISE, milk, 0.10f).copy(alpha = 0.95f)
 
-        // JOUR 12:00 -> 17:59 (un peu plus clair)
+        // JOUR 12:00 -> 17:59
         minutes in (12 * 60)..(17 * 60 + 59) ->
             androidx.compose.ui.graphics.lerp(TURQUOISE, milk, 0.20f).copy(alpha = 0.95f)
 

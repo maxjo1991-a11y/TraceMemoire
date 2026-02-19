@@ -6,6 +6,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.maxjth.tracememoire.ui.history.HistoryScreen
 import com.maxjth.tracememoire.ui.home.HomeScreen
 import com.maxjth.tracememoire.ui.theme.TraceMemoireTheme
 import com.maxjth.tracememoire.ui.tracejour.components.screen.TraceJourScreen
@@ -31,7 +33,8 @@ class MainActivity : ComponentActivity() {
                 // ✅ STORE UNIQUE (Home <-> TraceJour)
                 val saveStore = remember { TraceSaveStore() }
 
-                val screen = remember { mutableStateOf(SCREEN_HOME) }
+                // ✅ Saveable: survives rotation / recreation
+                val screen = rememberSaveable { mutableStateOf(SCREEN_HOME) }
 
                 fun go(dest: String) {
                     Log.d(TAG, "NAV -> $dest")
@@ -68,17 +71,26 @@ class MainActivity : ComponentActivity() {
                         saveStore = saveStore
                     )
 
-                    SCREEN_HISTORY -> {
-                        // ✅ temporaire: écran placeholder
-                        Log.d(TAG, "SCREEN_HISTORY placeholder -> retour Home")
-                        go(SCREEN_HOME)
-                    }
+                    // ✅ BRANCHÉ: HistoryScreen (plus de placeholder)
+                    SCREEN_HISTORY -> HistoryScreen(
+                        onBack = {
+                            Log.d(TAG, "CLICK HistoryScreen: onBack")
+                            go(SCREEN_HOME)
+                        }
+                    )
 
-                    SCREEN_DEEPEN -> {
-                        // ✅ temporaire: écran placeholder
-                        Log.d(TAG, "SCREEN_DEEPEN placeholder -> retour Home")
-                        go(SCREEN_HOME)
-                    }
+                    // ✅ Placeholder temporaire: on branchera plus tard
+                    SCREEN_DEEPEN -> HomeScreen(
+                        onAddTrace = {
+                            Log.d(TAG, "CLICK Deepen placeholder -> onAddTrace")
+                            go(SCREEN_TRACE_JOUR)
+                        },
+                        onOpenHistory = {
+                            Log.d(TAG, "CLICK Deepen placeholder -> onOpenHistory")
+                            go(SCREEN_HISTORY)
+                        },
+                        saveStore = saveStore
+                    )
                 }
             }
         }

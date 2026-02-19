@@ -38,12 +38,13 @@ import androidx.compose.ui.unit.sp
 import com.maxjth.tracememoire.ui.history.components.DayHeader
 import com.maxjth.tracememoire.ui.history.components.HistoryEventCard
 import com.maxjth.tracememoire.ui.history.logic.buildGroupedHistory
+import com.maxjth.tracememoire.ui.model.TraceEvent
 import com.maxjth.tracememoire.ui.theme.BG_DEEP
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
-import com.maxjth.tracememoire.ui.model.TraceEvent
+
 /**
- * Écran 3 (Historique) — version stable / neutre:
+ * Écran 4 (Historique) — version stable / neutre:
  * - Pas de Store
  * - Pas de collecte Flow
  * - UI intacte (calme)
@@ -54,16 +55,15 @@ import com.maxjth.tracememoire.ui.model.TraceEvent
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    events: List<TraceEvent> = emptyList()
 ) {
-    // ✅ Données temporaires: vide => placeholder s’affiche
-    val events = remember { emptyList<TraceEvent>() }
-
     var onlyChanges by remember { mutableStateOf(false) }
 
     val bgDeep = BG_DEEP
     val bgSlight = BG_DEEP.copy(alpha = 0.92f)
 
+    // ✅ Calcul groupé stable (recalcule seulement si events / onlyChanges changent)
     val grouped = remember(events, onlyChanges) {
         buildGroupedHistory(events = events, onlyChanges = onlyChanges)
     }
@@ -182,10 +182,9 @@ fun HistoryScreen(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-
-                        // ✅ Pas de items() imbriqué : on fait une boucle normale
                         grouped.forEach { group ->
 
+                            // ✅ Key stable par jour
                             item(key = "day_${group.dayKey}") {
                                 Column {
                                     DayHeader(
@@ -210,4 +209,3 @@ fun HistoryScreen(
         }
     }
 }
-

@@ -1,10 +1,11 @@
+// BLOC 2 — FILE: app/src/main/java/com/maxjth/tracememoire/ui/home/HomeScreen.kt
 package com.maxjth.tracememoire.ui.home
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -24,7 +25,10 @@ import androidx.compose.ui.unit.sp
 import com.maxjth.tracememoire.ui.components.HomeCycleStatusRect
 import com.maxjth.tracememoire.ui.components.HomeMemoryCircle
 import com.maxjth.tracememoire.ui.home.logic.HomeCycleTickerLogic
-import com.maxjth.tracememoire.ui.theme.*
+import com.maxjth.tracememoire.ui.theme.BG_DEEP
+import com.maxjth.tracememoire.ui.theme.BG_SOFT
+import com.maxjth.tracememoire.ui.theme.MAUVE
+import com.maxjth.tracememoire.ui.theme.WHITE_MAUVE
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.TraceSaveStore
 import java.time.LocalDateTime
 import java.util.Calendar
@@ -43,14 +47,16 @@ fun HomeScreen(
     val changeMs = 20_000L
 
     val doneCycles = saveStore.completedTodaySet().size.coerceIn(0, 4)
-    val progressPercent = doneCycles * 25
+
+    // ✅ FIX: si 0, on passe null → cercle plein (pas arc “vide” à 0%)
+    val progressPercent: Int? = if (doneCycles == 0) null else doneCycles * 25
 
     var tickerUi by remember {
         mutableStateOf(
             HomeCycleTickerLogic.HomeTickerUi(
                 title = "Cycle ACTIF",
                 subtitle = "Cycle disponible.",
-                rightHint = "0/4"
+                rightHint = "$doneCycles/4"
             )
         )
     }
@@ -59,7 +65,10 @@ fun HomeScreen(
         HomeCycleTickerLogic.tickerFlow(
             intervalMs = changeMs,
             provider = { saveStore.buildHomeTickerSnapshot(LocalDateTime.now()) }
-        ).collect { ui -> tickerUi = ui }
+        ).collect { ui ->
+            // ✅ On force juste le rightHint à suivre tes cycles
+            tickerUi = ui.copy(rightHint = "${saveStore.completedTodaySet().size.coerceIn(0, 4)}/4")
+        }
     }
 
     Scaffold(containerColor = BG_DEEP) { padding ->
@@ -107,8 +116,8 @@ fun HomeScreen(
 
                 HomeMemoryCircle(
                     traceCount = traceCount,
-                    progressPercent = progressPercent,
-                    now = LocalDateTime.now(),
+                    progressPercent = progressPercent, // ✅ maintenant nullable
+                    nowOverride = null,                // ✅ horloge réelle
                     modifier = Modifier.size(300.dp)
                 )
             }
@@ -157,7 +166,7 @@ fun HomeScreen(
                         subtitle = ui.subtitle,
                         rightHint = ui.rightHint,
                         modifier = Modifier.fillMaxWidth(),
-                        onClick = onOpenHistory // ✅ OK maintenant
+                        onClick = onOpenHistory
                     )
                 }
             }

@@ -53,3 +53,12 @@ data class TraceSaveState(
         return "Enregistré • $time"
     }
 }
+
+
+
+enum class TraceSaveStatus {
+    IDLE,      // rien de spécial
+    SAVING,    // animation / verrouillage bouton
+    SAVED,     // sauvegarde confirmée
+    ERROR      // échec optionnel
+}
