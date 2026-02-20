@@ -42,14 +42,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.maxjth.tracememoire.ui.components.HomeCycleStatusRect
 import com.maxjth.tracememoire.ui.components.HomeMemoryCircle
+import com.maxjth.tracememoire.ui.home.logic.HomeAmbientPhrasesRect
 import com.maxjth.tracememoire.ui.home.logic.HomeCycleTickerLogic
 import com.maxjth.tracememoire.ui.theme.BG_DEEP
 import com.maxjth.tracememoire.ui.theme.BG_SOFT
 import com.maxjth.tracememoire.ui.theme.MAUVE
-import com.maxjth.tracememoire.ui.theme.WHITE_MAUVE
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.TraceSaveStore
 import java.time.LocalDateTime
 import java.util.Calendar
+
+private data class HomeRectUi(
+    val ticker: HomeCycleTickerLogic.HomeTickerUi,
+    val phrase: String
+)
 
 @Composable
 fun HomeScreen(
@@ -67,6 +72,12 @@ fun HomeScreen(
     val doneCycles = saveStore.completedTodaySet().size.coerceIn(0, 4)
     val progressPercent = doneCycles * 25
 
+    // ✅ Mets un temps réaliste : 12s ou 20s (2s c’est ok pour test)
+    val ambientPhrase = HomeAmbientPhrasesRect.rememberAmbientPhraseRect(
+        periodMs = 12_000L,
+        shuffleMode = true
+    )
+
     var tickerUi by remember {
         mutableStateOf(
             HomeCycleTickerLogic.HomeTickerUi(
@@ -82,6 +93,11 @@ fun HomeScreen(
             intervalMs = changeMs,
             provider = { saveStore.buildHomeTickerSnapshot(LocalDateTime.now()) }
         ).collect { ui -> tickerUi = ui }
+    }
+
+    // ✅ CRUCIAL : targetState contient aussi la phrase
+    val rectUi = remember(tickerUi, ambientPhrase) {
+        HomeRectUi(ticker = tickerUi, phrase = ambientPhrase)
     }
 
     Scaffold(containerColor = BG_DEEP) { padding ->
@@ -128,14 +144,11 @@ fun HomeScreen(
                     lineHeight = 24.sp
                 )
 
-
                 Spacer(Modifier.height(30.dp))
 
                 HomeMemoryCircle(
                     traceCount = traceCount,
                     progressPercent = progressPercent,
-                    // ✅ FIX: HomeMemoryCircle n’a PAS "now". Il utilise "nowOverride".
-                    // null = horloge réelle => couleur pilotée par l’heure automatiquement.
                     nowOverride = null,
                     modifier = Modifier.size(300.dp)
                 )
@@ -146,9 +159,9 @@ fun HomeScreen(
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .widthIn(max = 520.dp)
-                    .padding(horizontal = 32.dp)
+                    .padding(horizontal = 30.dp)
                     .navigationBarsPadding()
-                    .padding(bottom = 18.dp),
+                    .padding(bottom = 1.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
@@ -169,21 +182,21 @@ fun HomeScreen(
                     )
                 ) {
                     Icon(Icons.Filled.Add, null)
-                    Spacer(Modifier.size(14.dp))
+                    Spacer(Modifier.size(15.dp))
                     Text("Ajouter une Mémoire")
                 }
 
                 Spacer(Modifier.height(14.dp))
 
                 AnimatedContent(
-                    targetState = tickerUi,
+                    targetState = rectUi,
                     transitionSpec = { fadeIn(tween(260)) togetherWith fadeOut(tween(260)) },
                     label = "home_cycle_ticker"
-                ) { ui ->
+                ) { state ->
                     HomeCycleStatusRect(
-                        title = ui.title,
-                        subtitle = ui.subtitle,
-                        rightHint = ui.rightHint,
+                        leftTitle = state.ticker.title,
+                        rightCounter = state.ticker.rightHint,
+                        ambientLine = state.phrase,
                         modifier = Modifier.fillMaxWidth(),
                         onClick = onOpenHistory
                     )
