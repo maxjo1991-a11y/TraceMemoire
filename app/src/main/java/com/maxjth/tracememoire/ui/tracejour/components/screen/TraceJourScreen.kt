@@ -1,3 +1,4 @@
+// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/TraceJourScreen.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen
 
 import androidx.compose.foundation.background
@@ -26,7 +27,7 @@ fun TraceJourScreen(
     onBack: () -> Unit,
     onHistory: () -> Unit = {},
     onDeepen: () -> Unit = {},
-    saveStore: TraceSaveStore // ✅ IMPORTANT: store partagé (Home <-> TraceJour)
+    saveStore: TraceSaveStore // ✅ store partagé (Home <-> TraceJour)
 ) {
     val context = LocalContext.current
     val bg = BG_DEEP
@@ -38,13 +39,23 @@ fun TraceJourScreen(
     }
 
     val cycleKey: String = remember(currentCycle) { currentCycle.name }
-    val seedBase: String = remember { "DEBUG" } // TODO: vraie date (yyyyMMdd)
+
+    // ✅ IMPORTANT : seedBase doit être IDENTIQUE à Home/attach
+    // Mets ta vraie valeur officielle ici (la même partout).
+    val seedBase: String = remember { "TRACE_MEMOIRE" }
+
+    // ✅ Ici, tu peux laisser false, le store gère déjà premiumTouchedToday
     val isPremium: Boolean = remember { false }
 
+    // ✅ IMPORTANT : ces keys doivent matcher celles attendues par TraceSaveStore
+    // Base:
+    //  - humeur, energie, corps, presence
+    // Premium (si utilisé):
+    //  - repos, archi_emo, type_journee, motifs_psy, environnement, clarte
     val allSliderKeys = remember {
         listOf(
             "humeur", "energie", "corps", "presence",
-            "emotion", "sommeil", "typejour", "motifs", "environ", "clarte", "charge"
+            "repos", "archi_emo", "type_journee", "motifs_psy", "environnement", "clarte"
         )
     }
 
@@ -53,7 +64,12 @@ fun TraceJourScreen(
     }
 
     LaunchedEffect(seedBase, cycleKey) {
+        // ✅ Load complet (sliders + HOME + hier) sans écraser la valeur persistée
         saveStore.loadFromPrefs(context, seedBase, cycleKey, allSliderKeys)
+
+        // ❌ IMPORTANT : pas besoin de recalculer ici “à vide”.
+        // Le store recalcule déjà quand il faut, et sinon il garde la valeur prefs.
+        // (Le recalcul LIVE se fait dans onSliderValue)
     }
 
     DisposableEffect(seedBase, cycleKey, isCurrentCycleEditable) {
@@ -103,7 +119,7 @@ fun TraceJourScreen(
                             saveStore.setSaving()
                             saveStore.persistAllToPrefs(context, seedBase, cycleKey)
 
-                            // ✅ enregistre + marque le cycle complété (NUIT/MATIN/JOUR/SOIR)
+                            // ✅ enregistre + marque cycle complété + persiste HOME
                             saveStore.setSaved(cycleKey)
                         }
                     }
@@ -115,11 +131,7 @@ fun TraceJourScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(bg, bg, bg)
-                    )
-                )
+                .background(Brush.verticalGradient(colors = listOf(bg, bg, bg)))
                 .padding(padding),
             contentAlignment = Alignment.TopCenter
         ) {
@@ -148,13 +160,16 @@ fun TraceJourScreen(
                     externalCreatedAtMap = saveStore.createdAtMap,
                     externalLockedMap = saveStore.lockedMap,
 
-                    onSliderValue = { key, value -> saveStore.sliderMap[key] = value },
+                    // ✅ LIVE : chaque slider recalcule Jupiter
+                    onSliderValue = { key, value ->
+                        saveStore.sliderMap[key] = value
+                        saveStore.recomputeHomeScoreFromSliders(includePremiumAxes = true)
+                    },
                     onNoteValue = { key, text -> saveStore.noteMap[key] = text },
 
                     onCaptured = { key -> saveStore.markCaptured(key) },
 
                     onLock = { key ->
-                        // ✅ on verrouille une CARTE (pas un cycle)
                         saveStore.lockCard(key)
                         saveStore.persistAllToPrefs(context, seedBase, cycleKey)
                     }
