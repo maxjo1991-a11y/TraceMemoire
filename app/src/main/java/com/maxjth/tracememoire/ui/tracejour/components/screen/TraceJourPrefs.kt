@@ -11,25 +11,13 @@ object TraceJourPrefs {
 
     private const val PREFS_NAME = "trace_jour_prefs"
 
-    // ✅ Format simple, stable, lisible, parfait pour une clé
     private val DAY_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd")
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    /**
-     * ✅ IMPORTANT
-     * On ne touche pas ton API existante, mais on te donne une fonction
-     * pour “scoper” seedBase à une journée.
-     *
-     * Exemple:
-     * val daySeed = TraceJourPrefs.seedForToday("tracejour")
-     * => "tracejour_20260217"
-     */
-    fun seedForDate(
-        seedBase: String,
-        date: LocalDate
-    ): String = "${seedBase}_${date.format(DAY_FMT)}"
+    fun seedForDate(seedBase: String, date: LocalDate): String =
+        "${seedBase}_${date.format(DAY_FMT)}"
 
     fun seedForToday(
         seedBase: String,
@@ -48,9 +36,6 @@ object TraceJourPrefs {
     private fun k(seedBase: String, cycleKey: String, id: String) =
         "${seedBase}_${cycleKey}_$id"
 
-    // ─────────────────────────────────────────────
-    // ASYNC (apply) — OK la plupart du temps
-    // ─────────────────────────────────────────────
     fun putInt(context: Context, seedBase: String, cycleKey: String, id: String, value: Int) {
         prefs(context).edit().putInt(k(seedBase, cycleKey, id), value).apply()
     }
@@ -67,28 +52,6 @@ object TraceJourPrefs {
         prefs(context).edit().putLong(k(seedBase, cycleKey, id), value).apply()
     }
 
-    // ─────────────────────────────────────────────
-    // SYNC (commit) — plus solide si tu quittes/crash vite
-    // ─────────────────────────────────────────────
-    fun putIntSync(context: Context, seedBase: String, cycleKey: String, id: String, value: Int): Boolean {
-        return prefs(context).edit().putInt(k(seedBase, cycleKey, id), value).commit()
-    }
-
-    fun putStringSync(context: Context, seedBase: String, cycleKey: String, id: String, value: String): Boolean {
-        return prefs(context).edit().putString(k(seedBase, cycleKey, id), value).commit()
-    }
-
-    fun putBoolSync(context: Context, seedBase: String, cycleKey: String, id: String, value: Boolean): Boolean {
-        return prefs(context).edit().putBoolean(k(seedBase, cycleKey, id), value).commit()
-    }
-
-    fun putLongSync(context: Context, seedBase: String, cycleKey: String, id: String, value: Long): Boolean {
-        return prefs(context).edit().putLong(k(seedBase, cycleKey, id), value).commit()
-    }
-
-    // ─────────────────────────────────────────────
-    // READ
-    // ─────────────────────────────────────────────
     fun getInt(context: Context, seedBase: String, cycleKey: String, id: String, def: Int): Int =
         prefs(context).getInt(k(seedBase, cycleKey, id), def)
 
@@ -101,32 +64,14 @@ object TraceJourPrefs {
     fun getLong(context: Context, seedBase: String, cycleKey: String, id: String, def: Long): Long =
         prefs(context).getLong(k(seedBase, cycleKey, id), def)
 
-    // ─────────────────────────────────────────────
-    // CLEANUP (optionnel, mais utile)
-    // ─────────────────────────────────────────────
-    /**
-     * ✅ Supprime tout ce qui est lié à (seedBase + cycleKey).
-     * Exemple: clearCycle(context, seedForToday("tracejour"), "SOIR")
-     */
     fun clearCycle(context: Context, seedBase: String, cycleKey: String) {
         val p = prefs(context)
         val prefix = "${seedBase}_${cycleKey}_"
         val keys = p.all.keys.filter { it.startsWith(prefix) }
         if (keys.isEmpty()) return
+
         val e = p.edit()
         keys.forEach { e.remove(it) }
         e.apply()
-    }
-
-    // ─────────────────────────────────────────────
-    // DEBUG / DIAG
-    // ─────────────────────────────────────────────
-    fun contains(context: Context, seedBase: String, cycleKey: String, id: String): Boolean =
-        prefs(context).contains(k(seedBase, cycleKey, id))
-
-    fun dumpCycle(context: Context, seedBase: String, cycleKey: String): Map<String, Any?> {
-        val all = prefs(context).all
-        val prefix = "${seedBase}_${cycleKey}_"
-        return all.filterKeys { it.startsWith(prefix) }
     }
 }

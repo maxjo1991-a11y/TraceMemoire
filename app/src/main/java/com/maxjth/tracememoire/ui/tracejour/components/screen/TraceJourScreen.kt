@@ -2,24 +2,38 @@
 package com.maxjth.tracememoire.ui.tracejour.components.screen
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.maxjth.tracememoire.ui.systeme.lune.trace.LuneTraceStore
 import com.maxjth.tracememoire.ui.theme.BG_DEEP
 import com.maxjth.tracememoire.ui.tracejour.components.screen.navigation.TraceBottomNavBar
-import com.maxjth.tracememoire.ui.tracejour.components.screen.save.BottomSaveBar
-import com.maxjth.tracememoire.ui.tracejour.components.screen.save.TraceSaveStore
+import com.maxjth.tracememoire.ui.tracejour.components.screen.save.store.TraceSaveStore
+import com.maxjth.tracememoire.ui.tracejour.components.screen.slider.TraceLockPayload
 import com.maxjth.tracememoire.ui.tracejour.logic.TraceCycle
 import com.maxjth.tracememoire.ui.tracejour.logic.TraceCycleClock
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,31 +41,18 @@ fun TraceJourScreen(
     onBack: () -> Unit,
     onHistory: () -> Unit = {},
     onDeepen: () -> Unit = {},
-    saveStore: TraceSaveStore // ✅ store partagé (Home <-> TraceJour)
+    saveStore: TraceSaveStore
 ) {
     val context = LocalContext.current
     val bg = BG_DEEP
 
-    val currentCycle: TraceCycle = remember { TraceCycleClock.currentCycle() }
-    val lockedCycles = remember(currentCycle) { TraceCycleClock.lockedCycles(currentCycle) }
-    val isCurrentCycleEditable: Boolean = remember(currentCycle, lockedCycles) {
-        currentCycle !in lockedCycles
-    }
-
-    val cycleKey: String = remember(currentCycle) { currentCycle.name }
-
-    // ✅ IMPORTANT : seedBase doit être IDENTIQUE à Home/attach
-    // Mets ta vraie valeur officielle ici (la même partout).
+    // ✅ IMPORTANT : doit matcher HomeScreen + attach()
     val seedBase: String = remember { "TRACE_MEMOIRE" }
 
-    // ✅ Ici, tu peux laisser false, le store gère déjà premiumTouchedToday
+    // (plus tard: branche ton vrai flag premium)
     val isPremium: Boolean = remember { false }
 
-    // ✅ IMPORTANT : ces keys doivent matcher celles attendues par TraceSaveStore
-    // Base:
-    //  - humeur, energie, corps, presence
-    // Premium (si utilisé):
-    //  - repos, archi_emo, type_journee, motifs_psy, environnement, clarte
+    // ✅ Keys sliders (FREE + Premium)
     val allSliderKeys = remember {
         listOf(
             "humeur", "energie", "corps", "presence",
@@ -59,19 +60,41 @@ fun TraceJourScreen(
         )
     }
 
+    // ✅ TICK TEMPOREL : force recomposition → le cycle se met à jour sans quitter l’écran
+    val nowTick by produceState(initialValue = 0) {
+        while (true) {
+            delay(60_000)
+            value = value + 1
+        }
+    }
+    @Suppress("UNUSED_VARIABLE")
+    val _consumeTick = nowTick
+
+    // ✅ cycle recalculé à chaque recomposition (donc quand nowTick change)
+    val currentCycle: TraceCycle = TraceCycleClock.currentCycle()
+    val lockedCycles = TraceCycleClock.lockedCycles(currentCycle)
+    val isCurrentCycleEditable: Boolean = currentCycle !in lockedCycles
+    val cycleKey: String = currentCycle.name
+
+    // ✅ attach pour HOME persist
+    LaunchedEffect(seedBase) {
+        saveStore.attach(context, seedBase)
+    }
+
+    // ✅ blocage save si cycle verrouillé (editable/figé)
     LaunchedEffect(isCurrentCycleEditable) {
         saveStore.setCanSave(isCurrentCycleEditable)
     }
 
+    // ✅ load cycle + home (relancé automatiquement quand cycleKey change)
     LaunchedEffect(seedBase, cycleKey) {
-        // ✅ Load complet (sliders + HOME + hier) sans écraser la valeur persistée
         saveStore.loadFromPrefs(context, seedBase, cycleKey, allSliderKeys)
 
-        // ❌ IMPORTANT : pas besoin de recalculer ici “à vide”.
-        // Le store recalcule déjà quand il faut, et sinon il garde la valeur prefs.
-        // (Le recalcul LIVE se fait dans onSliderValue)
+        // petit bump pour forcer refresh Home si besoin
+        saveStore.luneTick.intValue += 1
     }
 
+    // ✅ on sort : on persiste (si editable)
     DisposableEffect(seedBase, cycleKey, isCurrentCycleEditable) {
         onDispose {
             if (isCurrentCycleEditable) {
@@ -84,6 +107,16 @@ fun TraceJourScreen(
         if (isCurrentCycleEditable) {
             saveStore.persistAllToPrefs(context, seedBase, cycleKey)
         }
+    }
+
+    // ✅ FIX KEY : on garde seulement la vraie clé (humeur/energie/...)
+    fun normalizeSliderKey(raw: String): String {
+        val last = raw
+            .split("|", "/", ":", ">", " ")
+            .lastOrNull()
+            ?.trim()
+            .orEmpty()
+        return last.lowercase()
     }
 
     Scaffold(
@@ -110,24 +143,9 @@ fun TraceJourScreen(
                 )
 
                 Spacer(modifier = Modifier.height(10.dp))
-
-                BottomSaveBar(
-                    state = saveStore.state.value,
-                    enabled = saveStore.canSaveEnabled.value,
-                    onSave = {
-                        if (saveStore.canSaveEnabled.value && isCurrentCycleEditable) {
-                            saveStore.setSaving()
-                            saveStore.persistAllToPrefs(context, seedBase, cycleKey)
-
-                            // ✅ enregistre + marque cycle complété + persiste HOME
-                            saveStore.setSaved(cycleKey)
-                        }
-                    }
-                )
             }
         }
     ) { padding ->
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -156,22 +174,53 @@ fun TraceJourScreen(
                     externalSliderMap = saveStore.sliderMap,
                     externalNoteMap = saveStore.noteMap,
                     externalCapturedMap = saveStore.capturedMap,
-
                     externalCreatedAtMap = saveStore.createdAtMap,
                     externalLockedMap = saveStore.lockedMap,
 
-                    // ✅ LIVE : chaque slider recalcule Jupiter
                     onSliderValue = { key, value ->
                         saveStore.sliderMap[key] = value
+                        saveStore.markSliderTouched(key)
                         saveStore.recomputeHomeScoreFromSliders(includePremiumAxes = true)
+                        saveStore.markDirty()
                     },
-                    onNoteValue = { key, text -> saveStore.noteMap[key] = text },
 
-                    onCaptured = { key -> saveStore.markCaptured(key) },
+                    onNoteValue = { key, text ->
+                        saveStore.noteMap[key] = text
+                        saveStore.markDirty()
+                    },
 
-                    onLock = { key ->
-                        saveStore.lockCard(key)
-                        saveStore.persistAllToPrefs(context, seedBase, cycleKey)
+                    onCaptured = { key ->
+                        saveStore.markCaptured(key)
+                    },
+
+                    onLock = { payload: TraceLockPayload ->
+                        if (!isCurrentCycleEditable) return@TraceJourSlidersBlock
+
+                        val sliderKey = normalizeSliderKey(payload.sliderKey)
+
+                        // anti-double : si déjà locked → rien
+                        val alreadyLocked = saveStore.lockedMap[sliderKey] == true
+                        if (alreadyLocked) return@TraceJourSlidersBlock
+
+                        // ✅ 1) STORE : lock + cycleDone + recalcul Soleil + % rectangle + persist HOME-only
+                        saveStore.handleLockForHomeAndRect(
+                            cycleKey = cycleKey,
+                            sliderKey = sliderKey
+                        )
+
+                        // ✅ 2) LUNE : 1 verrouillage = 1 trace (une seule fois / jour / slider / cycle)
+                        val luneUniqueKey = "$cycleKey|$sliderKey"
+                        LuneTraceStore.incrementOncePerCycleToday(
+                            context = context,
+                            seedBase = seedBase,
+                            cycleKey = luneUniqueKey
+                        )
+
+                        // ✅ 3) SIGNAL UI : Home refresh direct
+                        saveStore.luneTick.intValue += 1
+
+                        // ✅ 4) dirty
+                        saveStore.markDirty()
                     }
                 )
 

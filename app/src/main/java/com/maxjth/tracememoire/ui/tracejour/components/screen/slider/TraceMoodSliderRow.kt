@@ -1,3 +1,4 @@
+// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/slider/TraceMoodSliderRow.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen.slider
 
 import androidx.compose.foundation.background
@@ -9,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -49,6 +49,14 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private val VIOLET_POSITIVE = Color(0xFF8A5CFF)
+
+data class TraceLockPayload(
+    val seedBase: String,
+    val cycleKey: String,
+    val sliderKey: String,
+    val percent: Int,
+    val phaseKey: String
+)
 
 @Composable
 private fun PercentBadgeDiamond(
@@ -91,7 +99,7 @@ fun TraceMoodSliderRow(
 
     showTitle: Boolean = true,
 
-    // ✅ Nouveaux toggles utiles
+    // toggles
     showRing: Boolean = true,
     forceCenterIfNotCaptured: Boolean = false,
     onDragStateChanged: (Boolean) -> Unit = {},
@@ -99,15 +107,16 @@ fun TraceMoodSliderRow(
     onCapturedChanged: (Boolean) -> Unit = {},
     onAccentChanged: (Color) -> Unit = {},
 
-    // ✅ valeur persistée venant du store (0..100)
+    // valeur persistée venant du store (0..100)
     externalPercent: Int? = null,
     onPercentChanged: ((Int) -> Unit)? = null,
 
-    // ✅ store : affichage + lock
+    // store : affichage + lock
     externalCaptured: Boolean? = null,
     externalCreatedAtMillis: Long? = null,
     externalLocked: Boolean? = null,
-    onLock: (() -> Unit)? = null
+
+    onLock: (TraceLockPayload) -> Unit
 ) {
     // 🔒 lock Premium
     val premiumLocked = isPremiumSlider && !userIsPremium
@@ -122,16 +131,15 @@ fun TraceMoodSliderRow(
         "$seedBase|$cycleKey|$sliderKey"
     }
 
-    // Valeur UI (0..1)
-    var value by rememberSaveable(stateKey) { mutableFloatStateOf(0.5f) }
+    // ✅ IMPORTANT : default UI = 0 (plus 50)
+    var value by rememberSaveable(stateKey) { mutableFloatStateOf(0f) }
 
-    // captured local (fallback) — on préfère externalCaptured si fourni
+    // captured local (fallback)
     var capturedLocal by rememberSaveable(stateKey + "|captured") { mutableStateOf(false) }
 
     val interactionSource = remember { MutableInteractionSource() }
     val isDragging by interactionSource.collectIsDraggedAsState()
 
-    // ✅ remonte l’info au parent si besoin
     LaunchedEffect(isDragging) { onDragStateChanged(isDragging) }
 
     // ✅ SYNC captured (store -> UI)
@@ -148,15 +156,12 @@ fun TraceMoodSliderRow(
             val v = (p.coerceIn(0, 100) / 100f).coerceIn(0f, 1f)
             value = v
 
-            // fallback capture si le store n'a pas "captured"
-            if (externalCaptured == null && !capturedLocal && p != 50) {
-                capturedLocal = true
-                onCapturedChanged(true)
-            }
+            // ✅ IMPORTANT : ne PAS auto-capturer juste parce que p != 50 (on est rendu à 0)
+            // c’est l’utilisateur qui “capte” en bougeant le slider.
         }
     }
 
-    // ✅ Option : forcer center tant que pas capturé
+    // Option : forcer center tant que pas capturé (si tu utilises encore ce mode)
     LaunchedEffect(forceCenterIfNotCaptured, capturedLocal) {
         if (forceCenterIfNotCaptured && !capturedLocal && !isDragging) {
             value = 0.5f
@@ -171,10 +176,8 @@ fun TraceMoodSliderRow(
         if (isDragging) lerp(baseAccent, VIOLET_POSITIVE, 0.30f) else baseAccent
     }
 
-    // ✅ Remonte l’accent au parent
     LaunchedEffect(uiAccent) { onAccentChanged(uiAccent) }
 
-    // ✅ Bordure carte: légère même premium (au lieu de 0.0f)
     val borderColor = when {
         premiumLocked -> Color.White.copy(alpha = 0.06f)
         isPremiumSlider -> uiAccent.copy(alpha = 0.10f)
@@ -189,7 +192,6 @@ fun TraceMoodSliderRow(
         )
     }
 
-    // ✅ DOT STATE
     val dotState = when {
         premiumLocked -> TraceDotState.DISABLED
         capturedLocal -> TraceDotState.ON
@@ -233,12 +235,13 @@ fun TraceMoodSliderRow(
 
             Spacer(Modifier.height(8.dp))
 
+            // ✅ FIX : on affiche le chip “Cycle verrouillé”
             TraceMemoryStamp(
                 captured = capturedLocal,
                 createdAtMillis = externalCreatedAtMillis,
                 locked = cycleLocked,
                 onLock = null,
-                showLockChip = false
+                showLockChip = true
             )
 
             Spacer(Modifier.height(10.dp))
@@ -294,7 +297,8 @@ fun TraceMoodSliderRow(
                     val newPct = (v * 100f).roundToInt().coerceIn(0, 100)
                     onPercentChanged?.invoke(newPct)
 
-                    if (!capturedLocal && abs(v - 0.5f) >= 0.01f) {
+                    // ✅ capture = l’utilisateur bouge vraiment
+                    if (!capturedLocal && abs(v - 0f) >= 0.01f) {
                         capturedLocal = true
                         onCapturedChanged(true)
                     }
@@ -310,13 +314,23 @@ fun TraceMoodSliderRow(
             )
         }
 
-        // ✅ BOUTON VERROUILLER — sous le slider
-        if (!premiumLocked && !cycleLocked && onLock != null) {
+        // ✅ BOUTON VERROUILLER
+        if (!premiumLocked && !cycleLocked) {
             Spacer(Modifier.height(10.dp))
             TraceLockConfirmButton(
                 text = "VERROUILLER",
-                enabled = sliderEnabled,
-                onClick = { onLock.invoke() }
+                enabled = sliderEnabled && capturedLocal,
+                onClick = {
+                    onLock(
+                        TraceLockPayload(
+                            seedBase = seedBase,
+                            cycleKey = cycleKey,
+                            sliderKey = sliderKey,
+                            percent = pct,
+                            phaseKey = phaseKey
+                        )
+                    )
+                }
             )
         }
 

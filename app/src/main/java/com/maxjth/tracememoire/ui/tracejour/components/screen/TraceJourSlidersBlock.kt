@@ -1,3 +1,4 @@
+// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/TraceJourSlidersBlock.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen
 
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,7 @@ import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.tracejour.components.screen.cards.CollapsibleSliderCard
 import com.maxjth.tracememoire.ui.tracejour.components.screen.depth.TraceDepthSection
 import com.maxjth.tracememoire.ui.tracejour.components.screen.notes.TraceNoteBlock
+import com.maxjth.tracememoire.ui.tracejour.components.screen.slider.TraceLockPayload
 import com.maxjth.tracememoire.ui.tracejour.components.screen.slider.TraceMoodSliderRow
 
 private data class SliderDef(val key: String, val title: String)
@@ -31,11 +33,11 @@ private val SLIDERS_FREE = listOf(
 )
 
 private val SLIDERS_PREMIUM = listOf(
-    SliderDef("sommeil", "Qualité du repos vécu"),
-    SliderDef("emotion", "Architecture émotionnelle"),
-    SliderDef("typejour", "Type de journée"),
-    SliderDef("motifs", "Motifs psychiques"),
-    SliderDef("environ", "Environnement"),
+    SliderDef("repos", "Qualité du repos vécu"),
+    SliderDef("archi_emo", "Architecture émotionnelle"),
+    SliderDef("type_journee", "Type de journée"),
+    SliderDef("motifs_psy", "Motifs psychiques"),
+    SliderDef("environnement", "Environnement"),
     SliderDef("clarte", "Clarté mentale")
 )
 
@@ -43,7 +45,6 @@ private val ROW_SPACING = 18.dp
 private val SECTION_GAP = 26.dp
 private val OUTER_HORIZONTAL_PADDING = 14.dp
 
-// ✅ TEMP DEBUG
 private const val DEBUG_FORCE_PREMIUM_VISUALS = true
 
 @Composable
@@ -64,9 +65,8 @@ fun TraceJourSlidersBlock(
 
     onSliderValue: ((String, Int) -> Unit)? = null,
     onNoteValue: ((String, String) -> Unit)? = null,
-
     onCaptured: ((String) -> Unit)? = null,
-    onLock: ((String) -> Unit)? = null
+    onLock: ((TraceLockPayload) -> Unit)? = null
 ) {
     val premiumVisualUnlocked = isPremium || DEBUG_FORCE_PREMIUM_VISUALS
     val premiumEffectiveForPremiumNotes = isPremium || DEBUG_FORCE_PREMIUM_VISUALS
@@ -82,10 +82,17 @@ fun TraceJourSlidersBlock(
 
     val accentMap = remember { mutableStateMapOf<String, Color>() }
 
-    Column(
-        modifier = modifier.fillMaxWidth()
-        // ❗️IMPORTANT : plus de padding ici (sinon Premium = double padding)
-    ) {
+    val optimisticLocking = remember { mutableStateMapOf<String, Boolean>() }
+
+    fun optimisticLock(sliderKey: String) {
+        optimisticLocking[sliderKey] = true
+        if ((createdAtMap[sliderKey] ?: 0L) <= 0L) {
+            createdAtMap[sliderKey] = System.currentTimeMillis()
+        }
+        if (openKey == sliderKey) openKey = ""
+    }
+
+    Column(modifier = modifier.fillMaxWidth()) {
 
         // ───────── FREE ─────────
         Column(
@@ -98,7 +105,9 @@ fun TraceJourSlidersBlock(
                 val captured = capturedMap[def.key] == true
                 val note = noteMap[def.key] ?: ""
                 val accent = accentMap[def.key] ?: TURQUOISE
-                val persistedPct = sliderMap[def.key] ?: 50
+
+                // ✅ défaut = 0 (plus 50)
+                val persistedPct = sliderMap[def.key] ?: 0
 
                 val createdAtMillis: Long? = createdAtMap[def.key]?.takeIf { it > 0L }
                 val isLockedCard: Boolean = lockedMap[def.key] == true
@@ -115,10 +124,7 @@ fun TraceJourSlidersBlock(
                         enabledForDot = enabled,
                         onLockClick = null,
                         onToggle = { openKey = if (openKey == def.key) "" else def.key },
-
-                        // ✅ % sur la carte
                         percent = persistedPct,
-
                         content = {
                             TraceMoodSliderRow(
                                 title = def.title,
@@ -126,13 +132,11 @@ fun TraceJourSlidersBlock(
                                 userIsPremium = isPremium,
                                 isPremiumSlider = false,
                                 lockedLabel = null,
-
                                 phaseKey = cycleKey,
                                 cycleKey = cycleKey,
                                 seedBase = seedBase,
                                 sliderKey = def.key,
                                 showTitle = false,
-
                                 externalPercent = persistedPct,
                                 onPercentChanged = { newPct ->
                                     if (!enabledCard) return@TraceMoodSliderRow
@@ -140,17 +144,16 @@ fun TraceJourSlidersBlock(
                                     onSliderValue?.invoke(def.key, newPct)
                                     onDirty?.invoke()
                                 },
-
                                 externalCaptured = captured,
                                 externalCreatedAtMillis = createdAtMillis,
                                 externalLocked = isLockedCard,
-
-                                onLock = {
-                                    if (isLockedCard) return@TraceMoodSliderRow
-                                    onLock?.invoke(def.key)
+                                onLock = { payload ->
+                                    if (lockedMap[def.key] == true) return@TraceMoodSliderRow
+                                    if (optimisticLocking[def.key] == true) return@TraceMoodSliderRow
+                                    optimisticLock(def.key)
+                                    onLock?.invoke(payload)
                                     onDirty?.invoke()
                                 },
-
                                 onCapturedChanged = { hasCaptured ->
                                     if (hasCaptured) {
                                         capturedMap[def.key] = true
@@ -191,7 +194,6 @@ fun TraceJourSlidersBlock(
         if (isPremium || showPremiumLockedRows) {
             Spacer(Modifier.size(SECTION_GAP))
 
-            // ✅ IMPORTANT : on applique EXACTEMENT le même padding horizontal que FREE
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -209,7 +211,9 @@ fun TraceJourSlidersBlock(
                         val captured = capturedMap[def.key] == true
                         val note = noteMap[def.key] ?: ""
                         val accent = accentMap[def.key] ?: TURQUOISE
-                        val persistedPct = sliderMap[def.key] ?: 50
+
+                        // ✅ défaut = 0 (plus 50)
+                        val persistedPct = sliderMap[def.key] ?: 0
 
                         val createdAtMillis: Long? = createdAtMap[def.key]?.takeIf { it > 0L }
                         val isLockedCard: Boolean = lockedMap[def.key] == true
@@ -226,10 +230,7 @@ fun TraceJourSlidersBlock(
                                 enabledForDot = enabled && contentOk,
                                 onLockClick = null,
                                 onToggle = { openKey = if (openKey == def.key) "" else def.key },
-
-                                // ✅ % sur la carte
                                 percent = persistedPct,
-
                                 content = {
                                     TraceMoodSliderRow(
                                         title = def.title,
@@ -237,13 +238,11 @@ fun TraceJourSlidersBlock(
                                         userIsPremium = premiumEffectiveForPremiumNotes,
                                         isPremiumSlider = true,
                                         lockedLabel = "Débloqué avec Premium.",
-
                                         phaseKey = cycleKey,
                                         cycleKey = cycleKey,
                                         seedBase = seedBase,
                                         sliderKey = def.key,
                                         showTitle = false,
-
                                         externalPercent = persistedPct,
                                         onPercentChanged = { newPct ->
                                             if (!enabledCard) return@TraceMoodSliderRow
@@ -251,17 +250,16 @@ fun TraceJourSlidersBlock(
                                             onSliderValue?.invoke(def.key, newPct)
                                             onDirty?.invoke()
                                         },
-
                                         externalCaptured = captured,
                                         externalCreatedAtMillis = createdAtMillis,
                                         externalLocked = isLockedCard,
-
-                                        onLock = {
-                                            if (isLockedCard) return@TraceMoodSliderRow
-                                            onLock?.invoke(def.key)
+                                        onLock = { payload ->
+                                            if (lockedMap[def.key] == true) return@TraceMoodSliderRow
+                                            if (optimisticLocking[def.key] == true) return@TraceMoodSliderRow
+                                            optimisticLock(def.key)
+                                            onLock?.invoke(payload)
                                             onDirty?.invoke()
                                         },
-
                                         onCapturedChanged = { hasCaptured ->
                                             if (hasCaptured) {
                                                 capturedMap[def.key] = true

@@ -7,21 +7,29 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import com.maxjth.tracememoire.ui.history.HistoryScreen
-import com.maxjth.tracememoire.ui.home.HomeScreen
+import com.maxjth.tracememoire.ui.historique.HistoryScreen
+import com.maxjth.tracememoire.ui.accueil.ecran.HomeScreen
+import com.maxjth.tracememoire.ui.planetes.astra.AstraScreen
+import com.maxjth.tracememoire.ui.planetes.memora.MemoraScreen
+import com.maxjth.tracememoire.ui.planetes.orion.OrionScreen
 import com.maxjth.tracememoire.ui.theme.TraceMemoireTheme
 import com.maxjth.tracememoire.ui.tracejour.components.screen.TraceJourScreen
-import com.maxjth.tracememoire.ui.tracejour.components.screen.save.TraceSaveStore
+import com.maxjth.tracememoire.ui.tracejour.components.screen.save.store.TraceSaveStore
 
 class MainActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "TraceMemoire"
 
-        private const val SCREEN_HOME = "home"
+        private const val SCREEN_HOME = "com/maxjth/tracememoire/ui/tracejour/components/screen/save/home"
         private const val SCREEN_TRACE_JOUR = "trace_jour"
         private const val SCREEN_HISTORY = "history"
         private const val SCREEN_DEEPEN = "deepen"
+
+        // ✅ PLANÈTES
+        private const val SCREEN_ASTRA = "astra"
+        private const val SCREEN_MEMORA = "memora"
+        private const val SCREEN_ORION = "orion"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,6 +60,18 @@ class MainActivity : ComponentActivity() {
                             Log.d(TAG, "CLICK HomeScreen: onOpenHistory")
                             go(SCREEN_HISTORY)
                         },
+                        onOpenAstra = {
+                            Log.d(TAG, "CLICK HomeScreen: onOpenAstra")
+                            go(SCREEN_ASTRA)
+                        },
+                        onOpenMemora = {
+                            Log.d(TAG, "CLICK HomeScreen: onOpenMemora")
+                            go(SCREEN_MEMORA)
+                        },
+                        onOpenOrion = {
+                            Log.d(TAG, "CLICK HomeScreen: onOpenOrion")
+                            go(SCREEN_ORION)
+                        },
                         saveStore = saveStore
                     )
 
@@ -71,7 +91,6 @@ class MainActivity : ComponentActivity() {
                         saveStore = saveStore
                     )
 
-                    // ✅ BRANCHÉ: HistoryScreen (plus de placeholder)
                     SCREEN_HISTORY -> HistoryScreen(
                         onBack = {
                             Log.d(TAG, "CLICK HistoryScreen: onBack")
@@ -79,7 +98,7 @@ class MainActivity : ComponentActivity() {
                         }
                     )
 
-                    // ✅ Placeholder temporaire: on branchera plus tard
+                    // ✅ Placeholder temporaire (comme tu avais)
                     SCREEN_DEEPEN -> HomeScreen(
                         onAddTrace = {
                             Log.d(TAG, "CLICK Deepen placeholder -> onAddTrace")
@@ -89,7 +108,23 @@ class MainActivity : ComponentActivity() {
                             Log.d(TAG, "CLICK Deepen placeholder -> onOpenHistory")
                             go(SCREEN_HISTORY)
                         },
+                        onOpenAstra = { go(SCREEN_ASTRA) },
+                        onOpenMemora = { go(SCREEN_MEMORA) },
+                        onOpenOrion = { go(SCREEN_ORION) },
                         saveStore = saveStore
+                    )
+
+                    // ✅ PLANÈTES
+                    SCREEN_ASTRA -> AstraScreen(
+                        onBack = { go(SCREEN_HOME) }
+                    )
+
+                    SCREEN_MEMORA -> MemoraScreen(
+                        onBack = { go(SCREEN_HOME) }
+                    )
+
+                    SCREEN_ORION -> OrionScreen(
+                        onBack = { go(SCREEN_HOME) }
                     )
                 }
             }
