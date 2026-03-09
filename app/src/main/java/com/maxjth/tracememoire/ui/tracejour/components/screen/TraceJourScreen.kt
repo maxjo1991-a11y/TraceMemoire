@@ -1,4 +1,3 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/TraceJourScreen.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen
 
 import androidx.compose.foundation.background
@@ -26,14 +25,18 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.maxjth.tracememoire.ui.moteur.cycle.grille.GrilleCycleHome
+import com.maxjth.tracememoire.ui.moteur.cycle.modele.TypeCycleHome
 import com.maxjth.tracememoire.ui.systeme.lune.trace.LuneTraceStore
 import com.maxjth.tracememoire.ui.theme.BG_DEEP
 import com.maxjth.tracememoire.ui.tracejour.components.screen.navigation.TraceBottomNavBar
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.store.TraceSaveStore
 import com.maxjth.tracememoire.ui.tracejour.components.screen.slider.TraceLockPayload
-import com.maxjth.tracememoire.ui.tracejour.logic.TraceCycle
-import com.maxjth.tracememoire.ui.tracejour.logic.TraceCycleClock
+import com.maxjth.tracememoire.ui.tracejour.cycle.HomeTraceCycleBridge
+import com.maxjth.tracememoire.ui.tracejour.cycle.TraceCycle
+import com.maxjth.tracememoire.ui.time.TraceCycleClock
 import kotlinx.coroutines.delay
+import java.time.LocalDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,13 +49,9 @@ fun TraceJourScreen(
     val context = LocalContext.current
     val bg = BG_DEEP
 
-    // ✅ IMPORTANT : doit matcher HomeScreen + attach()
     val seedBase: String = remember { "TRACE_MEMOIRE" }
-
-    // (plus tard: branche ton vrai flag premium)
     val isPremium: Boolean = remember { false }
 
-    // ✅ Keys sliders (FREE + Premium)
     val allSliderKeys = remember {
         listOf(
             "humeur", "energie", "corps", "presence",
@@ -60,7 +59,6 @@ fun TraceJourScreen(
         )
     }
 
-    // ✅ TICK TEMPOREL : force recomposition → le cycle se met à jour sans quitter l’écran
     val nowTick by produceState(initialValue = 0) {
         while (true) {
             delay(60_000)
@@ -70,31 +68,32 @@ fun TraceJourScreen(
     @Suppress("UNUSED_VARIABLE")
     val _consumeTick = nowTick
 
-    // ✅ cycle recalculé à chaque recomposition (donc quand nowTick change)
-    val currentCycle: TraceCycle = TraceCycleClock.currentCycle()
+    val homeCycle: TypeCycleHome = remember(nowTick) {
+        GrilleCycleHome.resolve(LocalDateTime.now())
+    }
+
+    val currentCycle: TraceCycle = remember(homeCycle) {
+        HomeTraceCycleBridge.toTraceCycle(homeCycle)
+    }
+
     val lockedCycles = TraceCycleClock.lockedCycles(currentCycle)
     val isCurrentCycleEditable: Boolean = currentCycle !in lockedCycles
     val cycleKey: String = currentCycle.name
 
-    // ✅ attach pour HOME persist
     LaunchedEffect(seedBase) {
         saveStore.attach(context, seedBase)
     }
 
-    // ✅ blocage save si cycle verrouillé (editable/figé)
     LaunchedEffect(isCurrentCycleEditable) {
         saveStore.setCanSave(isCurrentCycleEditable)
     }
 
-    // ✅ load cycle + home (relancé automatiquement quand cycleKey change)
     LaunchedEffect(seedBase, cycleKey) {
         saveStore.loadFromPrefs(context, seedBase, cycleKey, allSliderKeys)
-
-        // petit bump pour forcer refresh Home si besoin
         saveStore.luneTick.intValue += 1
     }
 
-    // ✅ on sort : on persiste (si editable)
+    // ✅ UNE SEULE persistance à la sortie de l’écran
     DisposableEffect(seedBase, cycleKey, isCurrentCycleEditable) {
         onDispose {
             if (isCurrentCycleEditable) {
@@ -103,13 +102,6 @@ fun TraceJourScreen(
         }
     }
 
-    fun safePersistIfEditable() {
-        if (isCurrentCycleEditable) {
-            saveStore.persistAllToPrefs(context, seedBase, cycleKey)
-        }
-    }
-
-    // ✅ FIX KEY : on garde seulement la vraie clé (humeur/energie/...)
     fun normalizeSliderKey(raw: String): String {
         val last = raw
             .split("|", "/", ":", ">", " ")
@@ -131,11 +123,11 @@ fun TraceJourScreen(
             ) {
                 TraceBottomNavBar(
                     onBack = {
-                        safePersistIfEditable()
+                        // ✅ plus de persist ici
                         onBack()
                     },
                     onHistory = {
-                        safePersistIfEditable()
+                        // ✅ plus de persist ici non plus
                         onHistory()
                     },
                     onDeepen = { onDeepen() },
@@ -159,7 +151,8 @@ fun TraceJourScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp, vertical = 22.dp)
             ) {
-                TraceJourTitleBlock()
+                TraceJourTitleBlock(cycle = currentCycle)
+
                 Spacer(modifier = Modifier.height(18.dp))
 
                 TraceJourSlidersBlock(
@@ -197,18 +190,14 @@ fun TraceJourScreen(
                         if (!isCurrentCycleEditable) return@TraceJourSlidersBlock
 
                         val sliderKey = normalizeSliderKey(payload.sliderKey)
-
-                        // anti-double : si déjà locked → rien
                         val alreadyLocked = saveStore.lockedMap[sliderKey] == true
                         if (alreadyLocked) return@TraceJourSlidersBlock
 
-                        // ✅ 1) STORE : lock + cycleDone + recalcul Soleil + % rectangle + persist HOME-only
                         saveStore.handleLockForHomeAndRect(
                             cycleKey = cycleKey,
                             sliderKey = sliderKey
                         )
 
-                        // ✅ 2) LUNE : 1 verrouillage = 1 trace (une seule fois / jour / slider / cycle)
                         val luneUniqueKey = "$cycleKey|$sliderKey"
                         LuneTraceStore.incrementOncePerCycleToday(
                             context = context,
@@ -216,10 +205,7 @@ fun TraceJourScreen(
                             cycleKey = luneUniqueKey
                         )
 
-                        // ✅ 3) SIGNAL UI : Home refresh direct
                         saveStore.luneTick.intValue += 1
-
-                        // ✅ 4) dirty
                         saveStore.markDirty()
                     }
                 )

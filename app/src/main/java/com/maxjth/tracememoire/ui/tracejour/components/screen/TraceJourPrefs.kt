@@ -74,4 +74,22 @@ object TraceJourPrefs {
         keys.forEach { e.remove(it) }
         e.apply()
     }
+
+    // ✅ AJOUT 1 (optionnel): clear tout un seed (ex: "TRACE_MEMOIRE_20260303")
+    // Utile si tu veux un reset complet d'une journée (tous cycles + HOME)
+    fun clearSeed(context: Context, seedBase: String) {
+        val p = prefs(context)
+        val prefix = "${seedBase}_"
+        val keys = p.all.keys.filter { it.startsWith(prefix) }
+        if (keys.isEmpty()) return
+
+        val e = p.edit()
+        keys.forEach { e.remove(it) }
+        e.apply()
+    }
+
+    // ✅ AJOUT 2 (optionnel): debug rapide (clé existe ?)
+    fun hasKey(context: Context, seedBase: String, cycleKey: String, id: String): Boolean {
+        return prefs(context).contains(k(seedBase, cycleKey, id))
+    }
 }

@@ -7,11 +7,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -20,6 +20,7 @@ import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.tracejour.components.screen.cards.CollapsibleSliderCard
 import com.maxjth.tracememoire.ui.tracejour.components.screen.depth.TraceDepthSection
 import com.maxjth.tracememoire.ui.tracejour.components.screen.notes.TraceNoteBlock
+import com.maxjth.tracememoire.ui.tracejour.components.screen.save.stockage.TraceSaveKeys
 import com.maxjth.tracememoire.ui.tracejour.components.screen.slider.TraceLockPayload
 import com.maxjth.tracememoire.ui.tracejour.components.screen.slider.TraceMoodSliderRow
 
@@ -33,19 +34,17 @@ private val SLIDERS_FREE = listOf(
 )
 
 private val SLIDERS_PREMIUM = listOf(
-    SliderDef("repos", "Qualité du repos vécu"),
-    SliderDef("archi_emo", "Architecture émotionnelle"),
-    SliderDef("type_journee", "Type de journée"),
-    SliderDef("motifs_psy", "Motifs psychiques"),
-    SliderDef("environnement", "Environnement"),
-    SliderDef("clarte", "Clarté mentale")
+    SliderDef(TraceSaveKeys.SLIDER_REPOS, "Qualité du repos vécu"),
+    SliderDef(TraceSaveKeys.SLIDER_ARCHI_EMO, "Architecture émotionnelle"),
+    SliderDef(TraceSaveKeys.SLIDER_TYPE_JOURNEE, "Type de journée"),
+    SliderDef(TraceSaveKeys.SLIDER_MOTIFS, "Motifs psychiques"),
+    SliderDef(TraceSaveKeys.SLIDER_ENVIRONNEMENT, "Environnement"),
+    SliderDef(TraceSaveKeys.SLIDER_CLARTE, "Clarté mentale")
 )
 
 private val ROW_SPACING = 18.dp
 private val SECTION_GAP = 26.dp
 private val OUTER_HORIZONTAL_PADDING = 14.dp
-
-private const val DEBUG_FORCE_PREMIUM_VISUALS = true
 
 @Composable
 fun TraceJourSlidersBlock(
@@ -68,9 +67,6 @@ fun TraceJourSlidersBlock(
     onCaptured: ((String) -> Unit)? = null,
     onLock: ((TraceLockPayload) -> Unit)? = null
 ) {
-    val premiumVisualUnlocked = isPremium || DEBUG_FORCE_PREMIUM_VISUALS
-    val premiumEffectiveForPremiumNotes = isPremium || DEBUG_FORCE_PREMIUM_VISUALS
-
     var openKey by remember { mutableStateOf("") }
 
     val capturedMap = externalCapturedMap ?: remember { mutableStateMapOf<String, Boolean>() }
@@ -81,7 +77,6 @@ fun TraceJourSlidersBlock(
     val lockedMap = externalLockedMap ?: remember { mutableStateMapOf<String, Boolean>() }
 
     val accentMap = remember { mutableStateMapOf<String, Color>() }
-
     val optimisticLocking = remember { mutableStateMapOf<String, Boolean>() }
 
     fun optimisticLock(sliderKey: String) {
@@ -106,7 +101,7 @@ fun TraceJourSlidersBlock(
                 val note = noteMap[def.key] ?: ""
                 val accent = accentMap[def.key] ?: TURQUOISE
 
-                // ✅ défaut = 0 (plus 50)
+                // ✅ défaut = 0
                 val persistedPct = sliderMap[def.key] ?: 0
 
                 val createdAtMillis: Long? = createdAtMap[def.key]?.takeIf { it > 0L }
@@ -200,11 +195,13 @@ fun TraceJourSlidersBlock(
                     .padding(horizontal = OUTER_HORIZONTAL_PADDING)
             ) {
                 TraceDepthSection(
-                    isPremium = premiumVisualUnlocked,
+                    isPremium = isPremium,
                     modifier = Modifier.fillMaxWidth()
                 ) { contentEnabled ->
 
-                    val contentOk = if (premiumVisualUnlocked) true else contentEnabled
+                    // Si l'utilisateur est premium => contenu OK direct
+                    // sinon => gating via contentEnabled (démo / verrouillage visuel)
+                    val contentOk = if (isPremium) true else contentEnabled
 
                     SLIDERS_PREMIUM.forEachIndexed { index, def ->
 
@@ -212,7 +209,7 @@ fun TraceJourSlidersBlock(
                         val note = noteMap[def.key] ?: ""
                         val accent = accentMap[def.key] ?: TURQUOISE
 
-                        // ✅ défaut = 0 (plus 50)
+                        // ✅ défaut = 0
                         val persistedPct = sliderMap[def.key] ?: 0
 
                         val createdAtMillis: Long? = createdAtMap[def.key]?.takeIf { it > 0L }
@@ -235,9 +232,9 @@ fun TraceJourSlidersBlock(
                                     TraceMoodSliderRow(
                                         title = def.title,
                                         enabled = enabledCard,
-                                        userIsPremium = premiumEffectiveForPremiumNotes,
+                                        userIsPremium = isPremium,
                                         isPremiumSlider = true,
-                                        lockedLabel = "Débloqué avec Premium.",
+                                        lockedLabel = if (isPremium) null else "Débloqué avec Premium.",
                                         phaseKey = cycleKey,
                                         cycleKey = cycleKey,
                                         seedBase = seedBase,
@@ -282,7 +279,7 @@ fun TraceJourSlidersBlock(
                                         },
                                         enabled = enabledCard,
                                         accent = accent,
-                                        userIsPremium = premiumEffectiveForPremiumNotes,
+                                        userIsPremium = isPremium,
                                         title = "Trace écrite",
                                         placeholder = "Écrire une note…",
                                         footerMessageFree = "Tout ne demande pas à être écrit. Mais tout peut l'être.",

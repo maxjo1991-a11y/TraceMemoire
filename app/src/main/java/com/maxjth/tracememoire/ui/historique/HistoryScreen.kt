@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.maxjth.tracememoire.ui.historique.components.DayHeader
 import com.maxjth.tracememoire.ui.historique.components.HistoryEventCard
+import com.maxjth.tracememoire.ui.historique.components.HistoryTitreBlock
 import com.maxjth.tracememoire.ui.historique.logic.buildGroupedHistory
 import com.maxjth.tracememoire.ui.structure.TraceEvent
 import com.maxjth.tracememoire.ui.theme.BG_DEEP
@@ -74,11 +75,8 @@ fun HistoryScreen(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                    Text(
-                        text = "Historique",
-                        color = WHITE_SOFT,
-                        fontWeight = FontWeight.ExtraBold
-                    )
+                    // ✅ TopBar minimal : pas de "Historique" ici (sinon doublon avec ton gros titre)
+                    Text(text = "", color = WHITE_SOFT)
                 },
                 navigationIcon = {
                     TextButton(onClick = onBack) {
@@ -105,41 +103,56 @@ fun HistoryScreen(
 
             if (grouped.isEmpty()) {
 
-                // ✅ Placeholder “calme”
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 28.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                        .padding(horizontal = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
 
-                    Icon(
-                        imageVector = Icons.Outlined.CalendarToday,
-                        contentDescription = null,
-                        tint = TURQUOISE.copy(alpha = 0.75f),
-                        modifier = Modifier.size(44.dp)
+                    // ✅ GROS TITRE + SOUS-TITRE (ton style “blanc fort”)
+                    HistoryTitreBlock(
+                        subtitle = "Les jours ne disparaissent pas,\nils deviennent mémoire."
                     )
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(Modifier.height(10.dp))
 
-                    Text(
-                        text = "Bientôt : tes traces s’afficheront ici.",
-                        color = WHITE_SOFT.copy(alpha = 0.78f),
-                        fontSize = 16.sp,
-                        textAlign = TextAlign.Center,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    // ✅ Placeholder “calme”
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                        Icon(
+                            imageVector = Icons.Outlined.CalendarToday,
+                            contentDescription = null,
+                            tint = TURQUOISE.copy(alpha = 0.75f),
+                            modifier = Modifier.size(44.dp)
+                        )
 
-                    Text(
-                        text = "Lecture calme. Sans pression.",
-                        color = WHITE_SOFT.copy(alpha = 0.50f),
-                        fontSize = 13.sp,
-                        textAlign = TextAlign.Center,
-                        fontWeight = FontWeight.Medium
-                    )
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Text(
+                            text = "Bientôt : tes traces s’afficheront ici.",
+                            color = WHITE_SOFT.copy(alpha = 0.78f),
+                            fontSize = 16.sp,
+                            textAlign = TextAlign.Center,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Text(
+                            text = "Lecture calme. Sans pression.",
+                            color = WHITE_SOFT.copy(alpha = 0.50f),
+                            fontSize = 13.sp,
+                            textAlign = TextAlign.Center,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
 
             } else {
@@ -149,6 +162,13 @@ fun HistoryScreen(
                         .fillMaxSize()
                         .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
+
+                    // ✅ GROS TITRE + SOUS-TITRE (même quand il y a des données)
+                    HistoryTitreBlock(
+                        subtitle = "Les jours ne disparaissent pas,\nils deviennent mémoire."
+                    )
+
+                    Spacer(Modifier.height(12.dp))
 
                     Row(
                         modifier = Modifier

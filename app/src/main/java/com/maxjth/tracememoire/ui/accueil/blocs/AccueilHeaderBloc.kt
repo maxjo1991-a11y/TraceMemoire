@@ -18,17 +18,17 @@ fun AccueilHeaderBloc(
     subtitle: String,
     modifier: Modifier = Modifier
 ) {
-    // modifier présent pour évolution future (padding, test tags, etc.)
+
     Text(
         text = "Trace\nMémoire",
-        fontSize = 61.sp,
-        lineHeight = 60.sp,
+        fontSize = 56.sp,
+        lineHeight = 54.sp,
         fontWeight = FontWeight.ExtraBold,
         textAlign = TextAlign.Center,
         color = Color.White
     )
 
-    Spacer(Modifier.height(6.dp))
+    Spacer(Modifier.height(4.dp))
 
     Text(
         text = subtitle,
@@ -39,6 +39,5 @@ fun AccueilHeaderBloc(
         lineHeight = 24.sp
     )
 
-    Spacer(Modifier.height(22.dp))
+    Spacer(Modifier.height(18.dp))
 }
-

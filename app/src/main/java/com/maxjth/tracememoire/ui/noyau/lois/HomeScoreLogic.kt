@@ -1,4 +1,3 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/noyau/lois/HomeScoreLogic.kt
 package com.maxjth.tracememoire.ui.noyau.lois
 
 import kotlin.math.roundToInt
@@ -14,23 +13,27 @@ import kotlin.math.roundToInt
  * IMPORTANT :
  * - AUCUN lien direct ici avec l'UI (pas de Compose).
  * - AUCUN accès DB ici : ce fichier ne fait que des calculs.
+ *
+ * ✅ RÈGLE TRACE MÉMOIRE :
+ * - aucun axe valide = 0
+ * - pas 50
+ * - pas null
  */
 object HomeScoreLogic {
 
-    // ✅ Clés (faciles à reconnaître)
+    // ✅ Clés
     const val AXIS_GLOBAL = "global"
     const val AXIS_ENERGY = "energy"
     const val AXIS_BODY = "body"
     const val AXIS_PRESENCE = "presence"
 
-    // ✅ Premium (pour plus tard)
+    // ✅ Premium
     const val AXIS_PREMIUM_DAYTYPE = "premium_daytype"
     const val AXIS_PREMIUM_PATTERNS = "premium_patterns"
     const val AXIS_PREMIUM_ENV = "premium_env"
     const val AXIS_PREMIUM_CLARITY = "premium_clarity"
     const val AXIS_PREMIUM_EMOLOAD = "premium_emoload"
 
-    // ✅ Set pratique (si tu veux marquer Premium facilement ailleurs)
     val DEFAULT_PREMIUM_KEYS: Set<String> = setOf(
         AXIS_PREMIUM_DAYTYPE,
         AXIS_PREMIUM_PATTERNS,
@@ -41,15 +44,15 @@ object HomeScoreLogic {
 
     data class AxisScore(
         val key: String,
-        val percent: Int?,            // null = pas renseigné
-        val weight: Float = 1f,       // poids par défaut
+        val percent: Int?,       // null = pas renseigné
+        val weight: Float = 1f,  // poids par défaut
         val isPremium: Boolean = false
     )
 
     data class HomeScoreResult(
-        val percent: Int?,            // null si rien de calculable
-        val usedAxesCount: Int,       // combien d'axes ont servi au calcul
-        val ignoredAxesCount: Int,    // combien ont été ignorés (null / exclu)
+        val percent: Int,             // ✅ toujours un Int (jamais null)
+        val usedAxesCount: Int,
+        val ignoredAxesCount: Int,
         val includePremiumAxes: Boolean
     )
 
@@ -57,10 +60,10 @@ object HomeScoreLogic {
      * Calcul principal : moyenne pondérée (arrondie) des axes disponibles.
      *
      * Règles :
-     * - percent doit être 0..100 sinon clamp.
-     * - weight <= 0 => axe ignoré (sécurité).
-     * - si includePremiumAxes = false => on ignore isPremium = true.
-     * - si aucun axe valide => percent = null.
+     * - percent clamp 0..100
+     * - weight <= 0 => axe ignoré
+     * - si includePremiumAxes = false => on ignore isPremium = true
+     * - si aucun axe valide => percent = 0
      */
     fun computeHomeScore(
         axes: List<AxisScore>,
@@ -92,7 +95,7 @@ object HomeScoreLogic {
         }
 
         val resultPercent =
-            if (used == 0 || wsum <= 0f) null
+            if (used == 0 || wsum <= 0f) 0
             else (sum / wsum).roundToInt().coerceIn(0, 100)
 
         return HomeScoreResult(
@@ -104,8 +107,7 @@ object HomeScoreLogic {
     }
 
     /**
-     * Helper ultra simple (quand tu as juste des Int?).
-     * Exemple : computeHomeScoreFromRaw(global, energy, body, presence)
+     * Helper simple quand tu as juste des Int?
      */
     fun computeHomeScoreFromRaw(
         global: Int?,
@@ -120,13 +122,14 @@ object HomeScoreLogic {
             AxisScore(key = AXIS_BODY, percent = body, weight = 1f, isPremium = false),
             AxisScore(key = AXIS_PRESENCE, percent = presence, weight = 1f, isPremium = false)
         )
-        return computeHomeScore(axes = axes, includePremiumAxes = includePremiumAxes)
+        return computeHomeScore(
+            axes = axes,
+            includePremiumAxes = includePremiumAxes
+        )
     }
 
     /**
-     * Variante "map" (quand tu as un dictionnaire d'axes).
-     * weights optionnel : si absent, poids = 1f.
-     * premiumKeys optionnel : set des clés Premium.
+     * Variante map
      */
     fun computeHomeScoreFromMap(
         percents: Map<String, Int?>,
@@ -142,23 +145,25 @@ object HomeScoreLogic {
                 isPremium = premiumKeys.contains(key)
             )
         }
-        return computeHomeScore(axes = axes, includePremiumAxes = includePremiumAxes)
+        return computeHomeScore(
+            axes = axes,
+            includePremiumAxes = includePremiumAxes
+        )
     }
 
     /**
-     * ✅ Helper pratique :
-     * - Si rien n'est calculable => retourne 0 (au lieu de null)
+     * Helper pratique
      */
     fun computeHomePercentOrZero(
         axes: List<AxisScore>,
         includePremiumAxes: Boolean = true
     ): Int {
-        return computeHomeScore(axes, includePremiumAxes).percent ?: 0
+        return computeHomeScore(axes, includePremiumAxes).percent
     }
 
     /**
-     * ✅ NOUVEAU (Terre) :
-     * Calcul annuel simple à partir d'une liste de scores journaliers.
+     * ✅ Terre :
+     * Calcul annuel simple à partir d'une liste de scores journaliers
      * - Ignore les nulls
      * - Clamp 0..100
      * - Retourne null si aucune donnée

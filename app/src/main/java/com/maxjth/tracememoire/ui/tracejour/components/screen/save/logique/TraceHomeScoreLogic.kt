@@ -1,4 +1,3 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/save/logique/TraceHomeScoreLogic.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen.save.logique
 
 import com.maxjth.tracememoire.ui.noyau.lois.HomeScoreLogic
@@ -26,7 +25,6 @@ object TraceHomeScoreLogic {
                 key == SLIDER_CLARTE
     }
 
-    // ✅ WRAPPER COMPAT (pour TraceSaveStore)
     fun computePercent(
         sliderMap: Map<String, Int>,
         premiumTouchedToday: Boolean,
@@ -50,6 +48,18 @@ object TraceHomeScoreLogic {
         val baseBody = sliderMap[SLIDER_CORPS]
         val basePresence = sliderMap[SLIDER_PRESENCE]
 
+        // ✅ RÈGLE IMPORTANTE :
+        // si aucune base n’est touchée/renseignée, on retourne 0
+        val noBaseData =
+            baseGlobal == null &&
+                    baseEnergy == null &&
+                    baseBody == null &&
+                    basePresence == null
+
+        if (noBaseData) {
+            return 0
+        }
+
         var global = baseGlobal
         var energy = baseEnergy
         var body = baseBody
@@ -58,7 +68,6 @@ object TraceHomeScoreLogic {
         val allowPremiumInfluence = includePremiumAxes && premiumTouchedToday
 
         if (allowPremiumInfluence) {
-
             val pRepos = sliderMap[SLIDER_REPOS]
             val pArchi = sliderMap[SLIDER_ARCHI_EMO]
             val pType = sliderMap[SLIDER_TYPE_JOURNEE]
@@ -93,7 +102,9 @@ object TraceHomeScoreLogic {
             includePremiumAxes = allowPremiumInfluence
         )
 
-        return result.percent
+        // ✅ GARDE-FOU SORTIE MOTEUR :
+        // même si un calcul évolue plus tard, la sortie finale reste bornée
+        return (result.percent ?: 0).coerceIn(0, 100)
     }
 
     private fun blendOrKeep(

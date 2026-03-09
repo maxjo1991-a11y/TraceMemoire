@@ -1,3 +1,4 @@
+// FILE: app/src/main/java/com/maxjth/tracememoire/ui/systeme/soleil/adn/HomeSoleilParams.kt
 package com.maxjth.tracememoire.ui.systeme.soleil.adn
 
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -18,7 +19,7 @@ import com.maxjth.tracememoire.ui.systeme.soleil.calculs.lerpFloat
 import com.maxjth.tracememoire.ui.systeme.soleil.cycle.ringColorForCycle
 import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
-import com.maxjth.tracememoire.utils.currentMonthlyBreath
+import com.maxjth.tracememoire.ui.time.currentMonthlyBreath
 import java.time.LocalDateTime
 import kotlin.math.roundToInt
 import kotlin.random.Random
@@ -79,6 +80,7 @@ fun rememberHomeSoleilParams(
         else -> -3f
     }
 
+    // ✅ IMPORTANT : currentMonthlyBreath() vient maintenant de ui.time
     val breath = remember { currentMonthlyBreath() }
     val tr = rememberInfiniteTransition(label = "home_soleil_life")
 
@@ -126,7 +128,8 @@ fun rememberHomeSoleilParams(
     val finalScaleY = baseScale * eyeUniform
 
     val strokeBase = 8.dp
-    val strokeDp = strokeBase + (2.dp * strokeBoost)
+    // ✅ évite les ambiguïtés d’operator times(Dp, Float) selon imports/versions
+    val strokeDp = strokeBase + (2f * strokeBoost).dp
 
     val tiltPhase by tr.animateFloat(
         initialValue = -1f,
@@ -144,11 +147,10 @@ fun rememberHomeSoleilParams(
 
     // =========================
     // ✅ COULEUR = même cycle que Terre (minute-based)
-    // -> remplace la logique hour-based qui cassait à 17h
     // =========================
     val baseRingColor = ringColorForCycle(now)
 
-    // ✅ Nuit = un peu plus “vivant” (on conserve l’idée)
+    // ✅ Nuit = un peu plus “vivant”
     val minutes = now.hour * 60 + now.minute
     val isNight = (minutes in 0..(4 * 60 + 59))
     val lightBoost = if (isNight) 1.10f else 1.00f

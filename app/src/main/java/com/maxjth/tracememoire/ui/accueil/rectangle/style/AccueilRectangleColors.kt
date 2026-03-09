@@ -1,5 +1,5 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/accueil/rectangle/AccueilRectangleColors.kt
-package com.maxjth.tracememoire.ui.accueil.rectangle
+// FILE: app/src/main/java/com/maxjth/tracememoire/ui/accueil/rectangle/style/AccueilRectangleColors.kt
+package com.maxjth.tracememoire.ui.accueil.rectangle.style
 
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -8,28 +8,57 @@ import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
 
 /**
- * Couleurs officielles du rectangle Accueil (wrapper + halo + bordure + fond).
- * Ne pas mettre de tailles ici.
+ * Couleurs officielles du rectangle Accueil
+ * (halo externe + bordure + fond interne)
+ *
+ * IMPORTANT :
+ * - aucune taille ici
+ * - uniquement les couleurs et brushes
  */
 object AccueilRectangleColors {
 
-    // Halo externe (glow doux)
-    val haloStart: Color = TURQUOISE.copy(alpha = 0.42f)
-    val haloEnd: Color = MAUVE.copy(alpha = 0.42f)
+    // -----------------------------
+    // HALO EXTERNE (GLOW)
+    // -----------------------------
+    // turquoise légèrement dominant
+    val haloStart: Color = TURQUOISE.copy(alpha = 0.48f)
 
-    // Bordure dégradée (contour)
-    val borderStart: Color = TURQUOISE
-    val borderEnd: Color = MAUVE
+    // mauve légèrement plus doux
+    val haloEnd: Color = MAUVE.copy(alpha = 0.40f)
 
-    // Fond interne (wrapper)
-    val background: Color = BG_DEEP.copy(alpha = 0.95f)
 
-    // ---------- Brushes ----------
+    // -----------------------------
+    // BORDURE DÉGRADÉE
+    // -----------------------------
+    val borderStart: Color = TURQUOISE.copy(alpha = 0.90f)
+    val borderEnd: Color = MAUVE.copy(alpha = 1.00f)
+
+
+    // -----------------------------
+    // FOND INTERNE
+    // -----------------------------
+    val background: Color =
+        BG_DEEP.copy(alpha = 0.95f)
+
+
+    // -----------------------------
+    // BRUSH HALO
+    // -----------------------------
     fun haloBrush(): Brush = Brush.linearGradient(
-        colors = listOf(haloStart, haloEnd)
+        colors = listOf(
+            haloStart,
+            haloEnd
+        )
     )
 
+
+    // -----------------------------
+    // BRUSH BORDURE
+    // -----------------------------
     fun borderBrush(): Brush = Brush.linearGradient(
-        colors = listOf(borderStart, borderEnd)
+        colors = listOf(
+            borderStart,
+            borderEnd
+        )
     )
 }

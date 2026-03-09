@@ -1,4 +1,4 @@
-package com.maxjth.tracememoire.ui.noyau.lois.archiver
+package com.maxjth.tracememoire.archiver
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect

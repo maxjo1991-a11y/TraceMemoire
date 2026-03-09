@@ -1,3 +1,4 @@
+// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/header/TraceMemoryStamp.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen.header
 
 import androidx.compose.foundation.BorderStroke
@@ -27,53 +28,61 @@ import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
 import java.time.Instant
 import java.time.ZoneId
-import java.util.Locale
 
 /**
- * ✅ "Mémoire créée" + date/heure + état verrouillage
+ * ✅ PILL "Jour • en cours" + STAMP "Mémoire créée • 14:32" + lock chip
  *
- * - captured == false : on n’affiche rien
- * - locked == false   : chip "Verrouiller le cycle" (si onLock != null)
- * - locked == true    : "Cycle verrouillé" + icône lock (chip disparaît)
- *
- * createdAtMillis:
- *  - null => pas de date
- *  - sinon => "15 fév 2026 9:15 AM"
+ * - La PILL est indépendante de captured (peut s'afficher même si mémoire absente)
+ * - captured == true : on affiche le stamp
+ * - createdAtMillis => affichage "14:32" (heure secondaire, discret)
  */
 @Composable
 fun TraceMemoryStamp(
+    // --- PILL (cycle en cours) ---
+    cycleLabel: String? = null,          // ex: "Nuit"
+    cycleActive: Boolean = false,         // true => affiche la Pill
+    showCyclePill: Boolean = true,
+
+    // --- STAMP (mémoire créée) ---
     captured: Boolean,
     createdAtMillis: Long?,
     locked: Boolean,
+
     modifier: Modifier = Modifier,
     onLock: (() -> Unit)? = null,
     showLockChip: Boolean = true
 ) {
-    if (!captured) return
-
-    val createdText = createdAtMillis?.let { formatStampFr(it) }
-
     Column(modifier = modifier) {
 
-        // Ligne 1 : Mémoire créée
-        Text(
-            text = "• Mémoire créée",
-            color = MAUVE.copy(alpha = 0.90f),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium
-        )
-
-        // Ligne 2 : Date/heure (si dispo)
-        if (!createdText.isNullOrBlank()) {
-            Text(
-                text = createdText,
-                color = WHITE_SOFT.copy(alpha = 0.55f),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Normal
+        // ─────────────────────────────────────────────
+        // 0) PILL "Jour • en cours"
+        // ─────────────────────────────────────────────
+        if (showCyclePill && cycleActive && !cycleLabel.isNullOrBlank()) {
+            CycleStatusPill(
+                label = cycleLabel,
+                isActive = true
             )
+            Spacer(modifier = Modifier.padding(top = 10.dp))
         }
 
-        // Ligne 3 : état cycle (minimal, sans pollution)
+        // ─────────────────────────────────────────────
+        // 1) STAMP (seulement si mémoire capturée)
+        // ─────────────────────────────────────────────
+        if (!captured) return
+
+        val hhmm = createdAtMillis?.let { formatHourMinute(it) }
+
+        // ✅ Ligne unique : "Mémoire créée • 14:32"
+        Text(
+            text = if (hhmm != null) "Mémoire créée • $hhmm" else "Mémoire créée",
+            color = TURQUOISE.copy(alpha = 0.92f),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+
+        // ─────────────────────────────────────────────
+        // 2) état cycle (verrouillé / bouton verrouiller)
+        // ─────────────────────────────────────────────
         Row(
             modifier = Modifier.padding(top = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -94,7 +103,6 @@ fun TraceMemoryStamp(
                     fontWeight = FontWeight.Medium
                 )
             } else {
-                // ✅ Chip seulement (pas de "Cycle modifiable" -> bruit visuel)
                 if (showLockChip && onLock != null) {
                     AssistChip(
                         onClick = onLock,
@@ -121,7 +129,6 @@ fun TraceMemoryStamp(
                             width = 1.dp,
                             color = TURQUOISE.copy(alpha = 0.35f)
                         ),
-                        // ✅ IMPORTANT: enlève la “poudre/brume” (shadow/elevation)
                         elevation = AssistChipDefaults.assistChipElevation(
                             elevation = 0.dp,
                             pressedElevation = 0.dp,
@@ -130,7 +137,6 @@ fun TraceMemoryStamp(
                             draggedElevation = 0.dp,
                             disabledElevation = 0.dp
                         ),
-                        // ✅ option compact (si tu veux que ça prenne moins de place)
                         modifier = Modifier.heightIn(min = 28.dp)
                     )
                 }
@@ -140,45 +146,12 @@ fun TraceMemoryStamp(
 }
 
 /* -----------------------------
-   Format date FR stable
-   "15 fév 2026 9:15 AM"
+  Heure locale stable : "14:32"
 ------------------------------ */
-private fun formatStampFr(millis: Long): String {
+private fun formatHourMinute(millis: Long): String {
     val zone = ZoneId.systemDefault()
     val dt = Instant.ofEpochMilli(millis).atZone(zone)
-
-    val day = dt.dayOfMonth
-    val month = frMonthAbbrev(dt.monthValue)
-    val year = dt.year
-
-    val hour24 = dt.hour
-    val minute = dt.minute.toString().padStart(2, '0')
-    val ampm = if (hour24 < 12) "AM" else "PM"
-
-    val hour12 = when {
-        hour24 == 0 -> 12
-        hour24 > 12 -> hour24 - 12
-        else -> hour24
-    }
-
-    return "$day $month $year $hour12:$minute $ampm"
-}
-
-private fun frMonthAbbrev(month: Int): String {
-    // ✅ Abréviations stables (évite "févr." sur certains devices)
-    return when (month) {
-        1 -> "jan"
-        2 -> "fév"
-        3 -> "mar"
-        4 -> "avr"
-        5 -> "mai"
-        6 -> "jun"
-        7 -> "jul"
-        8 -> "aoû"
-        9 -> "sep"
-        10 -> "oct"
-        11 -> "nov"
-        12 -> "déc"
-        else -> "?"
-    }
+    val h = dt.hour.toString().padStart(2, '0')
+    val m = dt.minute.toString().padStart(2, '0')
+    return "$h:$m"
 }

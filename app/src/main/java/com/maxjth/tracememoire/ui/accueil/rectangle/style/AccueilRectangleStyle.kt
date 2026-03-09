@@ -1,29 +1,60 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/accueil/rectangle/AccueilRectangleSizes.kt
-package com.maxjth.tracememoire.ui.accueil.rectangle
+// FILE: app/src/main/java/com/maxjth/tracememoire/ui/accueil/rectangle/style/AccueilRectangleSizes.kt
+package com.maxjth.tracememoire.ui.accueil.rectangle.style
 
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Tailles officielles du rectangle Accueil (wrapper + halo + border + paddings + height).
- * Ne pas mettre de couleurs ici.
+ * Tailles officielles du rectangle Accueil
+ * (halo + bordure + padding + hauteurs).
+ *
+ * IMPORTANT :
+ * - aucune couleur ici
+ * - uniquement tailles et distances
  */
 object AccueilRectangleSizes {
 
-    // Wrapper global autour du rectangle
-    val wrapperPaddingVertical: Dp = 8.dp
+    // -----------------------------
+    // WRAPPER GLOBAL
+    // -----------------------------
+    // espace autour du rectangle dans l'écran Home
+    val wrapperPaddingVertical: Dp = 10.dp
 
-    // Halo (glow)
-    val haloPadding: Dp = 8.dp
-    val haloCorner: Dp = 38.dp
-    val haloBlur: Dp = 30.dp
+    // hauteur minimum globale du wrapper (utilisé dans AccueilRectangleBloc)
+    val wrapperMinHeight: Dp = 440.dp
 
-    // Contour + fond
+
+    // -----------------------------
+    // HALO (GLOW EXTERNE)
+    // -----------------------------
+    // espace pour laisser respirer le glow
+    val haloPadding: Dp = 14.dp
+
+    // rayon du halo (légèrement plus grand que le rectangle)
+    val haloCorner: Dp = 47.dp
+
+    // puissance du glow
+    val haloBlur: Dp = 44.dp
+
+
+    // -----------------------------
+    // RECTANGLE PRINCIPAL
+    // -----------------------------
     val corner: Dp = 30.dp
-    val borderWidth: Dp = 2.8.dp
-    val innerPadding: Dp = 2.dp
 
-    // Hauteurs du contenu (HomeTemporalGridRect)
-    val contentMinHeight: Dp = 270.dp
-    val contentMaxHeight: Dp = 530.dp
+    // bordure visible premium
+    val borderWidth: Dp = 1.dp
+
+    // padding interne très léger
+    val innerPadding: Dp = 20.dp
+
+
+    // -----------------------------
+    // HAUTEUR DU CONTENU
+    // -----------------------------
+    // hauteur minimum du rectangle interne
+    val contentMinHeight: Dp = 320.dp
+
+    // hauteur max si contenu plus grand
+    val contentMaxHeight: Dp = 740.dp
 }

@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -17,25 +16,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.maxjth.tracememoire.ui.theme.MAUVE
-import com.maxjth.tracememoire.ui.tracejour.logic.TraceCycle
-import com.maxjth.tracememoire.ui.tracejour.logic.TraceCycleClock
-import java.time.LocalTime
+import com.maxjth.tracememoire.ui.tracejour.cycle.TraceCycle
 
 @Composable
 fun TraceJourTitleBlock(
+    cycle: TraceCycle,
     modifier: Modifier = Modifier
 ) {
-    val cycle: TraceCycle = remember {
-        TraceCycleClock.currentCycle(LocalTime.now())
-    }
-
-    val cycleTitle: String = remember(cycle) {
-        when (cycle) {
-            TraceCycle.JOUR -> "Jour"
-            TraceCycle.SOIR -> "Soir"
-            TraceCycle.NUIT -> "Nuit"
-            else -> cycle.name.lowercase().replaceFirstChar { it.uppercase() }
-        }
+    val cycleTitle: String = when (cycle) {
+        TraceCycle.JOUR -> "Jour"
+        TraceCycle.SOIR -> "Soir"
+        TraceCycle.NUIT -> "Nuit"
+        TraceCycle.MATIN -> "Matin"
     }
 
     val tagline = "L'expérience intérieure est une réalité silencieuse"
@@ -43,17 +35,9 @@ fun TraceJourTitleBlock(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            // ✅ Air en haut : assez pour respirer, pas trop pour voler de la place au ring
             .padding(top = 22.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // ------------------------------------------------------------
-        // ✅ TITRE (LOCK UI) : hiérarchie premium stable
-        // Trace = 66sp
-        // d’état d’âme = 30sp
-        // cycle (Jour/Soir/Nuit) = 60sp
-        // ------------------------------------------------------------
-
         Text(
             text = "Trace",
             color = Color.White,
@@ -63,7 +47,6 @@ fun TraceJourTitleBlock(
             lineHeight = 66.sp
         )
 
-        // ✅ micro-espace premium (évite l'effet empilé)
         Spacer(modifier = Modifier.height(4.dp))
 
         Text(
@@ -74,7 +57,6 @@ fun TraceJourTitleBlock(
             textAlign = TextAlign.Center
         )
 
-        // ✅ espace plus généreux avant le cycle (respiration)
         Spacer(modifier = Modifier.height(10.dp))
 
         Text(
@@ -85,7 +67,6 @@ fun TraceJourTitleBlock(
             textAlign = TextAlign.Center
         )
 
-        // ✅ distance vers la tagline (zone calme)
         Spacer(modifier = Modifier.height(18.dp))
 
         Text(
@@ -98,7 +79,6 @@ fun TraceJourTitleBlock(
             lineHeight = 24.sp
         )
 
-        // ✅ descente vers le bloc contenu (sliders / ring)
         Spacer(modifier = Modifier.height(54.dp))
     }
 }

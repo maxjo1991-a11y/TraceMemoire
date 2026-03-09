@@ -1,5 +1,9 @@
+// FILE: app/src/main/java/com/maxjth/tracememoire/ui/noyau/lois/HomeCycleTickerLogic.kt
 package com.maxjth.tracememoire.ui.noyau.lois
 
+import com.maxjth.tracememoire.ui.moteur.cycle.grille.GrilleCycleHome
+import com.maxjth.tracememoire.ui.moteur.cycle.modele.TypeCycleHome
+import com.maxjth.tracememoire.ui.time.currentMonthlyBreath
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -8,37 +12,34 @@ import java.time.format.DateTimeFormatter
 
 object HomeCycleTickerLogic {
 
-    enum class CycleId { NUIT, MATIN, JOUR, SOIR }
+    enum class CycleState {
+        ETAT_1, // Nouveau
+        ETAT_2, // En cours
+        ETAT_3  // Complété
+    }
 
     data class HomeSnapshot(
         val now: LocalDateTime,
-
-        // ✅ Toujours utile pour Soleil
-        val completedToday: Set<CycleId>,
-
-        // ✅ Devient multi-échelle (plus "jour uniquement")
+        val completedToday: Set<TypeCycleHome>,
         val lastPercent: Int?,
-
-        // ✅ Important pour cohérence temporelle
-        val lastCycleSaved: CycleId?,
-
-        // ✅ NOUVEAU : Score annuel Terre
+        val lastCycleSaved: TypeCycleHome?,
         val yearlyPercent: Int?
     )
 
     data class HomeTickerUi(
         val title: String,
         val subtitle: String,
-        val rightHint: String
+        val rightHint: String,
+        val cycleState: CycleState,
+        val cycleStateLabel: String,
+        val currentCycle: TypeCycleHome
     )
 
     fun tickerFlow(
         intervalMs: Long,
         provider: () -> HomeSnapshot
     ): Flow<HomeTickerUi> = flow {
-
         var index = 0
-
         while (true) {
             val snap = provider()
             emit(buildUi(snap, index))
@@ -47,15 +48,31 @@ object HomeCycleTickerLogic {
         }
     }
 
-    private fun buildUi(s: HomeSnapshot, index: Int): HomeTickerUi {
+    private fun buildUi(
+        s: HomeSnapshot,
+        index: Int
+    ): HomeTickerUi {
 
-        val current = cycleForTime(s.now)
+        // ✅ La grille est la seule source de vérité
+        val current = GrilleCycleHome.resolve(s.now)
+        val activeCycles = GrilleCycleHome.activeCycles()
+
+        val doneCount = s.completedToday
+            .count { it in activeCycles }
+            .coerceIn(0, activeCycles.size)
+
+        // ✅ FIX : "complété" seulement si confirmé par la dernière sauvegarde
+        val state = cycleStateForCurrent(
+            current = current,
+            completedToday = s.completedToday,
+            lastCycleSaved = s.lastCycleSaved
+        )
+
+        // ✅ BRANCHEMENT TIME (MonthlyBreath)
+        // Ça rend currentMonthlyBreath() "utilisé" + on peut s'en servir comme rythme mensuel.
+        val breath = currentMonthlyBreath()
 
         val lines = buildList {
-
-            // ─────────────────────────────
-            // TEMPS
-            // ─────────────────────────────
             add("Cycle ${labelFr(current)} actif.")
             add("Fenêtre temporelle stable.")
             add("Phase en cours maintenue.")
@@ -63,11 +80,13 @@ object HomeCycleTickerLogic {
             add("Intervalle actif.")
             add("Temps en progression.")
 
-            // ─────────────────────────────
-            // JOUR (Soleil)
-            // ─────────────────────────────
-            val done = s.completedToday.size.coerceIn(0, 4)
-            add("Cycles du jour : $done/4.")
+            add("Cycles du jour : $doneCount/${activeCycles.size}.")
+
+            when (state) {
+                CycleState.ETAT_1 -> add("Nouveau cycle disponible.")
+                CycleState.ETAT_2 -> add("Cycle en cours.")
+                CycleState.ETAT_3 -> add("Cycle complété.")
+            }
 
             if (s.lastPercent != null) {
                 add("Score courant : ${s.lastPercent} %.")
@@ -76,9 +95,6 @@ object HomeCycleTickerLogic {
                 add("Aucune mesure active.")
             }
 
-            // ─────────────────────────────
-            // ANNÉE (Terre)
-            // ─────────────────────────────
             if (s.yearlyPercent != null) {
                 add("Tendance annuelle : ${s.yearlyPercent} %.")
                 add("Lecture globale stable.")
@@ -86,9 +102,10 @@ object HomeCycleTickerLogic {
                 add("Aucune lecture annuelle.")
             }
 
-            // ─────────────────────────────
-            // MÉMOIRE / ÉTAT
-            // ─────────────────────────────
+            // ✅ On utilise le "breath" (sinon Android Studio le re-grise plus tard)
+            add("Rythme du mois : ${breath.minScale} → ${breath.maxScale}.")
+            add("Durée respiration : ${breath.durationMs} ms.")
+
             add("Historique conservé.")
             add("Séquence mémorisée.")
             add("État enregistré.")
@@ -105,25 +122,56 @@ object HomeCycleTickerLogic {
         return HomeTickerUi(
             title = "Cycle ACTIF",
             subtitle = subtitle,
-            rightHint = labelFr(current)
+            rightHint = labelFr(current),
+            cycleState = state,
+            cycleStateLabel = stateLabelFr(state),
+            currentCycle = current
         )
     }
 
-    private fun cycleForTime(now: LocalDateTime): CycleId {
-        val minutes = now.hour * 60 + now.minute
-
-        return when {
-            minutes in 0..299 -> CycleId.NUIT
-            minutes in 300..719 -> CycleId.MATIN
-            minutes in 720..1079 -> CycleId.JOUR
-            else -> CycleId.SOIR
-        }
+    /**
+     * ✅ Règle PROPRE du ticker (cycle courant)
+     * - ETAT_3 seulement si :
+     *   1) current est dans completedToday
+     *   2) ET lastCycleSaved == current
+     * - Sinon ETAT_2
+     */
+    private fun cycleStateForCurrent(
+        current: TypeCycleHome,
+        completedToday: Set<TypeCycleHome>,
+        lastCycleSaved: TypeCycleHome?
+    ): CycleState {
+        val done = completedToday.contains(current)
+        val confirmed = (lastCycleSaved == current)
+        return if (done && confirmed) CycleState.ETAT_3 else CycleState.ETAT_2
     }
 
-    private fun labelFr(id: CycleId): String = when (id) {
-        CycleId.NUIT -> "Nuit"
-        CycleId.MATIN -> "Matin"
-        CycleId.JOUR -> "Jour"
-        CycleId.SOIR -> "Soir"
+    /**
+     * ✅ État pour une ligne du rectangle (Matin/Jour/Soir/Nuit)
+     * - ETAT_3 : cycle complété (il a un %)
+     * - ETAT_2 : cycle actuel (maintenant) et pas complété
+     * - ETAT_1 : le reste
+     */
+    fun cycleStateForRow(
+        now: LocalDateTime,
+        cycle: TypeCycleHome,
+        completedToday: Set<TypeCycleHome>
+    ): CycleState {
+        if (completedToday.contains(cycle)) return CycleState.ETAT_3
+        val current = GrilleCycleHome.resolve(now)
+        return if (cycle == current) CycleState.ETAT_2 else CycleState.ETAT_1
+    }
+
+    private fun stateLabelFr(state: CycleState): String = when (state) {
+        CycleState.ETAT_1 -> "Nouveau cycle disponible"
+        CycleState.ETAT_2 -> "Cycle en cours"
+        CycleState.ETAT_3 -> "Cycle complété"
+    }
+
+    private fun labelFr(type: TypeCycleHome): String = when (type) {
+        TypeCycleHome.NUIT -> "Nuit"
+        TypeCycleHome.MATIN -> "Matin"
+        TypeCycleHome.JOUR -> "Jour"
+        TypeCycleHome.SOIR -> "Soir"
     }
 }

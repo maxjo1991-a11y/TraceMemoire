@@ -1,4 +1,3 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/accueil/constellation/AccueilConstellationBlock.kt
 package com.maxjth.tracememoire.ui.accueil.constellation
 
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -13,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -20,8 +20,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.maxjth.tracememoire.ui.systeme.lune.motion.LuneAttachedMotion
 import com.maxjth.tracememoire.ui.systeme.lune.visuel.LuneCountCircle
@@ -36,40 +39,31 @@ import java.time.LocalDateTime
 
 @Composable
 fun AccueilConstellationBlock(
-    // ✅ valeurs (obligatoires)
     luneCount: Int,
     luneDeltaToday: Int,
-    yearlyPercent: Int?,
+    scoreHier: Int?,
     soleilPercent: Int?,
-
-    // ✅ (Compose) modifier en premier optionnel
+    soleilDeltaText: String? = null,
+    terreDeltaText: String? = null,
     modifier: Modifier = Modifier,
-
-    // ✅ override optionnel (doit matcher HomeSoleilCircle)
     nowOverride: LocalDateTime? = null,
-
-    // ✅ tailles (par défaut = celles que tu avais)
-    clusterSize: Dp = 304.dp,
-    moonContainerSize: Dp = 142.dp,
-    moonVisualSizeDp: Int = 102,
-    sideContainerSize: Dp = 130.dp,
+    clusterSize: Dp = 325.dp,
+    moonContainerSize: Dp = 130.dp,
+    moonVisualSizeDp: Int = 94,
+    sideContainerSize: Dp = 132.dp,
     sideVisualSizeDp: Int = 108,
-
-    // ✅ placements (par défaut = tes offsets)
-    topOffsetY: Dp = (-92).dp,
-    bottomOffsetY: Dp = 10.dp,
-    sideOffsetX: Dp = 120.dp,
-
-    // ✅ NOUVEAU : rotation très douce du glow
-    glowRotationPeriodMs: Int = 980_000 // 120s = super doux
+    topOffsetY: Dp = (-78).dp,
+    bottomOffsetY: Dp = 22.dp,
+    sideOffsetX: Dp = 115.dp,
+    labelOffsetY: Dp = 83.dp,
+    labelFontSizeSp: Int = 14,
+    glowRotationPeriodMs: Int = 80_000
 ) {
-    // ✅ UN SEUL "NOW" PARTAGÉ (LocalDateTime?)
+
     val homeNow: LocalDateTime? = nowOverride ?: rememberHomeNow()
 
-    // ✅ Animations (cluster + glow)
     val inf = rememberInfiniteTransition(label = "accueil_cluster_float")
 
-    // Flottement doux (cluster)
     val floatY by inf.animateFloat(
         initialValue = -1.8f,
         targetValue = 1.8f,
@@ -100,7 +94,6 @@ fun AccueilConstellationBlock(
         label = "floatScale"
     )
 
-    // ✅ Rotation ultra douce du glow (indépendante des planètes)
     val glowRot by inf.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
@@ -111,18 +104,25 @@ fun AccueilConstellationBlock(
         label = "glowRot"
     )
 
+    val labelColorPrimary = TURQUOISE.copy(alpha = 0.92f)
+    val labelColorSecondary = TURQUOISE.copy(alpha = 0.75f)
+
     Box(
         modifier = modifier
             .size(clusterSize)
             .offset(x = floatX.dp, y = floatY.dp)
-            .graphicsLayer(scaleX = floatScale, scaleY = floatScale),
+            .graphicsLayer(
+                scaleX = floatScale,
+                scaleY = floatScale
+            ),
         contentAlignment = Alignment.Center
     ) {
-        // ✅ Glow derrière (profondeur) — tourne doucement
+
+        // glow galaxie
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .graphicsLayer(rotationZ = glowRot) // <- ICI la rotation
+                .graphicsLayer(rotationZ = glowRot)
                 .background(
                     Brush.radialGradient(
                         colors = listOf(
@@ -136,7 +136,7 @@ fun AccueilConstellationBlock(
                 .zIndex(0f)
         )
 
-        // ── Bas gauche : TERRE = % ANNUEL
+        // PASSÉ
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -145,16 +145,30 @@ fun AccueilConstellationBlock(
                 .zIndex(1f),
             contentAlignment = Alignment.Center
         ) {
+
             TerrePercentCircle(
-                yearlyPercent,
+                scoreHier = scoreHier,
+                deltaText = terreDeltaText,
                 modifier = Modifier.matchParentSize(),
                 sizeDp = sideVisualSizeDp,
                 numberScale = 0.90f,
-                marsBreathSlowFactor = 1.25f
+                marsBreathSlowFactor = 1.25f,
+                nowOverride = homeNow
+            )
+
+            Text(
+                text = "Passé",
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .offset(y = labelOffsetY),
+                color = labelColorSecondary,
+                fontSize = labelFontSizeSp.sp,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center
             )
         }
 
-        // ── Bas droite : SOLEIL
+        // PRÉSENT
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -163,6 +177,7 @@ fun AccueilConstellationBlock(
                 .zIndex(1f),
             contentAlignment = Alignment.Center
         ) {
+
             HomeSoleilCircle(
                 traceCount = 0,
                 progressPercent = soleilPercent,
@@ -170,11 +185,23 @@ fun AccueilConstellationBlock(
                 modifier = Modifier.matchParentSize(),
                 sizeDp = sideContainerSize,
                 variant = SoleilVariant.SECONDARY,
-                numberEntryScale = 0.72f
+                numberEntryScale = 0.72f,
+                deltaText = soleilDeltaText
+            )
+
+            Text(
+                text = "Présent",
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .offset(y = labelOffsetY),
+                color = labelColorSecondary,
+                fontSize = labelFontSizeSp.sp,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center
             )
         }
 
-        // ── Haut : LUNE
+        // LUNE
         LuneAttachedMotion(
             swingX = 6.5f,
             swingY = 4.5f,
@@ -185,17 +212,30 @@ fun AccueilConstellationBlock(
                 .size(moonContainerSize)
                 .zIndex(2f)
         ) {
+
             Box(
                 modifier = Modifier
                     .matchParentSize()
                     .background(BG_DEEP, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
+
                 LuneCountCircle(
                     value = luneCount,
                     deltaToday = luneDeltaToday,
                     sizeDp = moonVisualSizeDp,
                     modifier = Modifier.matchParentSize()
+                )
+
+                Text(
+                    text = "Traces",
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .offset(y = labelOffsetY),
+                    color = labelColorPrimary,
+                    fontSize = labelFontSizeSp.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
                 )
             }
         }

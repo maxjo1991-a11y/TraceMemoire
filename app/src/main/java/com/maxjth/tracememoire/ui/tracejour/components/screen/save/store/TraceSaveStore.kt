@@ -1,84 +1,202 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/save/store/TraceSaveStore.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen.save.store
 
 import android.content.Context
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import com.maxjth.tracememoire.ui.moteur.cycle.logique.MoteurCycleHome
+import com.maxjth.tracememoire.ui.moteur.validation.TraceScoreValidator
+import com.maxjth.tracememoire.ui.tracejour.components.screen.save.TraceJourPrefs
+import com.maxjth.tracememoire.ui.tracejour.components.screen.save.engine.TraceSaveConfirmationEngine
+import com.maxjth.tracememoire.ui.tracejour.components.screen.save.engine.TraceSaveCycleEngine
+import com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.TraceSaveHomeIO
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.TraceSaveStoreHome
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.logique.TraceHomeScoreLogic
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.state.TraceSaveState
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.stockage.TraceSaveCycleStorage
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.stockage.TraceSaveKeys
+import com.maxjth.tracememoire.ui.terre.logic.TerreHistoryStore
+import java.time.LocalDate
 import java.time.LocalDateTime
 
-/**
- * TraceSaveStore = ORCHESTRATEUR (mince)
- *
- * ✅ MISE À JOUR (ton choix “0 au lieu de 50” + “non touché = non compté”):
- * - Les sliders “visuellement” démarrent à 0 (au lieu de 50)
- * - Tant qu’un slider n’a pas été touché, il est IGNORÉ dans le calcul du % (pas compté comme 0)
- *
- * ✅ FIX IMPORTANT:
- * - Au lock, on force touched=true, sinon un lock “sans glisser” peut être ignoré dans le calcul.
- *
- * ✅ NOUVEAU:
- * - Dots FREE (4 pastilles) gérés dans TraceSaveStoreHome
- *   → TraceSaveStore expose getFreeDotsForCycle(cycleKey)
- *   → Au lock d’un slider FREE, on allume sa pastille via home.onFreeSliderLocked(...)
- *
- * ✅ FIX PERSIST HOME (BUG: “ça disparaît après reboot”)
- * - On expose loadHomeOnlyForHomeScreen(...)
- * - On persist HOME-only quand lastPercent change (hors loadFromPrefs)
- */
 class TraceSaveStore {
 
     // ─────────────────────────────────────────────
-    // DEPENDENCIES (dossiers séparés)
+    // DEPENDENCIES
     // ─────────────────────────────────────────────
+
     private val home = TraceSaveStoreHome()
+    private val moteurCycleHome = MoteurCycleHome()
+    private val homeIO = TraceSaveHomeIO(home, moteurCycleHome)
+
     private val cycleStorage = TraceSaveCycleStorage()
+    private val cycle = TraceSaveCycleEngine()
+
+    private val confirmation = TraceSaveConfirmationEngine(
+        home = home,
+        homeIO = homeIO,
+        verrouillerCarte = { k -> lockCard(k) },
+        recalculerSoleil = { includePremium -> recomputeHomeScoreFromSliders(includePremium) }
+    )
 
     // ─────────────────────────────────────────────
-    // EXPOSITIONS POUR HomeScreen
+    // SATELLITES / ATTACH MEMORY
     // ─────────────────────────────────────────────
+
+    private var attachedContext: Context? = null
+    private var attachedSeedBase: String? = null
+
+    private val satellitePrefsName = "trace_memoire_satellites"
+
+    private fun satelliteDayKey(seedBase: String) =
+        "last_home_tick_day_$seedBase"
+
+    private fun satellitePrefs(context: Context) =
+        context.applicationContext
+            .getSharedPreferences(satellitePrefsName, Context.MODE_PRIVATE)
+
+    private fun readLastProcessedDay(context: Context, seedBase: String): String? {
+        return satellitePrefs(context).getString(
+            satelliteDayKey(seedBase),
+            null
+        )
+    }
+
+    private fun writeLastProcessedDay(context: Context, seedBase: String, day: LocalDate) {
+        satellitePrefs(context)
+            .edit()
+            .putString(
+                satelliteDayKey(seedBase),
+                day.toString()
+            )
+            .apply()
+    }
+
+    // ─────────────────────────────────────────────
+    // GARDE-FOU LUNE
+    // ─────────────────────────────────────────────
+
+    private fun safeIncrementLuneTick() {
+        val next = luneTick.intValue + 1
+        luneTick.intValue = next.coerceIn(0, 999_999)
+    }
+
+    // ─────────────────────────────────────────────
+    // GARDE-FOU SOLEIL
+    // ─────────────────────────────────────────────
+
+    private fun safeSetLastPercent(percent: Int?) {
+        val safePercent = percent?.coerceIn(0, 100) ?: 0
+        home.setLastPercent(safePercent)
+    }
+
+    // ─────────────────────────────────────────────
+    // SOURCE FIABLE POUR ARCHIVE TERRE
+    // ─────────────────────────────────────────────
+
+    private fun resolveScoreForTerreArchive(): Int? {
+        val official = home.officialCurrent.value?.coerceIn(0, 100)
+        if (official != null) return official
+
+        val hasCompletedCycle = home.completedCycleMap.values.any { it == true }
+        val live = home.lastPercent.value?.coerceIn(0, 100)
+
+        return if (hasCompletedCycle) live else null
+    }
+
+    // ─────────────────────────────────────────────
+    // ARCHIVE SOLEIL → TERRE
+    // ─────────────────────────────────────────────
+
+    private fun archiveYesterdayIfNeeded(now: LocalDateTime) {
+
+        val context = attachedContext ?: run {
+            println("DEBUG_ARCHIVE → ERREUR : attachedContext null → impossible d'archiver")
+            return
+        }
+        val seedBase = attachedSeedBase ?: run {
+            println("DEBUG_ARCHIVE → ERREUR : attachedSeedBase null → impossible d'archiver")
+            return
+        }
+
+        val today = now.toLocalDate()
+        val todayIso = today.toString()
+
+        val lastProcessedDay = readLastProcessedDay(context, seedBase)
+
+        println("DEBUG_ARCHIVE → Début archive | now=$now | today=$todayIso | lastProcessedDay=$lastProcessedDay")
+
+        if (lastProcessedDay == null) {
+            println("DEBUG_ARCHIVE → Premier lancement → on écrit today=$todayIso et on skip archive")
+            writeLastProcessedDay(context, seedBase, today)
+            return
+        }
+
+        if (lastProcessedDay == todayIso) {
+            println("DEBUG_ARCHIVE → Même jour ($todayIso == $lastProcessedDay) → skip archive")
+            return
+        }
+
+        val yesterday = today.minusDays(1)
+
+        val officialScore = home.officialCurrent.value?.coerceIn(0, 100)
+        val liveScore = home.lastPercent.value?.coerceIn(0, 100)
+        val hasCompletedCycle = home.completedCycleMap.values.any { it == true }
+
+        val scoreToArchive = resolveScoreForTerreArchive()
+
+        println(
+            "DEBUG_ARCHIVE → Nouveau jour détecté → archive hier $yesterday | " +
+                    "official=$officialScore | live=$liveScore | hasCompletedCycle=$hasCompletedCycle | scoreToArchive=$scoreToArchive"
+        )
+
+        if (scoreToArchive != null && scoreToArchive in 0..100) {
+            println("DEBUG_ARCHIVE → Upsert exécuté : $yesterday = $scoreToArchive")
+            TerreHistoryStore.upsertForDate(
+                context = context,
+                seedBase = seedBase,
+                date = yesterday,
+                percent = scoreToArchive
+            )
+            terreTick.intValue += 1
+            println("DEBUG_ARCHIVE → Succès : terreTick incrémenté à ${terreTick.intValue}")
+        } else {
+            println("DEBUG_ARCHIVE → Aucun score fiable à archiver → PAS d'upsert")
+        }
+
+        writeLastProcessedDay(context, seedBase, today)
+        println("DEBUG_ARCHIVE → Fin : lastProcessedDay mis à jour à $todayIso")
+    }
+
+    // ─────────────────────────────────────────────
+    // EXPOSITIONS POUR HOME
+    // ─────────────────────────────────────────────
+
     val lastPercent = home.lastPercent
     val cyclePercentMap = home.cyclePercentMap
     val yearlyPercent = home.yearlyPercent
 
-    // ✅ intValue existe seulement avec mutableIntStateOf
+    val lastDeltaToday = mutableStateOf<Int?>(null)
     val luneTick = mutableIntStateOf(0)
+    val terreTick = mutableIntStateOf(0)
 
-    // ✅ Dots FREE (HomeTemporalGridRect)
     fun getFreeDotsForCycle(cycleKey: String): List<Boolean> {
         return home.getFreeDotsForCycle(cycleKey)
     }
 
     // ─────────────────────────────────────────────
-    // ATTACH / FLAGS
+    // ATTACH
     // ─────────────────────────────────────────────
-    private var appContext: Context? = null
-    private var seedBaseAttached: String? = null
-    private var isLoadingPrefs: Boolean = false
 
     fun attach(context: Context, seedBase: String) {
-        appContext = context.applicationContext
-        seedBaseAttached = seedBase
-        home.attach(context.applicationContext, seedBase)
-    }
-
-    /**
-     * ✅ IMPORTANT pour HomeScreen:
-     * Recharge le HOME-only (HOME_LAST_PERCENT + rectangle + dots) au démarrage.
-     */
-    fun loadHomeOnlyForHomeScreen(context: Context, seedBase: String) {
-        attach(context, seedBase)
-        home.loadHomeOnly(context, seedBase)
+        attachedContext = context.applicationContext
+        attachedSeedBase = seedBase
+        homeIO.attach(context, seedBase)
     }
 
     // ─────────────────────────────────────────────
-    // STATE GENERAL (SAVE)
+    // STATE GENERAL
     // ─────────────────────────────────────────────
+
     val state = mutableStateOf(TraceSaveState())
     val canSaveEnabled = mutableStateOf(true)
 
@@ -95,32 +213,36 @@ class TraceSaveStore {
     }
 
     // ─────────────────────────────────────────────
-    // MAPS UI (CYCLE)
+    // MAPS (CycleEngine)
     // ─────────────────────────────────────────────
-    val sliderMap = mutableStateMapOf<String, Int>()
-    val noteMap = mutableStateMapOf<String, String>()
-    val capturedMap = mutableStateMapOf<String, Boolean>()
-    val createdAtMap = mutableStateMapOf<String, Long>()
-    val lockedMap = mutableStateMapOf<String, Boolean>()
-    val touchedMap = mutableStateMapOf<String, Boolean>()
 
-    fun markCaptured(key: String, nowMillis: Long = System.currentTimeMillis()) {
-        capturedMap[key] = true
-        if ((createdAtMap[key] ?: 0L) <= 0L) createdAtMap[key] = nowMillis
+    val sliderMap get() = cycle.sliderMap
+    val noteMap get() = cycle.noteMap
+    val capturedMap get() = cycle.capturedMap
+    val createdAtMap get() = cycle.createdAtMap
+    val lockedMap get() = cycle.lockedMap
+    val touchedMap get() = cycle.touchedMap
+
+    fun markCaptured(key: String) {
+        cycle.markCaptured(key)
         markDirty()
     }
 
     fun lockCard(key: String) {
-        lockedMap[key] = true
+        cycle.lockCard(key)
         markDirty()
     }
 
-    fun isLocked(key: String): Boolean = lockedMap[key] == true
-    fun createdAtMillis(key: String): Long? = createdAtMap[key]?.takeIf { it > 0L }
+    fun isLocked(key: String): Boolean =
+        cycle.isLocked(key)
+
+    fun createdAtMillis(key: String): Long? =
+        home.createdAtMillis(key)
 
     // ─────────────────────────────────────────────
-    // PREMIUM TOUCH (CYCLE -> HOME)
+    // PREMIUM TOUCH
     // ─────────────────────────────────────────────
+
     private fun isPremiumSlider(key: String): Boolean {
         return key == TraceSaveKeys.SLIDER_REPOS ||
                 key == TraceSaveKeys.SLIDER_ARCHI_EMO ||
@@ -131,171 +253,255 @@ class TraceSaveStore {
     }
 
     fun markSliderTouched(key: String) {
-        touchedMap[key] = true
+        cycle.markTouched(key)
+
         if (isPremiumSlider(key)) {
             home.onPremiumTouched()
         }
+
         markDirty()
     }
 
-    fun isSliderTouched(key: String): Boolean = touchedMap[key] == true
+    fun isSliderTouched(key: String): Boolean =
+        cycle.isTouched(key)
 
     // ─────────────────────────────────────────────
-    // HOME TICK (minuit) -> délégué au HOME store
+    // HOME TICK
     // ─────────────────────────────────────────────
+
     fun onHomeTick(now: LocalDateTime = LocalDateTime.now()) {
+
+        val context = attachedContext ?: return
+        val seedBase = attachedSeedBase ?: return
+
+        val today = now.toLocalDate()
+
+        val lastProcessedDay =
+            readLastProcessedDay(context, seedBase)
+
+        val newDayDetected =
+            lastProcessedDay != today.toString()
+
+        // 1) archive Soleil -> Terre
+        archiveYesterdayIfNeeded(now)
+
+        // 2) reset / refresh HOME
         home.onHomeTick(now)
-        luneTick.intValue += 1
+
+        // 3) reset Écran 2 si nouveau jour
+        if (newDayDetected) {
+            cycle.clearAll()
+            state.value = TraceSaveState()
+            yearlyPercent.value = 0
+        }
+
+        // 4) tick Lune sécurisé
+        safeIncrementLuneTick()
+
+        // 5) persist HOME
+        homeIO.persistHomeSafe(
+            cyclePercentMap = cyclePercentMap,
+            dailyPercentValue = yearlyPercent.value,
+            lastDeltaTodaySetter = { lastDeltaToday.value = it }
+        )
     }
 
     // ─────────────────────────────────────────────
-    // ✅ HELPERS: “0 visuel” + “non touché = ignoré”
+    // SCORE → SOLEIL
     // ─────────────────────────────────────────────
-    private fun applyVisualZeroForUntouched(sliderKeys: List<String>) {
-        sliderKeys.forEach { k ->
-            if (touchedMap[k] != true) {
-                sliderMap[k] = 0
+
+    fun recomputeHomeScoreFromSliders(
+        includePremiumAxes: Boolean = true
+    ) {
+
+        val previousHomeScore =
+            home.lastPercent.value?.coerceIn(0, 100)
+
+        val touchedOnly =
+            cycle.buildTouchedOnlySliderMap()
+
+        if (touchedOnly.isEmpty()) {
+
+            safeSetLastPercent(0)
+            yearlyPercent.value = 0
+
+            if (!homeIO.isLoadingPrefs()) {
+                homeIO.persistHomeSafe(
+                    cyclePercentMap = cyclePercentMap,
+                    dailyPercentValue = yearlyPercent.value,
+                    lastDeltaTodaySetter = { lastDeltaToday.value = it }
+                )
             }
+
+            val computedDelta = previousHomeScore?.let {
+                0 - it
+            }
+
+            TraceScoreValidator.validateAll(
+                previousJour = previousHomeScore,
+                currentJour = 0,
+                shownJourDelta = computedDelta,
+                previousTraces = null,
+                currentTraces = null,
+                humeur = null,
+                energie = null,
+                corps = null,
+                presence = null
+            )
+
+            return
         }
-    }
 
-    private fun buildTouchedOnlySliderMap(): Map<String, Int> {
-        // On garde seulement les sliders touchés → les autres sont “non renseignés”
-        return sliderMap.filter { (k, _) -> touchedMap[k] == true }
-    }
+        val resultPercent =
+            TraceHomeScoreLogic.recomputeHomeScoreFromSliders(
+                sliderMap = touchedOnly,
+                premiumTouchedToday = home.premiumTouchedToday.value,
+                includePremiumAxes = includePremiumAxes
+            )
 
-    // ─────────────────────────────────────────────
-    // SCORE (pur) -> HOME lastPercent uniquement
-    // ✅ non touché = ignoré dans le calcul
-    // ✅ persist HOME-only (hors loadFromPrefs)
-    // ─────────────────────────────────────────────
-    fun recomputeHomeScoreFromSliders(includePremiumAxes: Boolean = true) {
-        val touchedOnly = buildTouchedOnlySliderMap()
+        val humeur = touchedOnly[TraceSaveKeys.SLIDER_HUMEUR]
+        val energie = touchedOnly[TraceSaveKeys.SLIDER_ENERGIE]
+        val corps = touchedOnly[TraceSaveKeys.SLIDER_CORPS]
+        val presence = touchedOnly[TraceSaveKeys.SLIDER_PRESENCE]
 
-        val resultPercent = TraceHomeScoreLogic.recomputeHomeScoreFromSliders(
-            sliderMap = touchedOnly,
-            premiumTouchedToday = home.premiumTouchedToday.value,
-            includePremiumAxes = includePremiumAxes
+        val computedDelta = if (
+            previousHomeScore != null && resultPercent != null
+        ) {
+            resultPercent - previousHomeScore
+        } else {
+            null
+        }
+
+        TraceScoreValidator.validateAll(
+            previousJour = previousHomeScore,
+            currentJour = resultPercent,
+            shownJourDelta = computedDelta,
+            previousTraces = null,
+            currentTraces = null,
+            humeur = humeur,
+            energie = energie,
+            corps = corps,
+            presence = presence
         )
 
-        home.setLastPercent(resultPercent)
+        // GARDE-FOU SOLEIL
+        safeSetLastPercent(resultPercent)
 
-        // ✅ FIX: sans ça, tu vois le score en live, mais après restart il peut disparaître.
-        // On ne persist pas pendant loadFromPrefs pour éviter des écritures parasites.
-        if (!isLoadingPrefs) {
-            home.persistHomeOnlyIfAttached()
+        if (!homeIO.isLoadingPrefs()) {
+            homeIO.persistHomeSafe(
+                cyclePercentMap = cyclePercentMap,
+                dailyPercentValue = yearlyPercent.value,
+                lastDeltaTodaySetter = { lastDeltaToday.value = it }
+            )
         }
     }
 
     // ─────────────────────────────────────────────
-    // LOCK / SAVE (cycle) -> factorisé via HOME
+    // LOCK → COMMIT OFFICIEL
     // ─────────────────────────────────────────────
-    fun handleLockForHomeAndRect(cycleKey: String, sliderKey: String) {
-        if (lockedMap[sliderKey] == true) return
 
-        // ✅ FIX: lock = considéré “renseigné”
-        touchedMap[sliderKey] = true
-
-        // 1) lock UI
-        lockCard(sliderKey)
-
-        // ✅ 1.5) dots FREE: si c’est un slider FREE (humeur/energie/corps/presence)
-        // TraceSaveStoreHome filtre tout seul (ignore si pas FREE)
-        home.onFreeSliderLocked(cycleKey = cycleKey, sliderKey = sliderKey)
-
-        // 2) recalc Soleil
-        recomputeHomeScoreFromSliders(includePremiumAxes = true)
-
-        // 3) HOME: cycle done + snapshot rect + persist HOME-only
-        home.onCycleLocked(
+    fun handleLockForHomeAndRect(
+        cycleKey: String,
+        sliderKey: String
+    ) {
+        confirmation.confirmerEtVerrouiller(
             cycleKey = cycleKey,
-            currentSoleil = home.lastPercent.value
+            sliderKey = sliderKey,
+            lockedMap = lockedMap,
+            touchedMap = touchedMap,
+            cyclePercentMap = cyclePercentMap,
+            yearlyPercentValue = yearlyPercent.value,
+            lastDeltaToday = lastDeltaToday
         )
     }
 
-    fun setSaved(cycleKey: String) {
-        val key = cycleKey.trim().uppercase()
-        state.value = state.value.savedNow(LocalDateTime.now(), key)
+    // ─────────────────────────────────────────────
+    // LOAD HOME (HomeScreen)
+    // ─────────────────────────────────────────────
 
-        // recalc Soleil
-        recomputeHomeScoreFromSliders(includePremiumAxes = true)
-
-        // HOME: même logique que lock (pas de duplication)
-        home.onCycleSaved(
-            cycleKey = key,
-            currentSoleil = home.lastPercent.value
+    fun loadHomeOnlyForHomeScreen(context: Context, seedBase: String) {
+        homeIO.loadHomeOnlyForHomeScreen(
+            context = context,
+            seedBase = seedBase,
+            cyclePercentMap = cyclePercentMap,
+            dailyPercentSetter = { yearlyPercent.value = it },
+            lastDeltaTodaySetter = { lastDeltaToday.value = it }
         )
-
-        // persist cycle
-        val ctx = appContext ?: return
-        val seedBase = seedBaseAttached ?: return
-        persistAllToPrefs(ctx, seedBase, key)
     }
 
     // ─────────────────────────────────────────────
-    // LOAD / PERSIST (CYCLE + STATE minimal) -> IO séparé
+    // DEBUG
     // ─────────────────────────────────────────────
+
+    fun debugClearSeedAndReload(
+        context: Context,
+        seedBase: String,
+        cycleKey: String,
+        sliderKeys: List<String>
+    ) {
+        TraceJourPrefs.clearSeed(
+            context = context,
+            seedBase = seedBase
+        )
+
+        satellitePrefs(context)
+            .edit()
+            .remove(satelliteDayKey(seedBase))
+            .apply()
+
+        loadFromPrefs(
+            context = context,
+            seedBase = seedBase,
+            cycleKey = cycleKey,
+            sliderKeys = sliderKeys
+        )
+    }
+
+    // ─────────────────────────────────────────────
+    // LOAD / SAVE CYCLE
+    // ─────────────────────────────────────────────
+
     fun loadFromPrefs(
         context: Context,
         seedBase: String,
         cycleKey: String,
         sliderKeys: List<String>
     ) {
-        isLoadingPrefs = true
-        try {
-            attach(context, seedBase)
+        attach(context, seedBase)
 
-            // ✅ défaut VISUEL = 0 (au lieu de 50)
-            sliderKeys.forEach { k ->
-                sliderMap.putIfAbsent(k, 0)
-                noteMap.putIfAbsent(k, "")
-                capturedMap.putIfAbsent(k, false)
-                createdAtMap.putIfAbsent(k, 0L)
-                lockedMap.putIfAbsent(k, false)
-                touchedMap.putIfAbsent(k, false)
-            }
+        cycle.initDefaults(sliderKeys)
 
-            // 1) LOAD CYCLE IO via storage
-            cycleStorage.loadCycle(
-                context = context,
-                seedBase = seedBase,
-                cycleKey = cycleKey,
-                sliderKeys = sliderKeys,
-                sliderMap = sliderMap,
-                noteMap = noteMap,
-                capturedMap = capturedMap,
-                createdAtMap = createdAtMap,
-                lockedMap = lockedMap,
-                touchedMap = touchedMap
-            )
+        cycleStorage.loadCycle(
+            context = context,
+            seedBase = seedBase,
+            cycleKey = cycleKey,
+            sliderKeys = sliderKeys,
+            sliderMap = sliderMap,
+            noteMap = noteMap,
+            capturedMap = capturedMap,
+            createdAtMap = createdAtMap,
+            lockedMap = lockedMap,
+            touchedMap = touchedMap
+        )
 
-            // ✅ après load: si pas touché → on force 0 visuel
-            applyVisualZeroForUntouched(sliderKeys)
+        cycle.applyVisualZeroForUntouched(sliderKeys)
 
-            // 2) LOAD SAVE STATE (minimal: reset propre)
-            state.value = TraceSaveState()
+        state.value = TraceSaveState()
 
-            // 3) premiumTouched (dépend de touchedMap)
-            val premiumTouched = touchedMap.any { (k, v) -> v && isPremiumSlider(k) }
-            home.setPremiumTouchedFlag(premiumTouched)
-
-            // 4) LOAD HOME-only (inclut dots FREE mask)
-            home.loadHomeOnly(context = context, seedBase = seedBase)
-
-            // 5) calc Soleil si absent (avec map filtrée “touché seulement”)
-            val hasRealSliders = sliderKeys.isNotEmpty()
-            if (hasRealSliders && home.lastPercent.value == null) {
-                recomputeHomeScoreFromSliders(includePremiumAxes = true)
-            }
-        } finally {
-            isLoadingPrefs = false
-        }
+        homeIO.loadHomeOnlyForHomeScreen(
+            context = context,
+            seedBase = seedBase,
+            cyclePercentMap = cyclePercentMap,
+            dailyPercentSetter = { yearlyPercent.value = it },
+            lastDeltaTodaySetter = { lastDeltaToday.value = it }
+        )
     }
 
-    fun persistAllToPrefs(context: Context, seedBase: String, cycleKey: String) {
-        if (isLoadingPrefs) return
-
-        // 1) persist CYCLE IO
+    fun persistAllToPrefs(
+        context: Context,
+        seedBase: String,
+        cycleKey: String
+    ) {
         cycleStorage.persistCycle(
             context = context,
             seedBase = seedBase,
@@ -308,7 +514,12 @@ class TraceSaveStore {
             touchedMap = touchedMap
         )
 
-        // 2) persist HOME-only (inclut dots FREE mask)
-        home.persistHomeOnlyIfAttached()
+        homeIO.persistHomeSafe(
+            cyclePercentMap = cyclePercentMap,
+            dailyPercentValue = yearlyPercent.value,
+            lastDeltaTodaySetter = { lastDeltaToday.value = it }
+        )
+
+        homeIO.persistCyclePercentIfPossible(cycleKey, cyclePercentMap)
     }
 }

@@ -1,4 +1,4 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/soleil/visual/HomeSoleilCanvas.kt
+// FILE: app/src/main/java/com/maxjth/tracememoire/ui/systeme/soleil/visual/HomeSoleilCanvas.kt
 package com.maxjth.tracememoire.ui.systeme.soleil.visual
 
 import androidx.compose.foundation.Canvas
@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -32,93 +33,137 @@ fun HomeSoleilCanvas(
     starPoints: List<Triple<Float, Float, Float>>,
     modifier: Modifier = Modifier,
     sizeDp: Dp = 1000.dp,
-
-    // ✅ AJOUT : permet SECONDARY clean (sans pupille/iris/stars)
     isSecondary: Boolean = false
 ) {
     val pct = displayPct.coerceIn(0, 100)
 
-    /** ✅ SIGNATURE VISUELLE */
     val ringGapDeg = 2f
     val startBaseAngle = -80f + (ringGapDeg / 2f)
     val sweepMax = 360f - ringGapDeg
-
-    // ✅ FIX BUG IMPORTANT : pct/50f faisait dépasser 360° (100% = 2 tours)
     val sweepAngle = (pct / 100f) * sweepMax
 
     Box(modifier = modifier.size(sizeDp)) {
         Canvas(modifier = Modifier.matchParentSize()) {
 
-            // ✅ Rayon utile : on garde ça pour éviter que le glow déborde trop
             val r = (size.minDimension / 2f) * 0.85f
             val strokePx = strokeDp.toPx()
 
             // =========================
-            // ✅ MODE SECONDARY (clean)
-            // Juste anneau + progression.
-            // Pas d’iris / pas de pupille / pas de stars (donc pas “pitié”, pas “oeil”)
+            // MODE SECONDARY = Jour
             // =========================
             if (isSecondary) {
 
-                // Mini halos très discrets (optionnel, mais ça garde le “premium”)
-                val haloOuter = 1.02f
-                val haloMid = 0.98f
+                // Fond interne plus propre / plus lumineux que Terre
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            irisDeep.copy(alpha = 0.92f),
+                            irisDeep.copy(alpha = 0.72f),
+                            Color.Transparent
+                        ),
+                        center = center,
+                        radius = r * 0.82f
+                    ),
+                    radius = r * 0.82f,
+                    center = center
+                )
 
+                // Halo externe principal : présence maîtrisée
                 drawCircle(
                     brush = Brush.radialGradient(
                         colorStops = arrayOf(
                             0.00f to Color.Transparent,
-                            0.88f to Color.Transparent,
-                            0.95f to haloColorMain.copy(alpha = 0.12f),
+                            0.84f to Color.Transparent,
+                            0.93f to haloColorMain.copy(alpha = 0.18f),
                             1.00f to Color.Transparent
                         ),
                         center = center,
-                        radius = r * haloOuter
+                        radius = r * 1.03f
                     ),
-                    radius = r * haloOuter,
+                    radius = r * 1.03f,
                     center = center
                 )
 
+                // Halo secondaire doux
                 drawCircle(
                     brush = Brush.radialGradient(
                         colorStops = arrayOf(
                             0.00f to Color.Transparent,
-                            0.86f to Color.Transparent,
-                            0.94f to haloColorSoft.copy(alpha = 0.06f),
+                            0.82f to Color.Transparent,
+                            0.92f to haloColorSoft.copy(alpha = 0.08f),
                             1.00f to Color.Transparent
                         ),
                         center = center,
-                        radius = r * haloMid
+                        radius = r * 0.98f
                     ),
-                    radius = r * haloMid,
+                    radius = r * 0.98f,
                     center = center
                 )
 
-                // Ring base (tour complet)
+                // Noyau clair / lisible
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            WHITE_SOFT.copy(alpha = 0.05f),
+                            Color.Transparent
+                        ),
+                        center = Offset(
+                            x = center.x - r * 0.10f,
+                            y = center.y - r * 0.12f
+                        ),
+                        radius = r * 0.24f
+                    ),
+                    radius = r * 0.24f,
+                    center = Offset(
+                        x = center.x - r * 0.10f,
+                        y = center.y - r * 0.12f
+                    ),
+                    blendMode = BlendMode.SrcOver
+                )
+
+                // Anneau de base complet
                 drawArc(
-                    color = ringBase,
+                    color = ringBase.copy(alpha = 0.82f),
                     startAngle = startBaseAngle,
                     sweepAngle = sweepMax,
                     useCenter = false,
                     style = Stroke(width = strokePx, cap = StrokeCap.Round)
                 )
 
+                // Fine lumière extérieure
+                drawArc(
+                    color = WHITE_SOFT.copy(alpha = 0.05f),
+                    startAngle = startBaseAngle,
+                    sweepAngle = sweepMax,
+                    useCenter = false,
+                    style = Stroke(width = strokePx * 1.18f, cap = StrokeCap.Round)
+                )
+
                 // Progression
                 if (pct > 0) {
                     drawArc(
-                        color = neonGlowColor.copy(alpha = 0.18f),
+                        color = neonGlowColor.copy(alpha = 0.16f),
                         startAngle = startBaseAngle,
                         sweepAngle = sweepAngle,
                         useCenter = false,
-                        style = Stroke(width = strokePx * 0.95f, cap = StrokeCap.Round)
+                        style = Stroke(width = strokePx * 1.12f, cap = StrokeCap.Round)
                     )
 
                     drawArc(
-                        color = ringBright,
+                        color = ringBright.copy(alpha = 0.96f),
                         startAngle = startBaseAngle,
                         sweepAngle = sweepAngle,
                         useCenter = false,
                         style = Stroke(width = strokePx, cap = StrokeCap.Round)
+                    )
+
+                    // Petit accent de tête d’arc
+                    drawArc(
+                        color = WHITE_SOFT.copy(alpha = 0.14f),
+                        startAngle = startBaseAngle + (sweepAngle - 10f).coerceAtLeast(0f),
+                        sweepAngle = 10f.coerceAtMost(sweepAngle),
+                        useCenter = false,
+                        style = Stroke(width = strokePx * 0.82f, cap = StrokeCap.Round)
                     )
                 }
 
@@ -126,13 +171,8 @@ fun HomeSoleilCanvas(
             }
 
             // =========================
-            // ✅ MODE PRIMARY (complet)
-            // (si tu l’utilises plus tard)
+            // MODE PRIMARY
             // =========================
-
-            // Halos (plus clean, moins "wash")
-            val haloOuter = 1.02f
-            val haloMid = 0.98f
 
             drawCircle(
                 brush = Brush.radialGradient(
@@ -143,9 +183,9 @@ fun HomeSoleilCanvas(
                         1.00f to Color.Transparent
                     ),
                     center = center,
-                    radius = r * haloOuter
+                    radius = r * 1.02f
                 ),
-                radius = r * haloOuter,
+                radius = r * 1.02f,
                 center = center
             )
 
@@ -158,13 +198,12 @@ fun HomeSoleilCanvas(
                         1.00f to Color.Transparent
                     ),
                     center = center,
-                    radius = r * haloMid
+                    radius = r * 0.98f
                 ),
-                radius = r * haloMid,
+                radius = r * 0.98f,
                 center = center
             )
 
-            /** IRIS */
             val irisR = r * 0.70f
 
             drawCircle(
@@ -182,7 +221,6 @@ fun HomeSoleilCanvas(
                 center = center
             )
 
-            // Vignette iris
             drawCircle(
                 brush = Brush.radialGradient(
                     colorStops = arrayOf(
@@ -198,7 +236,6 @@ fun HomeSoleilCanvas(
                 center = center
             )
 
-            /** STARS */
             val starsR = irisR * 0.95f
             val starTint = lerp(irisMauve, irisAccent, 0.60f)
             val starCore = lerp(starTint, WHITE_SOFT, 0.19f)
@@ -215,7 +252,6 @@ fun HomeSoleilCanvas(
                 )
             }
 
-            /** PUPIL */
             val pupilR = r * 0.25f
             drawCircle(
                 color = pupilDeep.copy(alpha = 0.950f),
@@ -223,7 +259,6 @@ fun HomeSoleilCanvas(
                 center = center
             )
 
-            // Micro highlight
             val hlCenter = Offset(center.x - pupilR * 0.22f, center.y - pupilR * 0.28f)
             drawCircle(
                 brush = Brush.radialGradient(
@@ -239,7 +274,6 @@ fun HomeSoleilCanvas(
                 center = hlCenter
             )
 
-            /** RING BASE */
             drawArc(
                 color = ringBase,
                 startAngle = startBaseAngle,
@@ -248,7 +282,6 @@ fun HomeSoleilCanvas(
                 style = Stroke(width = strokePx, cap = StrokeCap.Round)
             )
 
-            /** PROGRESSION */
             if (pct > 0) {
                 drawArc(
                     color = neonGlowColor.copy(alpha = 0.24f),
