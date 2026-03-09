@@ -1,4 +1,3 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/TraceJourTitleBlock.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen
 
 import androidx.compose.foundation.layout.Column
@@ -23,62 +22,48 @@ fun TraceJourTitleBlock(
     cycle: TraceCycle,
     modifier: Modifier = Modifier
 ) {
-    val cycleTitle: String = when (cycle) {
-        TraceCycle.JOUR -> "Jour"
-        TraceCycle.SOIR -> "Soir"
-        TraceCycle.NUIT -> "Nuit"
-        TraceCycle.MATIN -> "Matin"
-    }
-
-    val tagline = "L'expérience intérieure est une réalité silencieuse"
+    val titleLine2 = "de l’expérience du moment"
+    val tagline = "Chaque instant intérieur mérite d’être observé"
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = 22.dp),
+            .padding(top = 18.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = "Trace",
             color = Color.White,
-            fontSize = 66.sp,
+            fontSize = 64.sp,
             fontWeight = FontWeight.ExtraBold,
             textAlign = TextAlign.Center,
-            lineHeight = 66.sp
+            lineHeight = 64.sp
         )
 
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(2.dp))
 
         Text(
-            text = "d’état d’âme",
-            color = Color.White.copy(alpha = 0.92f),
-            fontSize = 30.sp,
+            text = titleLine2,
+            color = Color.White.copy(alpha = 0.90f),
+            fontSize = 22.sp,
             fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Text(
-            text = cycleTitle,
-            color = Color.White,
-            fontSize = 60.sp,
-            fontWeight = FontWeight.ExtraBold,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            lineHeight = 26.sp,
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
 
         Spacer(modifier = Modifier.height(18.dp))
 
         Text(
             text = tagline,
-            color = MAUVE.copy(alpha = 0.9f),
-            fontSize = 20.sp,
+            color = MAUVE.copy(alpha = 0.92f),
+            fontSize = 18.sp,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 12.dp),
-            lineHeight = 24.sp
+            lineHeight = 24.sp,
+            modifier = Modifier.padding(horizontal = 24.dp)
         )
 
-        Spacer(modifier = Modifier.height(54.dp))
+        Spacer(modifier = Modifier.height(25.dp))
     }
 }

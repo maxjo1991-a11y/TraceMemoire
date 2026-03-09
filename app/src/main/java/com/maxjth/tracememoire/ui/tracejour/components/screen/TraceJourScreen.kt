@@ -29,6 +29,7 @@ import com.maxjth.tracememoire.ui.moteur.cycle.grille.GrilleCycleHome
 import com.maxjth.tracememoire.ui.moteur.cycle.modele.TypeCycleHome
 import com.maxjth.tracememoire.ui.systeme.lune.trace.LuneTraceStore
 import com.maxjth.tracememoire.ui.theme.BG_DEEP
+import com.maxjth.tracememoire.ui.tracejour.components.screen.header.CycleStatusPill
 import com.maxjth.tracememoire.ui.tracejour.components.screen.navigation.TraceBottomNavBar
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.store.TraceSaveStore
 import com.maxjth.tracememoire.ui.tracejour.components.screen.slider.TraceLockPayload
@@ -80,6 +81,13 @@ fun TraceJourScreen(
     val isCurrentCycleEditable: Boolean = currentCycle !in lockedCycles
     val cycleKey: String = currentCycle.name
 
+    val cycleLabel = when (currentCycle) {
+        TraceCycle.MATIN -> "Matin"
+        TraceCycle.JOUR -> "Jour"
+        TraceCycle.SOIR -> "Soir"
+        TraceCycle.NUIT -> "Nuit"
+    }
+
     LaunchedEffect(seedBase) {
         saveStore.attach(context, seedBase)
     }
@@ -93,7 +101,6 @@ fun TraceJourScreen(
         saveStore.luneTick.intValue += 1
     }
 
-    // ✅ UNE SEULE persistance à la sortie de l’écran
     DisposableEffect(seedBase, cycleKey, isCurrentCycleEditable) {
         onDispose {
             if (isCurrentCycleEditable) {
@@ -122,14 +129,8 @@ fun TraceJourScreen(
                     .navigationBarsPadding()
             ) {
                 TraceBottomNavBar(
-                    onBack = {
-                        // ✅ plus de persist ici
-                        onBack()
-                    },
-                    onHistory = {
-                        // ✅ plus de persist ici non plus
-                        onHistory()
-                    },
+                    onBack = { onBack() },
+                    onHistory = { onHistory() },
                     onDeepen = { onDeepen() },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -149,11 +150,21 @@ fun TraceJourScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp, vertical = 22.dp)
+                    .padding(horizontal = 24.dp, vertical = 22.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 TraceJourTitleBlock(cycle = currentCycle)
 
-                Spacer(modifier = Modifier.height(18.dp))
+                // ✅ pastille un peu plus proche du header
+                Spacer(modifier = Modifier.height(0.dp))
+
+                CycleStatusPill(
+                    label = cycleLabel,
+                    isActive = true
+                )
+
+                // ✅ espace plus équilibré avant les cartes
+                Spacer(modifier = Modifier.height(16.dp))
 
                 TraceJourSlidersBlock(
                     enabled = isCurrentCycleEditable,

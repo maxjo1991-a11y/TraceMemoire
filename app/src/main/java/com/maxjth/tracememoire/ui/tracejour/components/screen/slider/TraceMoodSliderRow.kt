@@ -1,17 +1,14 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/slider/TraceMoodSliderRow.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen.slider
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,16 +26,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
-import com.maxjth.tracememoire.ui.tracejour.components.ring.PercentRing
 import com.maxjth.tracememoire.ui.tracejour.components.ring.accentForPercent
 import com.maxjth.tracememoire.ui.tracejour.components.screen.dots.TraceDotState
 import com.maxjth.tracememoire.ui.tracejour.components.screen.dots.TraceStatusDot
@@ -58,6 +58,33 @@ data class TraceLockPayload(
     val phaseKey: String
 )
 
+private fun extractKeywordFromPhrase(phrase: String): String {
+    val stopWords = setOf(
+        "de", "du", "des", "la", "le", "les", "un", "une", "et",
+        "très", "plus", "peu", "assez", "dans", "sur", "avec", "sans",
+        "au", "aux", "en", "du", "moment", "soirée", "journée", "nuit", "matinée"
+    )
+
+    val cleanedWords = phrase
+        .replace("’", "'")
+        .replace(",", " ")
+        .replace(".", " ")
+        .replace(";", " ")
+        .replace(":", " ")
+        .split(" ", "'", "-", "•")
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+        .map { it.lowercase() }
+
+    val best = cleanedWords.lastOrNull { it !in stopWords && it.length >= 3 }
+        ?: cleanedWords.lastOrNull()
+        ?: ""
+
+    return best.replaceFirstChar { c ->
+        if (c.isLowerCase()) c.titlecase() else c.toString()
+    }
+}
+
 @Composable
 private fun PercentBadgeDiamond(
     percent: Int,
@@ -69,7 +96,7 @@ private fun PercentBadgeDiamond(
     Box(
         modifier = modifier
             .size(34.dp)
-            .graphicsLayer { rotationZ = 45f }
+            .graphicsLayerCompat(45f)
             .clip(shape)
             .background(Color.Black.copy(alpha = 0.20f))
             .border(1.2.dp, accent.copy(alpha = 0.30f), shape),
@@ -80,7 +107,7 @@ private fun PercentBadgeDiamond(
             color = WHITE_SOFT.copy(alpha = 0.92f),
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.graphicsLayer { rotationZ = -45f }
+            modifier = Modifier.graphicsLayerCompat(-45f)
         )
     }
 }
@@ -100,12 +127,16 @@ fun TraceMoodSliderRow(
     showTitle: Boolean = true,
 
     // toggles
-    showRing: Boolean = true,
+    showRing: Boolean = true, // gardé pour compatibilité, mais plus utilisé
     forceCenterIfNotCaptured: Boolean = false,
     onDragStateChanged: (Boolean) -> Unit = {},
 
     onCapturedChanged: (Boolean) -> Unit = {},
     onAccentChanged: (Color) -> Unit = {},
+
+    // mémoire future
+    onPhraseChanged: ((String) -> Unit)? = null,
+    onKeywordChanged: ((String) -> Unit)? = null,
 
     // valeur persistée venant du store (0..100)
     externalPercent: Int? = null,
@@ -118,50 +149,37 @@ fun TraceMoodSliderRow(
 
     onLock: (TraceLockPayload) -> Unit
 ) {
-    // 🔒 lock Premium
     val premiumLocked = isPremiumSlider && !userIsPremium
-
-    // 🔒 lock one-shot (store)
     val cycleLocked = (externalLocked == true)
-
-    // 🔒 lock final
     val fullyLocked = premiumLocked || cycleLocked
 
     val stateKey = remember(seedBase, cycleKey, sliderKey) {
         "$seedBase|$cycleKey|$sliderKey"
     }
 
-    // ✅ IMPORTANT : default UI = 0 (plus 50)
     var value by rememberSaveable(stateKey) { mutableFloatStateOf(0f) }
-
-    // captured local (fallback)
     var capturedLocal by rememberSaveable(stateKey + "|captured") { mutableStateOf(false) }
 
     val interactionSource = remember { MutableInteractionSource() }
     val isDragging by interactionSource.collectIsDraggedAsState()
 
-    LaunchedEffect(isDragging) { onDragStateChanged(isDragging) }
+    LaunchedEffect(isDragging) {
+        onDragStateChanged(isDragging)
+    }
 
-    // ✅ SYNC captured (store -> UI)
     LaunchedEffect(externalCaptured) {
         if (externalCaptured != null) {
             capturedLocal = externalCaptured == true
         }
     }
 
-    // ✅ SYNC percent (store -> UI)
     LaunchedEffect(externalPercent) {
         val p = externalPercent ?: return@LaunchedEffect
         if (!isDragging) {
-            val v = (p.coerceIn(0, 100) / 100f).coerceIn(0f, 1f)
-            value = v
-
-            // ✅ IMPORTANT : ne PAS auto-capturer juste parce que p != 50 (on est rendu à 0)
-            // c’est l’utilisateur qui “capte” en bougeant le slider.
+            value = (p.coerceIn(0, 100) / 100f).coerceIn(0f, 1f)
         }
     }
 
-    // Option : forcer center tant que pas capturé (si tu utilises encore ce mode)
     LaunchedEffect(forceCenterIfNotCaptured, capturedLocal) {
         if (forceCenterIfNotCaptured && !capturedLocal && !isDragging) {
             value = 0.5f
@@ -176,7 +194,9 @@ fun TraceMoodSliderRow(
         if (isDragging) lerp(baseAccent, VIOLET_POSITIVE, 0.30f) else baseAccent
     }
 
-    LaunchedEffect(uiAccent) { onAccentChanged(uiAccent) }
+    LaunchedEffect(uiAccent) {
+        onAccentChanged(uiAccent)
+    }
 
     val borderColor = when {
         premiumLocked -> Color.White.copy(alpha = 0.06f)
@@ -190,6 +210,18 @@ fun TraceMoodSliderRow(
             phaseKey = phaseKey,
             percent = pct
         )
+    }
+
+    val autoKeyword = remember(phrase) {
+        extractKeywordFromPhrase(phrase)
+    }
+
+    LaunchedEffect(phrase) {
+        onPhraseChanged?.invoke(phrase)
+    }
+
+    LaunchedEffect(autoKeyword) {
+        onKeywordChanged?.invoke(autoKeyword)
     }
 
     val dotState = when {
@@ -206,9 +238,8 @@ fun TraceMoodSliderRow(
             .clip(cardShape)
             .background(Color.Black.copy(alpha = 0.14f))
             .border(1.dp, borderColor, cardShape)
-            .padding(14.dp)
+            .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
-
         if (showTitle) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -233,9 +264,8 @@ fun TraceMoodSliderRow(
                 TraceStatusDot(state = dotState)
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.size(8.dp))
 
-            // ✅ FIX : on affiche le chip “Cycle verrouillé”
             TraceMemoryStamp(
                 captured = capturedLocal,
                 createdAtMillis = externalCreatedAtMillis,
@@ -244,37 +274,75 @@ fun TraceMoodSliderRow(
                 showLockChip = true
             )
 
-            Spacer(Modifier.height(10.dp))
-        }
-
-        if (showRing) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                PercentRing(
-                    ringKey = sliderKey,
-                    percent = pct,
-                    accent = uiAccent,
-                    isDragging = isDragging
-                )
-            }
-
-            Spacer(Modifier.height(35.dp))
+            Spacer(Modifier.size(10.dp))
         }
 
         Text(
-            text = phrase,
-            color = WHITE_SOFT.copy(alpha = 0.88f),
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Medium,
+            text = "$pct%",
+            color = WHITE_SOFT.copy(alpha = 0.96f),
+            fontSize = 34.sp,
+            fontWeight = FontWeight.ExtraBold,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis
+            style = TextStyle(
+                shadow = Shadow(
+                    color = uiAccent.copy(alpha = 0.18f),
+                    offset = Offset.Zero,
+                    blurRadius = 12f
+                )
+            )
         )
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.size(12.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            uiAccent.copy(alpha = 0.10f),
+                            Color.White.copy(alpha = 0.03f)
+                        )
+                    )
+                )
+                .border(
+                    1.dp,
+                    uiAccent.copy(alpha = 0.14f),
+                    RoundedCornerShape(16.dp)
+                )
+                .padding(horizontal = 14.dp, vertical = 12.dp)
+        ) {
+            Text(
+                text = phrase,
+                color = WHITE_SOFT.copy(alpha = 0.92f),
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 24.sp
+            )
+        }
+
+        Spacer(Modifier.size(8.dp))
+
+        if (autoKeyword.isNotBlank()) {
+            Text(
+                text = autoKeyword,
+                color = uiAccent.copy(alpha = 0.86f),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.size(10.dp))
+        } else {
+            Spacer(Modifier.size(6.dp))
+        }
 
         val pillShape = RoundedCornerShape(999.dp)
 
@@ -283,8 +351,8 @@ fun TraceMoodSliderRow(
                 .fillMaxWidth()
                 .clip(pillShape)
                 .background(Color.Black.copy(alpha = 0.12f))
-                .border(1.6.dp, uiAccent.copy(alpha = 0.20f), pillShape)
-                .padding(horizontal = 6.dp, vertical = 7.dp)
+                .border(1.4.dp, uiAccent.copy(alpha = 0.18f), pillShape)
+                .padding(horizontal = 6.dp, vertical = 6.dp)
         ) {
             Slider(
                 value = value,
@@ -297,7 +365,6 @@ fun TraceMoodSliderRow(
                     val newPct = (v * 100f).roundToInt().coerceIn(0, 100)
                     onPercentChanged?.invoke(newPct)
 
-                    // ✅ capture = l’utilisateur bouge vraiment
                     if (!capturedLocal && abs(v - 0f) >= 0.01f) {
                         capturedLocal = true
                         onCapturedChanged(true)
@@ -314,9 +381,9 @@ fun TraceMoodSliderRow(
             )
         }
 
-        // ✅ BOUTON VERROUILLER
         if (!premiumLocked && !cycleLocked) {
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.size(10.dp))
+
             TraceLockConfirmButton(
                 text = "VERROUILLER",
                 enabled = sliderEnabled && capturedLocal,
@@ -335,7 +402,8 @@ fun TraceMoodSliderRow(
         }
 
         if (premiumLocked) {
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.size(10.dp))
+
             Text(
                 text = lockedLabel ?: "Débloqué avec Premium.",
                 color = WHITE_SOFT.copy(alpha = 0.55f),
@@ -345,4 +413,8 @@ fun TraceMoodSliderRow(
             )
         }
     }
+}
+
+private fun Modifier.graphicsLayerCompat(rotation: Float): Modifier {
+    return this.graphicsLayer(rotationZ = rotation)
 }

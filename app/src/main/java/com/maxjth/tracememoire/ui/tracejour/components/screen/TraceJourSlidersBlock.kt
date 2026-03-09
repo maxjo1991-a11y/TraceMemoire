@@ -1,50 +1,22 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/TraceJourSlidersBlock.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.maxjth.tracememoire.ui.theme.TURQUOISE
-import com.maxjth.tracememoire.ui.tracejour.components.screen.cards.CollapsibleSliderCard
-import com.maxjth.tracememoire.ui.tracejour.components.screen.depth.TraceDepthSection
-import com.maxjth.tracememoire.ui.tracejour.components.screen.notes.TraceNoteBlock
-import com.maxjth.tracememoire.ui.tracejour.components.screen.save.stockage.TraceSaveKeys
+import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.SECTION_GAP_DP
+import com.maxjth.tracememoire.ui.tracejour.components.screen.section.TraceJourFreeSlidersSection
+import com.maxjth.tracememoire.ui.tracejour.components.screen.section.TraceJourPremiumSlidersSection
 import com.maxjth.tracememoire.ui.tracejour.components.screen.slider.TraceLockPayload
-import com.maxjth.tracememoire.ui.tracejour.components.screen.slider.TraceMoodSliderRow
-
-private data class SliderDef(val key: String, val title: String)
-
-private val SLIDERS_FREE = listOf(
-    SliderDef("humeur", "Humeur globale"),
-    SliderDef("energie", "Énergie / rythme"),
-    SliderDef("corps", "Corps / sensations"),
-    SliderDef("presence", "Présence / attention")
-)
-
-private val SLIDERS_PREMIUM = listOf(
-    SliderDef(TraceSaveKeys.SLIDER_REPOS, "Qualité du repos vécu"),
-    SliderDef(TraceSaveKeys.SLIDER_ARCHI_EMO, "Architecture émotionnelle"),
-    SliderDef(TraceSaveKeys.SLIDER_TYPE_JOURNEE, "Type de journée"),
-    SliderDef(TraceSaveKeys.SLIDER_MOTIFS, "Motifs psychiques"),
-    SliderDef(TraceSaveKeys.SLIDER_ENVIRONNEMENT, "Environnement"),
-    SliderDef(TraceSaveKeys.SLIDER_CLARTE, "Clarté mentale")
-)
-
-private val ROW_SPACING = 18.dp
-private val SECTION_GAP = 26.dp
-private val OUTER_HORIZONTAL_PADDING = 14.dp
+import androidx.compose.runtime.getValue
 
 @Composable
 fun TraceJourSlidersBlock(
@@ -79,220 +51,79 @@ fun TraceJourSlidersBlock(
     val accentMap = remember { mutableStateMapOf<String, Color>() }
     val optimisticLocking = remember { mutableStateMapOf<String, Boolean>() }
 
+    // feedback immédiat pendant la session
+    val phraseMap = remember { mutableStateMapOf<String, String>() }
+    val keywordMap = remember { mutableStateMapOf<String, String>() }
+
     fun optimisticLock(sliderKey: String) {
         optimisticLocking[sliderKey] = true
+
         if ((createdAtMap[sliderKey] ?: 0L) <= 0L) {
             createdAtMap[sliderKey] = System.currentTimeMillis()
         }
-        if (openKey == sliderKey) openKey = ""
+
+        if (openKey == sliderKey) {
+            openKey = ""
+        }
     }
 
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        TraceJourFreeSlidersSection(
+            enabled = enabled,
+            isPremium = isPremium,
+            cycleKey = cycleKey,
+            seedBase = seedBase,
+            openKey = openKey,
+            onOpenKeyChange = { openKey = it },
 
-        // ───────── FREE ─────────
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = OUTER_HORIZONTAL_PADDING)
-        ) {
-            SLIDERS_FREE.forEachIndexed { index, def ->
+            capturedMap = capturedMap,
+            noteMap = noteMap,
+            sliderMap = sliderMap,
+            createdAtMap = createdAtMap,
+            lockedMap = lockedMap,
+            accentMap = accentMap,
+            optimisticLocking = optimisticLocking,
+            phraseMap = phraseMap,
+            keywordMap = keywordMap,
 
-                val captured = capturedMap[def.key] == true
-                val note = noteMap[def.key] ?: ""
-                val accent = accentMap[def.key] ?: TURQUOISE
+            onDirty = onDirty,
+            onSliderValue = onSliderValue,
+            onNoteValue = onNoteValue,
+            onCaptured = onCaptured,
+            onLock = onLock,
+            optimisticLock = ::optimisticLock
+        )
 
-                // ✅ défaut = 0
-                val persistedPct = sliderMap[def.key] ?: 0
-
-                val createdAtMillis: Long? = createdAtMap[def.key]?.takeIf { it > 0L }
-                val isLockedCard: Boolean = lockedMap[def.key] == true
-                val enabledCard = enabled && !isLockedCard
-
-                key(def.key) {
-                    CollapsibleSliderCard(
-                        sliderKey = def.key,
-                        title = def.title,
-                        isOpen = openKey == def.key,
-                        captured = captured,
-                        createdAtMillis = createdAtMillis,
-                        locked = isLockedCard,
-                        enabledForDot = enabled,
-                        onLockClick = null,
-                        onToggle = { openKey = if (openKey == def.key) "" else def.key },
-                        percent = persistedPct,
-                        content = {
-                            TraceMoodSliderRow(
-                                title = def.title,
-                                enabled = enabledCard,
-                                userIsPremium = isPremium,
-                                isPremiumSlider = false,
-                                lockedLabel = null,
-                                phaseKey = cycleKey,
-                                cycleKey = cycleKey,
-                                seedBase = seedBase,
-                                sliderKey = def.key,
-                                showTitle = false,
-                                externalPercent = persistedPct,
-                                onPercentChanged = { newPct ->
-                                    if (!enabledCard) return@TraceMoodSliderRow
-                                    sliderMap[def.key] = newPct
-                                    onSliderValue?.invoke(def.key, newPct)
-                                    onDirty?.invoke()
-                                },
-                                externalCaptured = captured,
-                                externalCreatedAtMillis = createdAtMillis,
-                                externalLocked = isLockedCard,
-                                onLock = { payload ->
-                                    if (lockedMap[def.key] == true) return@TraceMoodSliderRow
-                                    if (optimisticLocking[def.key] == true) return@TraceMoodSliderRow
-                                    optimisticLock(def.key)
-                                    onLock?.invoke(payload)
-                                    onDirty?.invoke()
-                                },
-                                onCapturedChanged = { hasCaptured ->
-                                    if (hasCaptured) {
-                                        capturedMap[def.key] = true
-                                        onCaptured?.invoke(def.key)
-                                        onDirty?.invoke()
-                                    }
-                                },
-                                onAccentChanged = { c -> accentMap[def.key] = c }
-                            )
-
-                            Spacer(Modifier.size(12.dp))
-
-                            TraceNoteBlock(
-                                note = note,
-                                onNoteChange = { newText ->
-                                    if (!enabledCard) return@TraceNoteBlock
-                                    noteMap[def.key] = newText
-                                    onNoteValue?.invoke(def.key, newText)
-                                    onDirty?.invoke()
-                                },
-                                enabled = enabledCard,
-                                accent = accent,
-                                userIsPremium = isPremium,
-                                title = "Trace écrite",
-                                placeholder = "Écrire une note…",
-                                footerMessageFree = "Tout ne demande pas à être écrit. Mais tout peut l'être.",
-                                footerMessagePremium = "Ici, tout peut exister. Sans filtre."
-                            )
-                        }
-                    )
-                }
-
-                if (index != SLIDERS_FREE.lastIndex) Spacer(Modifier.size(ROW_SPACING))
-            }
-        }
-
-        // ───────── PREMIUM ─────────
         if (isPremium || showPremiumLockedRows) {
-            Spacer(Modifier.size(SECTION_GAP))
+            Spacer(Modifier.size(SECTION_GAP_DP.dp))
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = OUTER_HORIZONTAL_PADDING)
-            ) {
-                TraceDepthSection(
-                    isPremium = isPremium,
-                    modifier = Modifier.fillMaxWidth()
-                ) { contentEnabled ->
+            TraceJourPremiumSlidersSection(
+                enabled = enabled,
+                isPremium = isPremium,
+                cycleKey = cycleKey,
+                seedBase = seedBase,
+                openKey = openKey,
+                onOpenKeyChange = { openKey = it },
 
-                    // Si l'utilisateur est premium => contenu OK direct
-                    // sinon => gating via contentEnabled (démo / verrouillage visuel)
-                    val contentOk = if (isPremium) true else contentEnabled
+                capturedMap = capturedMap,
+                noteMap = noteMap,
+                sliderMap = sliderMap,
+                createdAtMap = createdAtMap,
+                lockedMap = lockedMap,
+                accentMap = accentMap,
+                optimisticLocking = optimisticLocking,
+                phraseMap = phraseMap,
+                keywordMap = keywordMap,
 
-                    SLIDERS_PREMIUM.forEachIndexed { index, def ->
-
-                        val captured = capturedMap[def.key] == true
-                        val note = noteMap[def.key] ?: ""
-                        val accent = accentMap[def.key] ?: TURQUOISE
-
-                        // ✅ défaut = 0
-                        val persistedPct = sliderMap[def.key] ?: 0
-
-                        val createdAtMillis: Long? = createdAtMap[def.key]?.takeIf { it > 0L }
-                        val isLockedCard: Boolean = lockedMap[def.key] == true
-                        val enabledCard = (enabled && contentOk) && !isLockedCard
-
-                        key(def.key) {
-                            CollapsibleSliderCard(
-                                sliderKey = def.key,
-                                title = def.title,
-                                isOpen = openKey == def.key,
-                                captured = captured,
-                                createdAtMillis = createdAtMillis,
-                                locked = isLockedCard,
-                                enabledForDot = enabled && contentOk,
-                                onLockClick = null,
-                                onToggle = { openKey = if (openKey == def.key) "" else def.key },
-                                percent = persistedPct,
-                                content = {
-                                    TraceMoodSliderRow(
-                                        title = def.title,
-                                        enabled = enabledCard,
-                                        userIsPremium = isPremium,
-                                        isPremiumSlider = true,
-                                        lockedLabel = if (isPremium) null else "Débloqué avec Premium.",
-                                        phaseKey = cycleKey,
-                                        cycleKey = cycleKey,
-                                        seedBase = seedBase,
-                                        sliderKey = def.key,
-                                        showTitle = false,
-                                        externalPercent = persistedPct,
-                                        onPercentChanged = { newPct ->
-                                            if (!enabledCard) return@TraceMoodSliderRow
-                                            sliderMap[def.key] = newPct
-                                            onSliderValue?.invoke(def.key, newPct)
-                                            onDirty?.invoke()
-                                        },
-                                        externalCaptured = captured,
-                                        externalCreatedAtMillis = createdAtMillis,
-                                        externalLocked = isLockedCard,
-                                        onLock = { payload ->
-                                            if (lockedMap[def.key] == true) return@TraceMoodSliderRow
-                                            if (optimisticLocking[def.key] == true) return@TraceMoodSliderRow
-                                            optimisticLock(def.key)
-                                            onLock?.invoke(payload)
-                                            onDirty?.invoke()
-                                        },
-                                        onCapturedChanged = { hasCaptured ->
-                                            if (hasCaptured) {
-                                                capturedMap[def.key] = true
-                                                onCaptured?.invoke(def.key)
-                                                onDirty?.invoke()
-                                            }
-                                        },
-                                        onAccentChanged = { c -> accentMap[def.key] = c }
-                                    )
-
-                                    Spacer(Modifier.size(12.dp))
-
-                                    TraceNoteBlock(
-                                        note = note,
-                                        onNoteChange = { newText ->
-                                            if (!enabledCard) return@TraceNoteBlock
-                                            noteMap[def.key] = newText
-                                            onNoteValue?.invoke(def.key, newText)
-                                            onDirty?.invoke()
-                                        },
-                                        enabled = enabledCard,
-                                        accent = accent,
-                                        userIsPremium = isPremium,
-                                        title = "Trace écrite",
-                                        placeholder = "Écrire une note…",
-                                        footerMessageFree = "Tout ne demande pas à être écrit. Mais tout peut l'être.",
-                                        footerMessagePremium = "Ici, tout peut exister. Sans filtre."
-                                    )
-                                }
-                            )
-                        }
-
-                        if (index != SLIDERS_PREMIUM.lastIndex) Spacer(Modifier.size(ROW_SPACING))
-                    }
-                }
-            }
+                onDirty = onDirty,
+                onSliderValue = onSliderValue,
+                onNoteValue = onNoteValue,
+                onCaptured = onCaptured,
+                onLock = onLock,
+                optimisticLock = ::optimisticLock
+            )
         }
     }
 }
