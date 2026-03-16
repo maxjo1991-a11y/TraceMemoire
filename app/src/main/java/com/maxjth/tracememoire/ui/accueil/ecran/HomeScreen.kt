@@ -1,20 +1,16 @@
 package com.maxjth.tracememoire.ui.accueil.ecran
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.platform.LocalContext
 import com.maxjth.tracememoire.ui.accueil.ajout.effect.rememberEmpreinteEffectController
+import com.maxjth.tracememoire.ui.accueil.ecran.home.HomeEmpreinteStarCanvas
 import com.maxjth.tracememoire.ui.accueil.ecran.home.HomeScreenContent
 import com.maxjth.tracememoire.ui.accueil.ecran.home.rememberHomeScreenData
 import com.maxjth.tracememoire.ui.accueil.ecran.home.rememberHomeScreenEmpreinteStar
@@ -22,13 +18,8 @@ import com.maxjth.tracememoire.ui.accueil.ecran.home.rememberHomeScreenTicker
 import com.maxjth.tracememoire.ui.moteur.cycle.modele.TypeCycleHome
 import com.maxjth.tracememoire.ui.systeme.soleil.cycle.rememberHomeNow
 import com.maxjth.tracememoire.ui.theme.BG_DEEP
-import com.maxjth.tracememoire.ui.theme.MAUVE
-import com.maxjth.tracememoire.ui.theme.TURQUOISE
+import com.maxjth.tracememoire.ui.tracejour.components.screen.save.helper.TraceValeurCycleHelper
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.store.TraceSaveStore
-import java.time.LocalDateTime
-import java.util.Calendar
-import kotlin.math.cos
-import kotlin.math.sin
 
 @Composable
 fun HomeScreen(
@@ -40,6 +31,7 @@ fun HomeScreen(
     onOpenOrion: () -> Unit,
     saveStore: TraceSaveStore
 ) {
+    val context = LocalContext.current
     val seedBase = remember { "TRACE_MEMOIRE" }
 
     val dataState = rememberHomeScreenData(
@@ -58,10 +50,13 @@ fun HomeScreen(
     val empreinteController = rememberEmpreinteEffectController()
     val homeNow = rememberHomeNow()
 
-    val year = remember { Calendar.getInstance().get(Calendar.YEAR) }
+    val year = remember {
+        java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+    }
+
     val subtitle = remember(year) {
         when (year) {
-            2026 -> "Le temps n'explique pas. Il mémorise"
+            2026 -> "Que restera-t-il de cette journée ?"
             2027 -> "Ce qui revient laisse une trace."
             2028 -> "La mémoire révèle ce qui insistait."
             2029 -> "Ce qui a été noté ne disparaît plus."
@@ -69,16 +64,79 @@ fun HomeScreen(
         }
     }
 
-    fun cyclePercent(type: TypeCycleHome): Int? =
-        saveStore.cyclePercentMap[type.storageKey()]?.coerceIn(0, 100)
-
     fun dotsForCycle(type: TypeCycleHome): List<Boolean> =
         saveStore.getFreeDotsForCycle(type.storageKey())
 
-    val pMatin = cyclePercent(TypeCycleHome.MATIN)
-    val pJour = cyclePercent(TypeCycleHome.JOUR)
-    val pSoir = cyclePercent(TypeCycleHome.SOIR)
-    val pNuit = cyclePercent(TypeCycleHome.NUIT)
+    fun cycleValue(type: TypeCycleHome): Int? {
+        val cycleKey = type.storageKey().trim().uppercase()
+
+        val createdAt = try {
+            saveStore.createdAtMillis(cycleKey)
+        } catch (_: Exception) {
+            null
+        }
+
+        if (createdAt == null) return null
+
+        return TraceValeurCycleHelper.readPersistedCycleValue(
+            context = context,
+            seedBase = seedBase,
+            cycleKey = cycleKey
+        ).coerceIn(0, 400)
+    }
+
+    fun cumulativeValue(current: Int?, previous: List<Int?>): Int? {
+        val safeCurrent = current?.coerceIn(0, 400) ?: return null
+        val previousTotal = previous.mapNotNull { it?.coerceIn(0, 400) }.sum()
+        return (previousTotal + safeCurrent).coerceIn(0, 1600)
+    }
+
+    val matinValue = cycleValue(TypeCycleHome.MATIN)
+    val jourValue = cycleValue(TypeCycleHome.JOUR)
+    val soirValue = cycleValue(TypeCycleHome.SOIR)
+    val nuitValue = cycleValue(TypeCycleHome.NUIT)
+
+    val pMatin = cumulativeValue(
+        current = matinValue,
+        previous = emptyList()
+    )
+
+    val pJour = cumulativeValue(
+        current = jourValue,
+        previous = listOf(matinValue)
+    )
+
+    val pSoir = cumulativeValue(
+        current = soirValue,
+        previous = listOf(matinValue, jourValue)
+    )
+
+    val pNuit = cumulativeValue(
+        current = nuitValue,
+        previous = listOf(matinValue, jourValue, soirValue)
+    )
+
+    val yesterdayValue by saveStore.yesterdayValue
+    val todayValue by saveStore.todayValue
+
+    val terreValue: Int? = yesterdayValue.coerceAtLeast(0)
+    val soleilValue: Int? = todayValue.coerceAtLeast(0)
+
+    val deltaValue: Int? = if (terreValue != null && soleilValue != null) {
+        soleilValue - terreValue
+    } else {
+        null
+    }
+
+    val soleilDeltaText: String? = deltaValue?.let {
+        when {
+            it > 0 -> "+$it"
+            it < 0 -> "$it"
+            else -> "0"
+        }
+    }
+
+    val terreDeltaText: String? = null
 
     fun createdAtMillisForCycleKey(cycleKey: String): Long? {
         return try {
@@ -99,10 +157,10 @@ fun HomeScreen(
             showPill = tickerState.showPill,
             luneCount = dataState.luneCount,
             luneDeltaToday = dataState.luneDeltaToday,
-            scoreHier = dataState.scoreHier,
-            soleilPercent = dataState.soleilPercent,
-            soleilDeltaText = dataState.soleilDeltaText,
-            terreDeltaText = dataState.terreDeltaText,
+            scoreHier = terreValue,
+            soleilValue = soleilValue,
+            soleilDeltaText = soleilDeltaText,
+            terreDeltaText = terreDeltaText,
             homeNow = homeNow,
             activeCycleKey = tickerState.activeCycleKey,
             pMatin = pMatin,
@@ -123,131 +181,20 @@ fun HomeScreen(
                 else saveStore.getFreeDotsForCycle(cycleKey)
             },
             onTestMinuit = {
-                saveStore.onHomeTick(LocalDateTime.of(2026, 3, 5, 23, 58))
-                saveStore.onHomeTick(LocalDateTime.of(2026, 3, 6, 0, 1))
+                saveStore.debugForceMidnight(
+                    context = context,
+                    seedBase = seedBase
+                )
             },
             modifier = Modifier.align(Alignment.TopCenter)
         )
 
-        Canvas(
+        HomeEmpreinteStarCanvas(
+            start = empreinteStarState.boutonCenterInRoot,
+            end = empreinteStarState.memoireCenterInRoot,
+            progress = empreinteStarState.starTravel.value,
+            alpha = empreinteStarState.starAlpha.value,
             modifier = Modifier.fillMaxSize()
-        ) {
-            val start = empreinteStarState.boutonCenterInRoot
-            val end = empreinteStarState.memoireCenterInRoot
-            val progress = empreinteStarState.starTravel.value
-            val alpha = empreinteStarState.starAlpha.value
-
-            if (start != null && end != null && alpha > 0.01f) {
-                val control = Offset(
-                    x = (start.x + end.x) / 2f,
-                    y = minOf(start.y, end.y) - 180f
-                )
-
-                val starPos = quadraticBezierPoint(
-                    start = start,
-                    end = end,
-                    control = control,
-                    t = progress
-                )
-
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            TURQUOISE.copy(alpha = alpha * 0.20f),
-                            MAUVE.copy(alpha = alpha * 0.12f),
-                            Color.Transparent
-                        ),
-                        center = starPos,
-                        radius = 44f
-                    ),
-                    center = starPos,
-                    radius = 44f
-                )
-
-                if (progress > 0.04f) {
-                    val tailPos = quadraticBezierPoint(
-                        start = start,
-                        end = end,
-                        control = control,
-                        t = (progress - 0.05f).coerceAtLeast(0f)
-                    )
-
-                    drawLine(
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                MAUVE.copy(alpha = alpha * 0.28f),
-                                TURQUOISE.copy(alpha = alpha * 0.36f)
-                            ),
-                            start = tailPos,
-                            end = starPos
-                        ),
-                        start = tailPos,
-                        end = starPos,
-                        strokeWidth = 8f,
-                        cap = StrokeCap.Round
-                    )
-                }
-
-                drawStar(
-                    center = starPos,
-                    outerRadius = 14f,
-                    innerRadius = 6.2f,
-                    color = Color.White.copy(alpha = alpha * 0.96f)
-                )
-
-                drawStar(
-                    center = starPos,
-                    outerRadius = 10f,
-                    innerRadius = 4.4f,
-                    color = TURQUOISE.copy(alpha = alpha * 0.52f)
-                )
-            }
-        }
+        )
     }
-}
-
-private fun quadraticBezierPoint(
-    start: Offset,
-    end: Offset,
-    control: Offset,
-    t: Float
-): Offset {
-    val oneMinusT = 1f - t
-
-    val x =
-        oneMinusT * oneMinusT * start.x +
-                2f * oneMinusT * t * control.x +
-                t * t * end.x
-
-    val y =
-        oneMinusT * oneMinusT * start.y +
-                2f * oneMinusT * t * control.y +
-                t * t * end.y
-
-    return Offset(x, y)
-}
-
-private fun DrawScope.drawStar(
-    center: Offset,
-    outerRadius: Float,
-    innerRadius: Float,
-    color: Color
-) {
-    val path = Path()
-    val points = 4
-    val step = Math.PI / points
-    val startAngle = -Math.PI / 2.0
-
-    repeat(points * 2) { i ->
-        val radius = if (i % 2 == 0) outerRadius else innerRadius
-        val angle = startAngle + step * i
-        val x = center.x + cos(angle).toFloat() * radius
-        val y = center.y + sin(angle).toFloat() * radius
-
-        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
-    }
-
-    path.close()
-    drawPath(path = path, color = color)
 }

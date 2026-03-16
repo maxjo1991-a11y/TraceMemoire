@@ -1,7 +1,7 @@
 package com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.prefs
 
 import android.content.Context
-import com.maxjth.tracememoire.ui.tracejour.components.screen.save.TraceJourPrefs
+import com.maxjth.tracememoire.ui.tracejour.components.screen.save.prefs.TraceJourPrefs
 
 object TraceHomePrefs {
 

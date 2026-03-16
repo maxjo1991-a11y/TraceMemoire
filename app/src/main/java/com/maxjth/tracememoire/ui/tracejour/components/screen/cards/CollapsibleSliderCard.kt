@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,11 +22,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.maxjth.tracememoire.ui.theme.BG_SOFT
+import com.maxjth.tracememoire.ui.systeme.cyclecolors.CycleColors
+import com.maxjth.tracememoire.ui.theme.BG_DEEP
 import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
@@ -36,11 +39,83 @@ import com.maxjth.tracememoire.ui.tracejour.components.screen.percent.PercentBad
 import com.maxjth.tracememoire.ui.tracejour.components.screen.utils.safeClickable
 
 private val CARD_RADIUS = 24.dp
-private val CARD_MIN_HEIGHT = 78.dp
+private val CARD_MIN_HEIGHT = 76.dp
 private val CARD_PADDING = 16.dp
 
-private fun formatCardTitle(sliderKey: String, raw: String): String {
-    return raw.replace(" / ", "\n").trim()
+private fun formatCardTitle(raw: String): String {
+    return raw.replace(" / ", " ").trim()
+}
+
+private data class MemoryMetaUi(
+    val topLine: String,
+    val bottomLine: String?
+)
+
+private fun parseMemoryMeta(memoryMeta: String?): MemoryMetaUi? {
+    if (memoryMeta.isNullOrBlank()) return null
+
+    val parts = memoryMeta
+        .split("•")
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+
+    return when {
+        parts.size >= 3 -> {
+            MemoryMetaUi(
+                topLine = "${parts[0]} • ${parts[1]}",
+                bottomLine = parts.drop(2).joinToString(" • ")
+            )
+        }
+
+        parts.size == 2 -> {
+            MemoryMetaUi(
+                topLine = "${parts[0]} • ${parts[1]}",
+                bottomLine = null
+            )
+        }
+
+        else -> {
+            MemoryMetaUi(
+                topLine = parts.first(),
+                bottomLine = null
+            )
+        }
+    }
+}
+
+private fun cycleBorderColors(
+    activeCycleKey: String?,
+    isHero: Boolean
+): Pair<Color, Color> {
+    val alphaStart = if (isHero) 0.88f else 0.80f
+    val alphaEnd = if (isHero) 0.72f else 0.64f
+
+    return when (activeCycleKey?.trim()?.uppercase()) {
+        "MATIN" -> Pair(
+            CycleColors.MatinStart.copy(alpha = alphaStart),
+            CycleColors.MatinEnd.copy(alpha = alphaEnd)
+        )
+
+        "JOUR" -> Pair(
+            CycleColors.JourStart.copy(alpha = alphaStart),
+            CycleColors.JourEnd.copy(alpha = alphaEnd)
+        )
+
+        "SOIR" -> Pair(
+            CycleColors.SoirStart.copy(alpha = alphaStart),
+            CycleColors.SoirEnd.copy(alpha = alphaEnd)
+        )
+
+        "NUIT" -> Pair(
+            CycleColors.NuitStart.copy(alpha = alphaStart),
+            CycleColors.NuitEnd.copy(alpha = alphaEnd)
+        )
+
+        else -> Pair(
+            TURQUOISE.copy(alpha = alphaStart),
+            MAUVE.copy(alpha = alphaEnd)
+        )
+    }
 }
 
 @Composable
@@ -55,20 +130,16 @@ fun CollapsibleSliderCard(
     enabledForDot: Boolean,
     onToggle: () -> Unit,
     content: @Composable () -> Unit,
-
-    // % affiché sur la carte
     percent: Int? = null,
-
-    // ✅ mémoire fermée future
     memoryPhrase: String? = null,
     memoryKeyword: String? = null,
     memoryMeta: String? = null,
-
-    // mode hero
     isHero: Boolean = false,
     heroSubtitle: String? = null,
     heroMinHeight: Dp = 210.dp,
-    heroTitleSizeSp: Int = 34
+    heroTitleSizeSp: Int = 34,
+    activeCycleKey: String? = null,
+    modifier: Modifier = Modifier
 ) {
     val shape = RoundedCornerShape(CARD_RADIUS)
 
@@ -79,44 +150,22 @@ fun CollapsibleSliderCard(
     }
 
     val displayTitle = remember(sliderKey, title) {
-        formatCardTitle(sliderKey, title)
+        formatCardTitle(title)
+    }
+
+    val parsedMeta = remember(memoryMeta) {
+        parseMemoryMeta(memoryMeta)
     }
 
     val minHeight = if (isHero) heroMinHeight else CARD_MIN_HEIGHT
     val padding = if (isHero) 20.dp else CARD_PADDING
 
-    val mauveHaloA = if (isHero) 0.26f else 0.18f
-    val mauveHaloB = if (isHero) 0.12f else 0.08f
-    val turquoiseEdge = if (isHero) 0.12f else 0.08f
-    val bgTop = if (isHero) 0.28f else 0.23f
-    val bgBottom = if (isHero) 0.19f else 0.15f
-    val borderMauve = if (isHero) 0.31f else 0.24f
+    val innerLine = Color.White.copy(alpha = if (isHero) 0.045f else 0.035f)
 
-    val titleStyleKey = remember(displayTitle, isHero) {
-        val singleWord = !displayTitle.contains(" ")
-        val longSingleWord = singleWord && displayTitle.length >= 12
-        val longTitle = displayTitle.length >= 22
-        Triple(longSingleWord, longTitle, singleWord)
-    }
-
-    val (longSingleWord, longTitle, _) = titleStyleKey
-
-    val baseTitleSize = if (isHero) heroTitleSizeSp.sp else 24.sp
-    val baseLineHeight = if (isHero) (heroTitleSizeSp + 6).sp else 29.sp
-
-    val titleSize = when {
-        isHero -> baseTitleSize
-        longSingleWord -> 21.sp
-        longTitle -> 22.sp
-        else -> 24.sp
-    }
-
-    val titleLine = when {
-        isHero -> baseLineHeight
-        longSingleWord -> 25.sp
-        longTitle -> 27.sp
-        else -> 29.sp
-    }
+    val titleSize = if (isHero) heroTitleSizeSp.sp else 23.sp
+    val titleLine = if (isHero) (heroTitleSizeSp + 5).sp else 27.sp
+    val emptyTitleSize = if (isHero) 36.sp else 26.sp
+    val emptyTitleLine = if (isHero) 40.sp else 30.sp
 
     val shownPercent = percent?.coerceIn(0, 100)
 
@@ -125,20 +174,36 @@ fun CollapsibleSliderCard(
     }
 
     val hasCollapsedMemory = remember(memoryPhrase, memoryKeyword, memoryMeta) {
-        !memoryPhrase.isNullOrBlank() || !memoryKeyword.isNullOrBlank() || !memoryMeta.isNullOrBlank()
+        !memoryPhrase.isNullOrBlank() ||
+                !memoryKeyword.isNullOrBlank() ||
+                !memoryMeta.isNullOrBlank()
     }
 
-    val rowVerticalAlignment = if (hasMeta || hasCollapsedMemory) {
+    val isEmptyCollapsedCard = !isOpen &&
+            !hasCollapsedMemory &&
+            !hasMeta &&
+            (shownPercent == null || shownPercent == 0)
+
+    val rowVerticalAlignment = if (isEmptyCollapsedCard) {
+        Alignment.CenterVertically
+    } else if (hasMeta || hasCollapsedMemory) {
         Alignment.Top
     } else {
         Alignment.CenterVertically
     }
 
-    val rightTopPadding = if (hasMeta || hasCollapsedMemory) 10.dp else 2.dp
+    val rightTopPadding = if (hasMeta || hasCollapsedMemory) 6.dp else 0.dp
     val cardClickable = !locked
 
+    val (borderStart, borderEnd) = remember(activeCycleKey, isHero) {
+        cycleBorderColors(
+            activeCycleKey = activeCycleKey,
+            isHero = isHero
+        )
+    }
+
     Box(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {
         Box(
@@ -147,25 +212,10 @@ fun CollapsibleSliderCard(
                 .background(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            MAUVE.copy(alpha = mauveHaloA),
-                            MAUVE.copy(alpha = mauveHaloB),
+                            MAUVE.copy(alpha = if (isHero) 0.05f else 0.04f),
                             Color.Transparent
-                        )
-                    ),
-                    shape = shape
-                )
-        )
-
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(
-                            TURQUOISE.copy(alpha = turquoiseEdge),
-                            Color.Transparent,
-                            TURQUOISE.copy(alpha = turquoiseEdge)
-                        )
+                        ),
+                        radius = 1100f
                     ),
                     shape = shape
                 )
@@ -176,17 +226,33 @@ fun CollapsibleSliderCard(
                 .fillMaxWidth()
                 .heightIn(min = minHeight)
                 .background(
-                    brush = Brush.verticalGradient(
+                    brush = Brush.radialGradient(
                         colors = listOf(
-                            BG_SOFT.copy(alpha = bgTop),
-                            BG_SOFT.copy(alpha = bgBottom)
+                            MAUVE.copy(alpha = if (isHero) 0.18f else 0.14f),
+                            MAUVE.copy(alpha = if (isHero) 0.08f else 0.06f),
+                            BG_DEEP.copy(alpha = 0.975f),
+                            BG_DEEP.copy(alpha = 1f)
+                        ),
+                        radius = 980f
+                    ),
+                    shape = shape
+                )
+                .border(
+                    width = 0.95.dp,
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            borderStart,
+                            borderEnd
                         )
                     ),
                     shape = shape
                 )
-                .border(1.4.dp, MAUVE.copy(alpha = borderMauve), shape)
                 .padding(1.dp)
-                .border(0.9.dp, TURQUOISE.copy(alpha = 0.10f), shape)
+                .border(
+                    width = 0.7.dp,
+                    color = innerLine,
+                    shape = shape
+                )
                 .padding(padding)
         ) {
             Row(
@@ -194,16 +260,26 @@ fun CollapsibleSliderCard(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
                     .safeClickable(enabled = cardClickable) { onToggle() }
-                    .padding(start = 2.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+                    .padding(start = 2.dp, end = 2.dp, top = 6.dp, bottom = 6.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = rowVerticalAlignment
             ) {
                 Column(
                     modifier = Modifier
                         .weight(1f, fill = true)
-                        .heightIn(min = if (isHero) 76.dp else 64.dp)
+                        .heightIn(min = if (isHero) 76.dp else 64.dp),
+                    verticalArrangement = if (isEmptyCollapsedCard) {
+                        Arrangement.Center
+                    } else {
+                        Arrangement.Top
+                    },
+                    horizontalAlignment = if (isEmptyCollapsedCard) {
+                        Alignment.CenterHorizontally
+                    } else {
+                        Alignment.Start
+                    }
                 ) {
-                    if (isHero && !heroSubtitle.isNullOrBlank()) {
+                    if (isHero && !heroSubtitle.isNullOrBlank() && !isEmptyCollapsedCard) {
                         Text(
                             text = heroSubtitle,
                             color = WHITE_SOFT.copy(alpha = 0.54f),
@@ -213,100 +289,128 @@ fun CollapsibleSliderCard(
                             overflow = TextOverflow.Ellipsis
                         )
 
-                        Spacer(Modifier.size(5.dp))
+                        Spacer(modifier = Modifier.size(5.dp))
                     }
 
                     Text(
                         text = displayTitle,
                         color = WHITE_SOFT.copy(alpha = 0.99f),
-                        fontSize = titleSize,
-                        lineHeight = titleLine,
+                        fontSize = if (isEmptyCollapsedCard) emptyTitleSize else titleSize,
+                        lineHeight = if (isEmptyCollapsedCard) emptyTitleLine else titleLine,
                         fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
-                        softWrap = true,
-                        overflow = TextOverflow.Ellipsis
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = if (isEmptyCollapsedCard) TextAlign.Center else TextAlign.Start,
+                        modifier = if (isEmptyCollapsedCard) {
+                            Modifier.fillMaxWidth()
+                        } else {
+                            Modifier
+                        }
                     )
 
-                    // ✅ mémoire fermée affichée seulement quand la carte est fermée
-                    if (!isOpen && hasCollapsedMemory) {
-                        if (!memoryPhrase.isNullOrBlank()) {
+                    if (!isEmptyCollapsedCard) {
+                        if (!isOpen && hasCollapsedMemory) {
+                            if (!memoryPhrase.isNullOrBlank()) {
+                                Spacer(modifier = Modifier.size(8.dp))
+                                Text(
+                                    text = memoryPhrase,
+                                    color = WHITE_SOFT.copy(alpha = 0.88f),
+                                    fontSize = 15.sp,
+                                    lineHeight = 20.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            if (!memoryKeyword.isNullOrBlank()) {
+                                Spacer(modifier = Modifier.size(40.dp))
+                                Text(
+                                    text = memoryKeyword,
+                                    color = TURQUOISE.copy(alpha = 0.92f),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            if (parsedMeta != null) {
+                                Spacer(modifier = Modifier.size(8.dp))
+
+                                Text(
+                                    text = parsedMeta.topLine,
+                                    color = WHITE_SOFT.copy(alpha = 0.78f),
+                                    fontSize = 13.sp,
+                                    lineHeight = 17.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+
+                                if (!parsedMeta.bottomLine.isNullOrBlank()) {
+                                    Spacer(modifier = Modifier.size(2.dp))
+                                    Text(
+                                        text = parsedMeta.bottomLine,
+                                        color = WHITE_SOFT.copy(alpha = 0.54f),
+                                        fontSize = 12.sp,
+                                        lineHeight = 16.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+
                             Spacer(modifier = Modifier.size(8.dp))
-                            Text(
-                                text = memoryPhrase,
-                                color = WHITE_SOFT.copy(alpha = 0.88f),
-                                fontSize = 15.sp,
-                                lineHeight = 20.sp,
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        if (!memoryKeyword.isNullOrBlank()) {
+                        } else {
                             Spacer(modifier = Modifier.size(6.dp))
-                            Text(
-                                text = memoryKeyword,
-                                color = TURQUOISE.copy(alpha = 0.88f),
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
                         }
 
-                        if (!memoryMeta.isNullOrBlank()) {
-                            Spacer(modifier = Modifier.size(6.dp))
-                            Text(
-                                text = memoryMeta,
-                                color = WHITE_SOFT.copy(alpha = 0.46f),
-                                fontSize = 12.sp,
-                                lineHeight = 16.sp,
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.size(8.dp))
-                    } else {
-                        Spacer(modifier = Modifier.size(6.dp))
+                        TraceMemoryStamp(
+                            captured = captured,
+                            createdAtMillis = createdAtMillis,
+                            locked = locked,
+                            onLock = onLockClick,
+                            showLockChip = true,
+                            modifier = Modifier
+                        )
                     }
-
-                    TraceMemoryStamp(
-                        captured = captured,
-                        createdAtMillis = createdAtMillis,
-                        locked = locked,
-                        onLock = onLockClick,
-                        showLockChip = true,
-                        modifier = Modifier
-                    )
                 }
 
-                Spacer(modifier = Modifier.size(10.dp))
+                if (!isEmptyCollapsedCard) {
+                    Spacer(modifier = Modifier.size(12.dp))
 
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.Top,
-                    modifier = Modifier.padding(top = rightTopPadding)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.Top,
+                        modifier = Modifier
+                            .padding(top = rightTopPadding)
+                            .widthIn(min = 66.dp)
                     ) {
-                        if (shownPercent != null) {
-                            PercentBadge(percent = shownPercent)
-                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            if (shownPercent != null) {
+                                PercentBadge(
+                                    percent = shownPercent,
+                                    fontSizeSp = 17
+                                )
+                            }
 
-                        TraceStatusDot(
-                            state = dotState,
-                            glowSize = if (isHero) 18.dp else 16.dp
-                        )
+                            TraceStatusDot(
+                                state = dotState,
+                                glowSize = if (isHero) 18.dp else 16.dp
+                            )
+                        }
                     }
                 }
             }
 
             if (isOpen) {
-                Spacer(Modifier.size(10.dp))
+                Spacer(modifier = Modifier.size(10.dp))
                 content()
             }
         }

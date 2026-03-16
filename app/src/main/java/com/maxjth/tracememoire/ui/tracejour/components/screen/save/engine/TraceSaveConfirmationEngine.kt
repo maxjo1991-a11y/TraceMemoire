@@ -3,7 +3,7 @@ package com.maxjth.tracememoire.ui.tracejour.components.screen.save.engine
 
 import androidx.compose.runtime.MutableState
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.TraceSaveHomeIO
-import com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.TraceSaveStoreHome
+import com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.reset.TraceSaveStoreHome
 
 /**
  * TraceSaveConfirmationEngine

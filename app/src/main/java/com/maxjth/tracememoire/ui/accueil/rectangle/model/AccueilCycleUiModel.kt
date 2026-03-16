@@ -1,35 +1,40 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/accueil/rectangle/model/AccueilCycleUiModel.kt
 package com.maxjth.tracememoire.ui.accueil.rectangle.model
 
 import java.time.Instant
 import java.time.ZoneId
+import kotlin.math.roundToInt
 
 data class AccueilCycleUiModel(
     val label: String,
 
-    // ✅ cycle clé (MATIN/JOUR/SOIR/NUIT) pour brancher activeCycle + createdAt
+    // cycle clé (MATIN/JOUR/SOIR/NUIT) pour brancher activeCycle + createdAt
     val cycleKey: String,
 
-    // ✅ permet à la Row de mettre le cycle actif en avant
+    // permet à la Row de mettre le cycle actif en avant
     val isActive: Boolean,
 
-    // barre
+    // barre visuelle en %
     val percentForBar: Int,
     val dots: List<Boolean>,
 
     // textes
     val rightText: String,
     val midText: String,
+    val trajectoryText: String?,
 
-    // ✅ heure de création si dispo
+    // heure de création si dispo
     val createdAtMillis: Long?
 ) {
     companion object {
 
+        private const val CYCLE_MAX = 400
+
         /**
-         * ✅ Version principale
-         * - percent null => mémoire absente
-         * - percent != null + createdAtMillis != null => "Mémoire créée • HH:mm"
+         * Version principale
+         * - cycleValue null => mémoire absente
+         * - cycleValue != null + createdAtMillis != null => "Mémoire créée • HH:mm"
+         * - un cycle complet vaut 0..400
+         * - la barre reste en 0..100%
          */
         fun from(
             label: String,
@@ -37,39 +42,54 @@ data class AccueilCycleUiModel(
             percent: Int?,
             dots: List<Boolean>,
             createdAtMillis: Long? = null,
-            isActive: Boolean = false
+            isActive: Boolean = false,
+            trajectoryText: String? = null
         ): AccueilCycleUiModel {
 
-            val safePercent = percent?.coerceIn(0, 100)
-            val isSaved = safePercent != null
+            val safeCycleValue = percent?.coerceIn(0, CYCLE_MAX)
+            val isSaved = safeCycleValue != null
 
-            val rightText = if (isSaved) "${safePercent} / 100" else "— / 100"
+            val percentForBar = if (safeCycleValue != null) {
+                ((safeCycleValue / CYCLE_MAX.toFloat()) * 100f)
+                    .roundToInt()
+                    .coerceIn(0, 100)
+            } else {
+                0
+            }
+
+            val rightText = if (isSaved) {
+                safeCycleValue.toString()
+            } else {
+                "—"
+            }
 
             val timeText = if (isSaved && createdAtMillis != null) {
-                formatHourMinute(createdAtMillis) // ex: "14:32"
-            } else null
+                formatHourMinute(createdAtMillis)
+            } else {
+                null
+            }
 
             val midText = if (isSaved) {
-                if (timeText != null) "Mémoire créée • $timeText" else "Mémoire créée"
+                if (timeText != null) "Empreinte enregistrée • $timeText" else "Empreinte enregistrée"
             } else {
-                "Mémoire absente"
+                "Aucune empreinte"
             }
 
             return AccueilCycleUiModel(
                 label = label,
                 cycleKey = cycleKey.trim().uppercase(),
                 isActive = isActive,
-                percentForBar = safePercent ?: 0,
+                percentForBar = percentForBar,
                 dots = dots,
                 rightText = rightText,
                 midText = midText,
+                trajectoryText = if (isSaved) trajectoryText else null,
                 createdAtMillis = createdAtMillis
             )
         }
 
         /**
-         * ✅ Compat (ancien appel)
-         * - évite de casser le code pendant que tu migres le reste
+         * Compat (ancien appel)
          */
         fun from(
             label: String,
@@ -83,7 +103,8 @@ data class AccueilCycleUiModel(
                 percent = value,
                 dots = dots,
                 createdAtMillis = null,
-                isActive = false
+                isActive = false,
+                trajectoryText = null
             )
         }
 

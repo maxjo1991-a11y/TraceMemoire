@@ -1,4 +1,4 @@
-package com.maxjth.tracememoire.ui.tracejour.components.screen.save.logique
+package com.maxjth.tracememoire.ui.tracejour.components.screen.save.logic
 
 import com.maxjth.tracememoire.ui.noyau.lois.HomeScoreLogic
 

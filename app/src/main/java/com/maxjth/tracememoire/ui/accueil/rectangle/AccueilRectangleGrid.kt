@@ -1,4 +1,3 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/accueil/rectangle/AccueilRectangleGrid.kt
 package com.maxjth.tracememoire.ui.accueil.rectangle
 
 import android.annotation.SuppressLint
@@ -16,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
@@ -25,28 +25,24 @@ import com.maxjth.tracememoire.ui.accueil.rectangle.row.AccueilRectangleRow
 import com.maxjth.tracememoire.ui.accueil.rectangle.row.AccueilRectangleRowDivider
 import com.maxjth.tracememoire.ui.accueil.rectangle.style.AccueilRectangleColors
 import com.maxjth.tracememoire.ui.accueil.rectangle.style.AccueilRectangleSizes
+import com.maxjth.tracememoire.ui.systeme.cyclecolors.CycleColors
 
 @SuppressLint("Range")
 @Composable
 fun AccueilRectangleGrid(
     cycles: List<AccueilCycleUiModel>,
+    activeCycleKey: String? = null,
     modifier: Modifier = Modifier,
-
-    // ✅ 1f = 100% du parent. (Avant: 50f -> bug)
     widthFraction: Float = 1f,
-
-    // ✅ Padding horizontal global si tu veux
     wrapperHorizontalPadding: Dp = 0.dp,
-
-    // ✅ AJOUT: spacing global entre les lignes (moins “poignées tassées”)
     rowSpacing: Dp = 2.dp,
-
-    // ✅ AJOUT: limite de largeur (évite l’effet “bloc trop serré” sur grands écrans)
     contentMaxWidth: Dp = 520.dp
 ) {
     val corner = RoundedCornerShape(AccueilRectangleSizes.corner)
 
-    // ✅ Wrapper global
+    val borderBrush = AccueilRectangleColors.borderBrush(activeCycleKey)
+    val haloColors = cycleHaloColors(activeCycleKey)
+
     Box(
         modifier = modifier
             .fillMaxWidth(widthFraction.coerceIn(0f, 1f))
@@ -55,8 +51,7 @@ fun AccueilRectangleGrid(
                 vertical = AccueilRectangleSizes.wrapperPaddingVertical
             )
     ) {
-
-        // 1) ✅ HALO (couche arrière)
+        // HALO
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -64,19 +59,18 @@ fun AccueilRectangleGrid(
                 .drawBehind {
                     val cornerPx = AccueilRectangleSizes.haloCorner.toPx()
                     val blurPx = AccueilRectangleSizes.haloBlur.toPx()
-
                     val glowStrokePx = 2.50.dp.toPx()
 
                     val inset = glowStrokePx / 2f
                     val w = size.width - inset * 2f
                     val h = size.height - inset * 2f
 
-                    fun drawGlow(colorArgb: Int, dx: Float, dy: Float) {
+                    fun drawGlow(color: Color, dx: Float, dy: Float) {
                         val paint = AndroidPaint().apply {
                             isAntiAlias = true
                             style = AndroidPaint.Style.STROKE
                             strokeWidth = glowStrokePx
-                            color = colorArgb
+                            this.color = color.toArgb()
                             maskFilter = BlurMaskFilter(blurPx, BlurMaskFilter.Blur.NORMAL)
                         }
 
@@ -91,27 +85,27 @@ fun AccueilRectangleGrid(
                         )
                     }
 
-                    drawGlow(AccueilRectangleColors.haloStart.toArgb(), dx = -2.0f, dy = -2.0f)
-                    drawGlow(AccueilRectangleColors.haloEnd.toArgb(), dx = 2.0f, dy = 2.0f)
+                    drawGlow(haloColors.first, dx = -2.0f, dy = -2.0f)
+                    drawGlow(haloColors.second, dx = 2.0f, dy = 2.0f)
 
                     drawGlow(
-                        AccueilRectangleColors.haloStart.copy(alpha = 0.55f).toArgb(),
+                        haloColors.first.copy(alpha = haloColors.first.alpha * 0.55f),
                         dx = -1.0f,
                         dy = -1.0f
                     )
                     drawGlow(
-                        AccueilRectangleColors.haloEnd.copy(alpha = 0.55f).toArgb(),
+                        haloColors.second.copy(alpha = haloColors.second.alpha * 0.55f),
                         dx = 1.0f,
                         dy = 1.0f
                     )
                 }
         )
 
-        // 2) ✅ CONTENU (couche avant)
+        // CONTENU
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .widthIn(max = contentMaxWidth) // ✅ AJOUT: limite max
+                .widthIn(max = contentMaxWidth)
                 .heightIn(
                     min = AccueilRectangleSizes.contentMinHeight,
                     max = AccueilRectangleSizes.contentMaxHeight
@@ -119,17 +113,18 @@ fun AccueilRectangleGrid(
                 .background(AccueilRectangleColors.background, corner)
                 .border(
                     width = AccueilRectangleSizes.borderWidth,
-                    brush = AccueilRectangleColors.borderBrush(),
+                    brush = borderBrush,
                     shape = corner
                 )
-                // ✅ AJOUT: padding interne un poil réduit pour respirer
-                // (si tu veux, remets AccueilRectangleSizes.innerPadding direct)
-                .padding(horizontal = (AccueilRectangleSizes.innerPadding - 4.dp).coerceAtLeast(0.dp))
-                .padding(vertical = (AccueilRectangleSizes.innerPadding - 6.dp).coerceAtLeast(0.dp))
+                .padding(
+                    horizontal = (AccueilRectangleSizes.innerPadding - 4.dp).coerceAtLeast(0.dp)
+                )
+                .padding(
+                    vertical = (AccueilRectangleSizes.innerPadding - 6.dp).coerceAtLeast(0.dp)
+                )
         ) {
             Column {
                 cycles.forEachIndexed { index, ui ->
-                    // ✅ AJOUT: espace léger au-dessus / en-dessous de chaque row
                     Box(modifier = Modifier.padding(vertical = rowSpacing)) {
                         AccueilRectangleRow(ui = ui)
                     }
@@ -140,5 +135,34 @@ fun AccueilRectangleGrid(
                 }
             }
         }
+    }
+}
+
+private fun cycleHaloColors(cycleKey: String?): Pair<Color, Color> {
+    return when (cycleKey?.trim()?.uppercase()) {
+        "MATIN" -> Pair(
+            CycleColors.MatinStart.copy(alpha = 0.48f),
+            CycleColors.MatinEnd.copy(alpha = 0.40f)
+        )
+
+        "JOUR" -> Pair(
+            CycleColors.JourStart.copy(alpha = 0.48f),
+            CycleColors.JourEnd.copy(alpha = 0.40f)
+        )
+
+        "SOIR" -> Pair(
+            CycleColors.SoirStart.copy(alpha = 0.48f),
+            CycleColors.SoirEnd.copy(alpha = 0.40f)
+        )
+
+        "NUIT" -> Pair(
+            CycleColors.NuitStart.copy(alpha = 0.48f),
+            CycleColors.NuitEnd.copy(alpha = 0.40f)
+        )
+
+        else -> Pair(
+            CycleColors.JourStart.copy(alpha = 0.48f),
+            CycleColors.JourEnd.copy(alpha = 0.40f)
+        )
     }
 }

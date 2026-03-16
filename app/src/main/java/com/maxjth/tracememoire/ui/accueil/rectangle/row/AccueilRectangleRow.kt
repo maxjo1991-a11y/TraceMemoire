@@ -1,4 +1,3 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/accueil/rectangle/row/AccueilRectangleRow.kt
 package com.maxjth.tracememoire.ui.accueil.rectangle.row
 
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -8,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -42,37 +42,73 @@ fun AccueilRectangleRow(
     val isSaved = !ui.rightText.trim().startsWith("—")
     val isActive = ui.isActive
 
-    // ✅ IMPORTANT:
-    // Home (Écran 1) ne doit JAMAIS “inventer” une heure live.
-    // ui.midText vient déjà de AccueilCycleUiModel.from(...):
-    // - "Mémoire absente"
-    // - "Mémoire créée"
-    // - "Mémoire créée • HH:mm" (si createdAtMillis fourni)
-    val rawMidText = ui.midText
+    val rawMidText = ui.midText.trim()
+    val trajectoryText = ui.trajectoryText?.trim().orEmpty()
 
-    // ✅ AJOUT 1 : ✓ (check discret) quand c’est sauvegardé
-    // On évite de doubler si jamais tu l’ajoutes déjà ailleurs.
-    val midTextDisplay = if (isSaved && !rawMidText.trim().startsWith("✓")) {
-        "✓ $rawMidText"
-    } else {
-        rawMidText
+    val normalizedMidText = when {
+        rawMidText.startsWith("Mémoire créée") ->
+            rawMidText.replaceFirst("Mémoire créée", "Empreinte enregistrée")
+
+        rawMidText.startsWith("Mémoire absente") ->
+            rawMidText.replaceFirst("Mémoire absente", "Aucune empreinte")
+
+        else -> rawMidText
     }
 
-    // ✅ couleurs (hiérarchie)
+    val midTextDisplay = if (isSaved && !normalizedMidText.startsWith("✓")) {
+        "✓ $normalizedMidText"
+    } else {
+        normalizedMidText
+    }
+
+    val statusText = if (midTextDisplay.contains("•")) {
+        midTextDisplay.substringBefore("•").trim()
+    } else {
+        midTextDisplay
+    }
+
+    val hourText = if (midTextDisplay.contains("•")) {
+        midTextDisplay.substringAfter("•").trim()
+    } else {
+        null
+    }
+
+    val rightTextDisplay = if (isSaved) {
+        "${ui.rightText} Valeur"
+    } else {
+        ui.rightText
+    }
+
     val baseLabel = WHITE_SOFT.copy(alpha = 0.90f)
     val dimLabel = WHITE_SOFT.copy(alpha = 0.62f)
 
-    val baseRight = if (isSaved) TURQUOISE.copy(alpha = 0.92f) else WHITE_SOFT.copy(alpha = 0.42f)
-    val dimRight = if (isSaved) TURQUOISE.copy(alpha = 0.70f) else WHITE_SOFT.copy(alpha = 0.34f)
+    val baseRight = WHITE_SOFT.copy(alpha = 0.96f)
+    val dimRight = WHITE_SOFT.copy(alpha = 0.42f)
 
-    val baseMid = if (isSaved) TURQUOISE.copy(alpha = 0.92f) else WHITE_SOFT.copy(alpha = 0.46f)
-    val dimMid = if (isSaved) TURQUOISE.copy(alpha = 0.72f) else WHITE_SOFT.copy(alpha = 0.38f)
+    val baseMid = TURQUOISE.copy(alpha = 0.92f)
+    val dimMid = TURQUOISE.copy(alpha = 0.72f)
+
+    val baseTrajectory = WHITE_SOFT.copy(alpha = 0.78f)
+    val dimTrajectory = WHITE_SOFT.copy(alpha = 0.46f)
+
+    val cardsLabelColor = if (isActive) {
+        WHITE_SOFT.copy(alpha = 0.76f)
+    } else {
+        WHITE_SOFT.copy(alpha = 0.52f)
+    }
 
     val labelColor = if (isActive) baseLabel else dimLabel
     val rightColor = if (isActive) baseRight else dimRight
-    val midColor = if (isActive) baseMid else dimMid
+    val statusColor = if (isActive) baseMid else dimMid
 
-    // ✅ AJOUT 2 : “focus” du cycle actif (fond très subtil, sans changer la grille)
+    val hourColor = if (isActive) {
+        WHITE_SOFT.copy(alpha = 0.78f)
+    } else {
+        WHITE_SOFT.copy(alpha = 0.56f)
+    }
+
+    val trajectoryColor = if (isActive) baseTrajectory else dimTrajectory
+
     val focusShape = RoundedCornerShape(18.dp)
     val focusBrush = Brush.horizontalGradient(
         listOf(
@@ -85,14 +121,13 @@ fun AccueilRectangleRow(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            // ✅ AJOUT 3 : plus de “respiration” visuelle (row moins tassée)
             .padding(vertical = 8.dp)
             .clip(focusShape)
             .background(focusBrush)
-            .background(focusOutline) // mini voile clair (quasi invisible)
+            .background(focusOutline)
             .padding(horizontal = 10.dp, vertical = 10.dp)
     ) {
-        // ───────── Ligne 1 : label | bar | % ─────────
+        // Ligne 1 : label | bar | valeur
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -117,30 +152,96 @@ fun AccueilRectangleRow(
             Spacer(Modifier.width(12.dp))
 
             Text(
-                text = ui.rightText,
+                text = rightTextDisplay,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = rightColor
             )
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(10.dp))
 
-        // ───────── Ligne 2 : statut ─────────
-        Text(
-            text = midTextDisplay,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = midColor,
-            modifier = Modifier.align(Alignment.CenterHorizontally)
-        )
-
-        // ───────── Ligne 3 : dots ─────────
+        // Ligne 2 : statut + heure alignés à gauche
         if (isSaved) {
-            Spacer(Modifier.height(7.dp))
-            AccueilRectangleDots(
-                dots = ui.dots,
-                isSaved = isSaved,
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 30.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Start
+            ) {
+                Text(
+                    text = statusText,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = statusColor
+                )
+
+                if (hourText != null) {
+                    Spacer(Modifier.width(6.dp))
+
+                    Text(
+                        text = "•",
+                        fontSize = 12.sp,
+                        color = WHITE_SOFT.copy(alpha = 0.42f)
+                    )
+
+                    Spacer(Modifier.width(6.dp))
+
+                    Text(
+                        text = hourText,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = hourColor
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // Ligne 3 : trajectoire à gauche | cartes à droite
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = trajectoryText,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = trajectoryColor
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Text(
+                        text = "Cartes",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = cardsLabelColor
+                    )
+
+                    Spacer(Modifier.width(10.dp))
+
+                    AccueilRectangleDots(
+                        dots = ui.dots,
+                        isSaved = isSaved,
+                        modifier = Modifier
+                    )
+                }
+            }
+        } else {
+            Spacer(Modifier.height(2.dp))
+
+            Text(
+                text = midTextDisplay,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = statusColor,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
         }
@@ -166,7 +267,6 @@ private fun AccueilRectangleBar(
         )
     )
 
-    // ✅ Glow “respirant” (seulement si mémoire existe)
     val inf = rememberInfiniteTransition(label = "accueil_bar_glow")
     val glowAlpha by inf.animateFloat(
         initialValue = if (isActive) 0.22f else 0.14f,
@@ -192,7 +292,6 @@ private fun AccueilRectangleBar(
             .clip(trackShape)
             .background(trackBg)
     ) {
-        // 0) halo derrière
         if (isSaved && p > 0) {
             Box(
                 modifier = Modifier
@@ -203,7 +302,6 @@ private fun AccueilRectangleBar(
             )
         }
 
-        // 1) fill réel
         if (isSaved && p > 0) {
             Box(
                 modifier = Modifier

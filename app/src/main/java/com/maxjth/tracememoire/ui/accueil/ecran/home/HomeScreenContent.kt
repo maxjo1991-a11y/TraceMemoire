@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,11 +26,8 @@ import com.maxjth.tracememoire.ui.accueil.ajout.effect.EmpreinteOverlay
 import com.maxjth.tracememoire.ui.accueil.ajout.effect.empreinteInput
 import com.maxjth.tracememoire.ui.accueil.blocs.AccueilHeaderBloc
 import com.maxjth.tracememoire.ui.accueil.blocs.MemoireHistoriquePortail
-import com.maxjth.tracememoire.ui.accueil.constellation.AccueilConstellationBlock
 import com.maxjth.tracememoire.ui.accueil.rectangle.AccueilRectangleBloc
-import com.maxjth.tracememoire.ui.comprendre.blocs.ComprendreButtonBloc
-import com.maxjth.tracememoire.ui.systeme.Galaxie.GalaxyBackground
-import com.maxjth.tracememoire.ui.systeme.Galaxie.GalaxyOrbitLines
+import com.maxjth.tracememoire.ui.systeme.saturne.SaturneCircle
 import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.tracejour.components.screen.header.CycleStatusPill
@@ -46,7 +41,7 @@ fun HomeScreenContent(
     luneCount: Int,
     luneDeltaToday: Int,
     scoreHier: Int?,
-    soleilPercent: Int,
+    soleilValue: Int?,
     soleilDeltaText: String?,
     terreDeltaText: String?,
     homeNow: LocalDateTime?,
@@ -79,17 +74,16 @@ fun HomeScreenContent(
     val pillOffsetY = (-6).dp
     val pillGapToConstellation = 8.dp
 
-    val constellationZoneHeight = 338.dp
+    val constellationZoneHeight = 430.dp
+    val saturneOffsetY = (-16).dp
 
-    val empreinteOffsetY = (-72).dp
-    val afterConstellationSpacer = 6.dp
+    val empreinteOffsetY = (-40).dp
+    val afterConstellationSpacer = 2.dp
 
-    // ✅ rectangle remonté juste après le bouton
-    val rectangleOffsetY = (-44).dp
-    val afterRectangleSpacer = (-16).dp
+    val rectangleOffsetY = (-12).dp
+    val afterRectangleSpacer = 0.dp
 
-    // ✅ portail historique déplacé sous le rectangle
-    val historyPortalOffsetY = (-18).dp
+    val historyPortalOffsetY = 8.dp
     val historyHaloSize = 208.dp
 
     Column(
@@ -126,23 +120,17 @@ fun HomeScreenContent(
                 .height(constellationZoneHeight),
             contentAlignment = Alignment.Center
         ) {
-            GalaxyBackground(
-                modifier = Modifier.matchParentSize()
-            )
-
-            GalaxyOrbitLines(
-                modifier = Modifier.matchParentSize()
-            )
-
-            AccueilConstellationBlock(
-                luneCount = luneCount,
-                luneDeltaToday = luneDeltaToday,
-                scoreHier = scoreHier,
-                soleilPercent = soleilPercent,
-                soleilDeltaText = soleilDeltaText,
-                terreDeltaText = terreDeltaText,
-                nowOverride = homeNow
-            )
+            Box(
+                modifier = Modifier.offset(y = saturneOffsetY),
+                contentAlignment = Alignment.Center
+            ) {
+                SaturneCircle(
+                    memoire = luneCount,
+                    valeurHier = scoreHier ?: 0,
+                    valeurMaintenant = soleilValue ?: 0,
+                    activeCycleKey = activeCycleKey
+                )
+            }
         }
 
         Spacer(Modifier.height(afterConstellationSpacer))
@@ -234,18 +222,6 @@ fun HomeScreenContent(
 
             MemoireHistoriquePortail(
                 onClick = onOpenHistory
-            )
-        }
-
-        Spacer(Modifier.height(18.dp))
-
-        TextButton(
-            onClick = onTestMinuit,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = "test minuit",
-                color = TURQUOISE.copy(alpha = 0.28f)
             )
         }
 

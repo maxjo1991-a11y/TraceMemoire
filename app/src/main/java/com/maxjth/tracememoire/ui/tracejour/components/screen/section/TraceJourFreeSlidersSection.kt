@@ -10,7 +10,6 @@ import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.tracejour.components.screen.cards.CollapsibleSliderCard
 import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.INNER_OPEN_GAP_DP
 import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.OUTER_HORIZONTAL_PADDING_DP
@@ -18,6 +17,7 @@ import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.ROW_SPACIN
 import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.SLIDERS_FREE
 import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.buildMemoryKeyword
 import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.buildMemoryPhrase
+import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.cycleAccentColor
 import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.formatMemoryMeta
 import com.maxjth.tracememoire.ui.tracejour.components.screen.notes.TraceNoteBlock
 import com.maxjth.tracememoire.ui.tracejour.components.screen.slider.TraceLockPayload
@@ -55,7 +55,7 @@ fun TraceJourFreeSlidersSection(
         SLIDERS_FREE.forEachIndexed { index, def ->
             val captured = capturedMap[def.key] == true
             val note = noteMap[def.key] ?: ""
-            val accent = accentMap[def.key] ?: TURQUOISE
+            val accent = accentMap[def.key] ?: cycleAccentColor(cycleKey)
             val persistedPct = sliderMap[def.key] ?: 0
 
             val createdAtMillis: Long? = createdAtMap[def.key]?.takeIf { it > 0L }
@@ -97,6 +97,12 @@ fun TraceJourFreeSlidersSection(
                     memoryPhrase = memoryPhrase,
                     memoryKeyword = memoryKeyword,
                     memoryMeta = memoryMeta,
+                    isHero = false,
+                    heroSubtitle = null,
+                    heroMinHeight = 210.dp,
+                    heroTitleSizeSp = 34,
+                    activeCycleKey = cycleKey,
+                    modifier = Modifier,
                     content = {
                         TraceMoodSliderRow(
                             title = def.title,
@@ -173,4 +179,3 @@ fun TraceJourFreeSlidersSection(
         }
     }
 }
-

@@ -1,4 +1,3 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/moteur/cycle/grille/GrilleCycleHome.kt
 package com.maxjth.tracememoire.ui.moteur.cycle.grille
 
 import com.maxjth.tracememoire.ui.moteur.cycle.modele.TypeCycleHome
@@ -8,17 +7,18 @@ import java.time.LocalTime
 /**
  * Définit les bornes horaires fixes des cycles HOME.
  *
- * IMPORTANT :
- * - Cette classe ne connaît pas le stockage.
- * - Elle ne connaît pas le moteur.
- * - Elle ne fait que découper le temps.
+ * Découpage verrouillé :
+ * - Nuit  : 00:00 - 05:59
+ * - Matin : 06:00 - 11:59
+ * - Jour  : 12:00 - 17:59
+ * - Soir  : 18:00 - 23:59
  */
 object GrilleCycleHome {
 
-    private val matinStart = LocalTime.of(5, 0)
-    private val jourStart = LocalTime.of(10, 0)
-    private val soirStart = LocalTime.of(17, 0)
-    private val nuitStart = LocalTime.of(22, 0)
+    private val nuitStart = LocalTime.of(0, 0)
+    private val matinStart = LocalTime.of(6, 0)
+    private val jourStart = LocalTime.of(12, 0)
+    private val soirStart = LocalTime.of(18, 0)
 
     /**
      * Cycles actifs (HOME = 4 cycles).
@@ -37,10 +37,9 @@ object GrilleCycleHome {
      */
     fun resolve(time: LocalTime): TypeCycleHome {
         return when {
-            time >= nuitStart || time < matinStart -> TypeCycleHome.NUIT
-            time >= matinStart && time < jourStart -> TypeCycleHome.MATIN
-            time >= jourStart && time < soirStart -> TypeCycleHome.JOUR
-            time >= soirStart && time < nuitStart -> TypeCycleHome.SOIR
+            time >= soirStart -> TypeCycleHome.SOIR
+            time >= jourStart -> TypeCycleHome.JOUR
+            time >= matinStart -> TypeCycleHome.MATIN
             else -> TypeCycleHome.NUIT
         }
     }

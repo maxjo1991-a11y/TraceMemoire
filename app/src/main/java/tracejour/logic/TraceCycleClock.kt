@@ -7,7 +7,8 @@ enum class TraceCycle { NUIT, MATIN, JOUR, SOIR }
 
 object TraceCycleClock {
 
-    private val MATIN_START: LocalTime = LocalTime.of(5, 0)
+    // ⚠️ Doit être identique à GrilleCycleHome
+    private val MATIN_START: LocalTime = LocalTime.of(6, 0)
     private val JOUR_START: LocalTime  = LocalTime.of(12, 0)
     private val SOIR_START: LocalTime  = LocalTime.of(18, 0)
 
@@ -51,7 +52,12 @@ object TraceCycleClock {
         return "$day $month $year $displayHour:$minute $ampm"
     }
 
-    private val ORDER = listOf(TraceCycle.NUIT, TraceCycle.MATIN, TraceCycle.JOUR, TraceCycle.SOIR)
+    private val ORDER = listOf(
+        TraceCycle.NUIT,
+        TraceCycle.MATIN,
+        TraceCycle.JOUR,
+        TraceCycle.SOIR
+    )
 
     fun lockedCycles(current: TraceCycle): Set<TraceCycle> {
         val idx = ORDER.indexOf(current)

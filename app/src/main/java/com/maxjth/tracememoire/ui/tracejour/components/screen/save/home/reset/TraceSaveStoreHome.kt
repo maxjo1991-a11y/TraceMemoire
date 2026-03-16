@@ -1,13 +1,12 @@
-package com.maxjth.tracememoire.ui.tracejour.components.screen.save.home
+package com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.reset
 
 import android.content.Context
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
-import com.maxjth.tracememoire.ui.tracejour.components.screen.save.TraceJourPrefs
+import com.maxjth.tracememoire.ui.tracejour.components.screen.save.prefs.TraceJourPrefs
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.dots.TraceHomeFreeDots
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.official.TraceHomeOfficial
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.prefs.TraceHomePrefs
-import com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.reset.TraceHomeDailyReset
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -19,6 +18,7 @@ import java.time.ZoneId
  * - lastPercent (Soleil live)
  * - yesterdayPercent (Astra)
  * - yearlyPercent (Orion) (stocké ailleurs si besoin)
+ * - todayValue / yesterdayValue (nouvelle logique Valeur / Hier)
  * - cycles complétés (home_done_*)
  * - rectangle snapshot par cycle (home_percent_*)
  * - dots FREE par cycle (home_dots_free_*)
@@ -29,6 +29,9 @@ import java.time.ZoneId
  *   puis on persiste le reset dans le daySeed.
  * - Soleil officiel (prev/current/delta) : via TraceHomeOfficial (daySeed).
  * - Dots FREE mapping : via TraceHomeFreeDots (pure helpers).
+ * - Valeur :
+ *   todayValue = valeur globale vivante d’aujourd’hui
+ *   yesterdayValue = valeur finale figée de la veille
  *
  * ✅ CONNECTÉ :
  * - HOME_LAST_PERCENT lit/écrit via TraceHomePrefs (donc usages visibles + source unique)
@@ -41,6 +44,8 @@ class TraceSaveStoreHome {
 
         // ⚠️ keys HOME (à ne pas renommer côté prefs)
         private const val KEY_PREMIUM_TOUCHED = "home_premium_touched"
+        private const val KEY_TODAY_VALUE = "home_today_value"
+        private const val KEY_YESTERDAY_VALUE = "home_yesterday_value"
 
         // ✅ dots FREE (bitmask int) : 4 bits
         private fun keyDotsFree(cycle: String) = "home_dots_free_${cycle.trim().uppercase()}"
@@ -74,6 +79,10 @@ class TraceSaveStoreHome {
     val yesterdayPercent = mutableStateOf<Int?>(null)
     val yearlyPercent = mutableStateOf<Int?>(null)
 
+    // ✅ nouvelle logique écran 1
+    val todayValue = mutableStateOf(0)
+    val yesterdayValue = mutableStateOf(0)
+
     val premiumTouchedToday = mutableStateOf(false)
 
     // cycle done + rectangle
@@ -104,6 +113,17 @@ class TraceSaveStoreHome {
 
     fun setLastPercent(value: Int?) {
         lastPercent.value = value?.coerceIn(0, 100)
+    }
+
+    // ✅ nouvelle API valeur vivante du jour
+    fun setTodayValue(value: Int) {
+        todayValue.value = value.coerceAtLeast(0)
+        persistHomeOnlyIfAttached()
+    }
+
+    fun setYesterdayValue(value: Int) {
+        yesterdayValue.value = value.coerceAtLeast(0)
+        persistHomeOnlyIfAttached()
     }
 
     // ✅ exposer l’heure figée au HomeScreen
@@ -153,6 +173,9 @@ class TraceSaveStoreHome {
         lastPercent.value = null
         premiumTouchedToday.value = false
 
+        // ✅ aujourd’hui repart à zéro
+        todayValue.value = 0
+
         completedCycleMap.clear()
         cyclePercentMap.clear()
         cycleDotsFreeMaskMap.clear()
@@ -170,6 +193,9 @@ class TraceSaveStoreHome {
 
         // ✅ détection reset via helper (seedBase STABLE)
         if (TraceHomeDailyReset.shouldResetToday(ctx, seedBase, now)) {
+            // on fige la valeur de la veille AVANT reset
+            yesterdayValue.value = todayValue.value.coerceAtLeast(0)
+
             resetForNewDay()
 
             // ✅ marque la journée (seedBase STABLE)
@@ -179,8 +205,13 @@ class TraceSaveStoreHome {
             persistHomeOnly(ctx, seedBase)
         }
 
-        // refresh Astra (hier)
+        // refresh Astra (hier) ancien système %
         yesterdayPercent.value = readYesterdayLastPercent(ctx, seedBase)
+
+        // sécurité : relire yesterdayValue depuis le seed d’hier si vide / au démarrage
+        if (yesterdayValue.value <= 0) {
+            yesterdayValue.value = readYesterdayValue(ctx, seedBase)
+        }
     }
 
     // -----------------------------
@@ -251,6 +282,12 @@ class TraceSaveStoreHome {
         premiumTouchedToday.value =
             TraceJourPrefs.getBool(context, daySeed, HOME_KEY, KEY_PREMIUM_TOUCHED, false)
 
+        todayValue.value =
+            TraceJourPrefs.getInt(context, daySeed, HOME_KEY, KEY_TODAY_VALUE, 0).coerceAtLeast(0)
+
+        yesterdayValue.value =
+            TraceJourPrefs.getInt(context, daySeed, HOME_KEY, KEY_YESTERDAY_VALUE, 0).coerceAtLeast(0)
+
         completedCycleMap.clear()
         cyclePercentMap.clear()
         cycleDotsFreeMaskMap.clear()
@@ -271,6 +308,11 @@ class TraceSaveStoreHome {
         }
 
         yesterdayPercent.value = readYesterdayLastPercent(context, seedBase)
+
+        // sécurité si jamais le seed du jour n’a pas encore la valeur de la veille
+        if (yesterdayValue.value <= 0) {
+            yesterdayValue.value = readYesterdayValue(context, seedBase)
+        }
 
         // officiel (daySeed)
         officialCurrent.value = TraceHomeOfficial.readCurrent(context, daySeed)
@@ -301,6 +343,22 @@ class TraceSaveStoreHome {
             cycleKey = HOME_KEY,
             id = KEY_PREMIUM_TOUCHED,
             value = premiumTouchedToday.value
+        )
+
+        TraceJourPrefs.putInt(
+            context = context,
+            seedBase = daySeed,
+            cycleKey = HOME_KEY,
+            id = KEY_TODAY_VALUE,
+            value = todayValue.value.coerceAtLeast(0)
+        )
+
+        TraceJourPrefs.putInt(
+            context = context,
+            seedBase = daySeed,
+            cycleKey = HOME_KEY,
+            id = KEY_YESTERDAY_VALUE,
+            value = yesterdayValue.value.coerceAtLeast(0)
         )
 
         VALID_CYCLES.forEach { c ->
@@ -357,6 +415,23 @@ class TraceSaveStoreHome {
 
         // ✅ CONNECTÉ: yesterday via TraceHomePrefs aussi
         return TraceHomePrefs.readLastPercent(context, ySeed)
+    }
+
+    private fun readYesterdayValue(
+        context: Context,
+        seedBase: String,
+        zoneId: ZoneId = ZoneId.systemDefault()
+    ): Int {
+        val yesterday = LocalDate.now(zoneId).minusDays(1)
+        val ySeed = TraceJourPrefs.seedForDate(seedBase, yesterday)
+
+        return TraceJourPrefs.getInt(
+            context,
+            ySeed,
+            HOME_KEY,
+            KEY_TODAY_VALUE,
+            0
+        ).coerceAtLeast(0)
     }
 
     fun isValidCycleKey(cycleKey: String): Boolean {

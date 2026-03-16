@@ -1,9 +1,9 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/save/TraceJourPrefs.kt
-package com.maxjth.tracememoire.ui.tracejour.components.screen.save
+package com.maxjth.tracememoire.ui.tracejour.components.screen.save.prefs
 
 import android.content.Context
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -12,6 +12,9 @@ object TraceJourPrefs {
     private const val PREFS_NAME = "trace_jour_prefs"
 
     private val DAY_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd")
+
+    // ✅ seuil logique : avant 03:00 = encore la veille
+    private const val LOGICAL_DAY_START_HOUR = 3
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -23,6 +26,21 @@ object TraceJourPrefs {
         seedBase: String,
         zoneId: ZoneId = ZoneId.systemDefault()
     ): String = seedForDate(seedBase, LocalDate.now(zoneId))
+
+    fun seedForLogicalDay(
+        seedBase: String,
+        now: LocalDateTime = LocalDateTime.now(),
+        zoneId: ZoneId = ZoneId.systemDefault()
+    ): String {
+        val logicalDate =
+            if (now.hour < LOGICAL_DAY_START_HOUR) {
+                now.toLocalDate().minusDays(1)
+            } else {
+                now.toLocalDate()
+            }
+
+        return seedForDate(seedBase, logicalDate)
+    }
 
     fun seedForEpochMillis(
         seedBase: String,
@@ -75,8 +93,6 @@ object TraceJourPrefs {
         e.apply()
     }
 
-    // ✅ AJOUT 1 (optionnel): clear tout un seed (ex: "TRACE_MEMOIRE_20260303")
-    // Utile si tu veux un reset complet d'une journée (tous cycles + HOME)
     fun clearSeed(context: Context, seedBase: String) {
         val p = prefs(context)
         val prefix = "${seedBase}_"
@@ -88,7 +104,6 @@ object TraceJourPrefs {
         e.apply()
     }
 
-    // ✅ AJOUT 2 (optionnel): debug rapide (clé existe ?)
     fun hasKey(context: Context, seedBase: String, cycleKey: String, id: String): Boolean {
         return prefs(context).contains(k(seedBase, cycleKey, id))
     }

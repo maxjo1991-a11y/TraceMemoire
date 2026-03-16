@@ -1,12 +1,11 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/accueil/rectangle/AccueilRectangleBloc.kt
 package com.maxjth.tracememoire.ui.accueil.rectangle
 
 import android.graphics.BlurMaskFilter
 import android.graphics.Paint as AndroidPaint
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -14,9 +13,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import com.maxjth.tracememoire.ui.accueil.rectangle.model.AccueilCycleUiModel
-import com.maxjth.tracememoire.ui.accueil.rectangle.style.AccueilRectangleColors
 import com.maxjth.tracememoire.ui.accueil.rectangle.style.AccueilRectangleSizes
 import com.maxjth.tracememoire.ui.moteur.cycle.modele.TypeCycleHome
+import com.maxjth.tracememoire.ui.systeme.cyclecolors.CycleColors
 
 @Composable
 fun AccueilRectangleBloc(
@@ -42,20 +41,96 @@ fun AccueilRectangleBloc(
         createdAtMillis: Long?,
         originalDots: List<Boolean>
     ): List<Boolean> {
-        val safePercent = percent?.coerceIn(0, 100)
+        return originalDots
+    }
 
-        val hasLockedSnapshot =
-            safePercent != null && createdAtMillis != null
+    fun safeCycleValue(value: Int?): Int? =
+        value?.coerceIn(0, 400)
 
-        return if (hasLockedSnapshot) {
-            listOf(true, true, true, true)
-        } else {
-            originalDots
+    fun cumulativeValue(current: Int?, previous: List<Int?>): Int? {
+        val safeCurrent = safeCycleValue(current) ?: return null
+        val previousTotal = previous.mapNotNull { safeCycleValue(it) }.sum()
+        return previousTotal + safeCurrent
+    }
+
+    fun displayRightText(value: Int?): String =
+        value?.toString() ?: "—"
+
+    fun trajectoryText(previous: Int?, current: Int?): String? {
+        val curr = safeCycleValue(current) ?: return null
+        val prev = safeCycleValue(previous)
+
+        return when {
+            prev == null -> "↗ Début du cycle"
+            curr > prev -> "↗ Montée"
+            curr < prev -> "↘ Descente"
+            else -> "→ Stable"
         }
     }
 
-    // Cycles dynamiques
+    val matinCumulative = cumulativeValue(
+        current = pMatin,
+        previous = emptyList()
+    )
+
+    val jourCumulative = cumulativeValue(
+        current = pJour,
+        previous = listOf(pMatin)
+    )
+
+    val soirCumulative = cumulativeValue(
+        current = pSoir,
+        previous = listOf(pMatin, pJour)
+    )
+
+    val nuitCumulative = cumulativeValue(
+        current = pNuit,
+        previous = listOf(pMatin, pJour, pSoir)
+    )
+
+    val matinTrajectory = trajectoryText(
+        previous = null,
+        current = pMatin
+    )
+
+    val jourTrajectory = trajectoryText(
+        previous = pMatin,
+        current = pJour
+    )
+
+    val soirTrajectory = trajectoryText(
+        previous = pJour,
+        current = pSoir
+    )
+
+    val nuitTrajectory = trajectoryText(
+        previous = pSoir,
+        current = pNuit
+    )
+
     val cycles = buildList {
+        if (TypeCycleHome.values().contains(TypeCycleHome.NUIT)) {
+            val nuitCreatedAt = createdAt("NUIT")
+            val nuitDots = safeDots(
+                cycleKey = "NUIT",
+                percent = pNuit,
+                createdAtMillis = nuitCreatedAt,
+                originalDots = dotsForCycleKey("NUIT")
+            )
+            add(
+                AccueilCycleUiModel.from(
+                    label = "Nuit",
+                    cycleKey = "NUIT",
+                    percent = pNuit,
+                    dots = nuitDots,
+                    createdAtMillis = nuitCreatedAt,
+                    isActive = isActive("NUIT"),
+                    trajectoryText = nuitTrajectory
+                ).copy(
+                    rightText = displayRightText(nuitCumulative)
+                )
+            )
+        }
 
         val matinCreatedAt = createdAt("MATIN")
         val matinDots = safeDots(
@@ -72,6 +147,9 @@ fun AccueilRectangleBloc(
                 dots = matinDots,
                 createdAtMillis = matinCreatedAt,
                 isActive = isActive("MATIN"),
+                trajectoryText = matinTrajectory
+            ).copy(
+                rightText = displayRightText(matinCumulative)
             )
         )
 
@@ -90,6 +168,9 @@ fun AccueilRectangleBloc(
                 dots = jourDots,
                 createdAtMillis = jourCreatedAt,
                 isActive = isActive("JOUR"),
+                trajectoryText = jourTrajectory
+            ).copy(
+                rightText = displayRightText(jourCumulative)
             )
         )
 
@@ -108,59 +189,35 @@ fun AccueilRectangleBloc(
                 dots = soirDots,
                 createdAtMillis = soirCreatedAt,
                 isActive = isActive("SOIR"),
+                trajectoryText = soirTrajectory
+            ).copy(
+                rightText = displayRightText(soirCumulative)
             )
         )
-
-        if (TypeCycleHome.values().contains(TypeCycleHome.NUIT)) {
-            val nuitCreatedAt = createdAt("NUIT")
-            val nuitDots = safeDots(
-                cycleKey = "NUIT",
-                percent = pNuit,
-                createdAtMillis = nuitCreatedAt,
-                originalDots = dotsForCycleKey("NUIT")
-            )
-            add(
-                AccueilCycleUiModel.from(
-                    label = "Nuit",
-                    cycleKey = "NUIT",
-                    percent = pNuit,
-                    dots = nuitDots,
-                    createdAtMillis = nuitCreatedAt,
-                    isActive = isActive("NUIT"),
-                )
-            )
-        }
     }
 
-    // Sizes
     val wrapperPaddingVertical = AccueilRectangleSizes.wrapperPaddingVertical
     val haloOuterPad = AccueilRectangleSizes.haloPadding
     val haloCorner = AccueilRectangleSizes.haloCorner
     val haloBlur = AccueilRectangleSizes.haloBlur
     val haloStroke = AccueilRectangleSizes.borderWidth
 
-    // Colors
-    val haloTeal = AccueilRectangleColors.haloStart.copy(alpha = 0.22f)
-    val haloMauve = AccueilRectangleColors.haloEnd.copy(alpha = 0.18f)
+    val haloColors = cycleHaloColors(activeCycleKey)
 
-    val outlineColor = AccueilRectangleColors.borderStart.copy(alpha = 0.10f)
+    val outlineColor = Color.White.copy(alpha = 0.10f)
     val outlineStrokePx = 1.2f
 
-    // Wrapper principal
     Box(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = AccueilRectangleSizes.wrapperMinHeight)
             .padding(vertical = wrapperPaddingVertical)
     ) {
-
-        // HALO
         Box(
             modifier = Modifier
                 .matchParentSize()
                 .padding(haloOuterPad)
                 .drawBehind {
-
                     val cornerPx = haloCorner.toPx()
                     val strokePx = haloStroke.toPx()
                     val blurPx = haloBlur.toPx()
@@ -170,7 +227,6 @@ fun AccueilRectangleBloc(
                     val h = size.height - inset * 2f
 
                     fun drawGlow(color: Color, dx: Float, dy: Float) {
-
                         val paint = AndroidPaint().apply {
                             isAntiAlias = true
                             style = AndroidPaint.Style.STROKE
@@ -190,8 +246,8 @@ fun AccueilRectangleBloc(
                         )
                     }
 
-                    drawGlow(haloTeal, -1.5f, -1.5f)
-                    drawGlow(haloMauve, 1.5f, 1.5f)
+                    drawGlow(haloColors.first, -1.5f, -1.5f)
+                    drawGlow(haloColors.second, 1.5f, 1.5f)
 
                     val outline = AndroidPaint().apply {
                         isAntiAlias = true
@@ -212,10 +268,39 @@ fun AccueilRectangleBloc(
                 }
         )
 
-        // CONTENU
         AccueilRectangleGrid(
             cycles = cycles,
+            activeCycleKey = activeCycleKey,
             modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+private fun cycleHaloColors(cycleKey: String?): Pair<Color, Color> {
+    return when (cycleKey?.trim()?.uppercase()) {
+        "MATIN" -> Pair(
+            CycleColors.MatinStart.copy(alpha = 0.22f),
+            CycleColors.MatinEnd.copy(alpha = 0.18f)
+        )
+
+        "JOUR" -> Pair(
+            CycleColors.JourStart.copy(alpha = 0.22f),
+            CycleColors.JourEnd.copy(alpha = 0.18f)
+        )
+
+        "SOIR" -> Pair(
+            CycleColors.SoirStart.copy(alpha = 0.22f),
+            CycleColors.SoirEnd.copy(alpha = 0.18f)
+        )
+
+        "NUIT" -> Pair(
+            CycleColors.NuitStart.copy(alpha = 0.22f),
+            CycleColors.NuitEnd.copy(alpha = 0.18f)
+        )
+
+        else -> Pair(
+            CycleColors.JourStart.copy(alpha = 0.22f),
+            CycleColors.JourEnd.copy(alpha = 0.18f)
         )
     }
 }

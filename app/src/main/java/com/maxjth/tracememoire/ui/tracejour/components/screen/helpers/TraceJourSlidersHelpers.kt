@@ -1,5 +1,8 @@
 package com.maxjth.tracememoire.ui.tracejour.components.screen.helpers
 
+import androidx.compose.ui.graphics.Color
+import com.maxjth.tracememoire.ui.theme.MAUVE
+import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.tracejour.components.screen.phrases.TracePhrasesData
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.stockage.TraceSaveKeys
 import java.time.Instant
@@ -10,19 +13,19 @@ import java.util.Locale
 data class SliderDef(val key: String, val title: String)
 
 val SLIDERS_FREE = listOf(
-    SliderDef("humeur", "Humeur globale"),
-    SliderDef("energie", "Énergie / rythme"),
-    SliderDef("corps", "Corps / sensations"),
-    SliderDef("presence", "Présence / attention")
+    SliderDef("humeur", "Humeur"),
+    SliderDef("energie", "Énergie"),
+    SliderDef("corps", "Corps"),
+    SliderDef("presence", "Présence")
 )
 
 val SLIDERS_PREMIUM = listOf(
-    SliderDef(TraceSaveKeys.SLIDER_REPOS, "Qualité du repos vécu"),
-    SliderDef(TraceSaveKeys.SLIDER_ARCHI_EMO, "Architecture émotionnelle"),
-    SliderDef(TraceSaveKeys.SLIDER_TYPE_JOURNEE, "Type de journée"),
-    SliderDef(TraceSaveKeys.SLIDER_MOTIFS, "Motifs psychiques"),
-    SliderDef(TraceSaveKeys.SLIDER_ENVIRONNEMENT, "Environnement"),
-    SliderDef(TraceSaveKeys.SLIDER_CLARTE, "Clarté mentale")
+    SliderDef(TraceSaveKeys.SLIDER_REPOS, "Repos"),
+    SliderDef(TraceSaveKeys.SLIDER_ARCHI_EMO, "Émotions"),
+    SliderDef(TraceSaveKeys.SLIDER_TYPE_JOURNEE, "Journée"),
+    SliderDef(TraceSaveKeys.SLIDER_MOTIFS, "Pensées"),
+    SliderDef(TraceSaveKeys.SLIDER_ENVIRONNEMENT, "Climat"),
+    SliderDef(TraceSaveKeys.SLIDER_CLARTE, "Clarté")
 )
 
 const val ROW_SPACING_DP = 14
@@ -39,6 +42,14 @@ fun cycleLabelFr(cycleKey: String): String {
         else -> cycleKey.lowercase().replaceFirstChar { c ->
             if (c.isLowerCase()) c.titlecase(Locale.CANADA_FRENCH) else c.toString()
         }
+    }
+}
+
+fun cycleAccentColor(cycleKey: String): Color {
+    return when (cycleKey.uppercase()) {
+        "MATIN", "JOUR" -> TURQUOISE
+        "SOIR", "NUIT" -> MAUVE
+        else -> TURQUOISE
     }
 }
 
@@ -118,4 +129,3 @@ fun buildMemoryKeyword(
     val keyword = extractKeywordFromPhrase(memoryPhrase)
     return keyword.ifBlank { null }
 }
-

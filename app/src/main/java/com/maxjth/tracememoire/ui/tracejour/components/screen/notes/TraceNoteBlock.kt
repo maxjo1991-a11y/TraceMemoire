@@ -1,3 +1,4 @@
+// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/notes/TraceNoteBlock.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen.notes
 
 import androidx.compose.foundation.background
@@ -7,7 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -102,15 +102,17 @@ fun TraceNoteBlock(
             .fillMaxWidth()
             .clip(shapeOuter)
             .background(BG_SOFT.copy(alpha = 0.06f))
-            .border(1.dp, noteAccent.copy(alpha = 0.20f), shapeOuter)
+            .border(
+                width = 1.dp,
+                color = noteAccent.copy(alpha = 0.20f),
+                shape = shapeOuter
+            )
             .padding(12.dp)
     ) {
-        // ───────── HEADER ─────────
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(14.dp))
-                // ✅ FIX CRASH: on remplace clickable() par safeClickable()
                 .safeClickable {
                     if (enabled) isOpen = !isOpen
                 }
@@ -124,7 +126,9 @@ fun TraceNoteBlock(
                     contentDescription = null,
                     tint = noteAccent.copy(alpha = 0.90f)
                 )
-                Spacer(Modifier.size(10.dp))
+
+                Spacer(modifier = Modifier.size(10.dp))
+
                 Column {
                     Text(
                         text = title,
@@ -135,7 +139,9 @@ fun TraceNoteBlock(
                         overflow = TextOverflow.Clip,
                         lineHeight = 20.sp
                     )
-                    Spacer(Modifier.height(2.dp))
+
+                    Spacer(modifier = Modifier.height(2.dp))
+
                     if (hasContent) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
@@ -144,7 +150,9 @@ fun TraceNoteBlock(
                                     .clip(CircleShape)
                                     .background(noteAccent)
                             )
-                            Spacer(Modifier.size(6.dp))
+
+                            Spacer(modifier = Modifier.size(6.dp))
+
                             Text(
                                 text = "Ajouté",
                                 color = WHITE_SOFT.copy(alpha = 0.70f),
@@ -168,9 +176,8 @@ fun TraceNoteBlock(
             )
         }
 
-        // ───────── CONTENU ─────────
         if (isOpen) {
-            Spacer(Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Box(
                 modifier = Modifier
@@ -214,7 +221,7 @@ fun TraceNoteBlock(
                 )
             }
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Text(
                 text = "Fermer",
@@ -223,21 +230,24 @@ fun TraceNoteBlock(
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
-                    // ✅ FIX CRASH: safeClickable aussi ici
                     .safeClickable {
                         if (enabled) isOpen = false
                     }
                     .padding(horizontal = 12.dp, vertical = 8.dp)
             )
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
                     .background(Color.White.copy(alpha = 0.05f))
-                    .border(1.dp, noteAccent.copy(alpha = 0.22f), RoundedCornerShape(14.dp))
+                    .border(
+                        width = 1.dp,
+                        color = noteAccent.copy(alpha = 0.22f),
+                        shape = RoundedCornerShape(14.dp)
+                    )
                     .padding(horizontal = 12.dp, vertical = 10.dp)
             ) {
                 Text(
