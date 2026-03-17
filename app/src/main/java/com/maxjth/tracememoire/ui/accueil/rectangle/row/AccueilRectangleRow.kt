@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -79,65 +81,98 @@ fun AccueilRectangleRow(
         ui.rightText
     }
 
-    val baseLabel = WHITE_SOFT.copy(alpha = 0.90f)
-    val dimLabel = WHITE_SOFT.copy(alpha = 0.62f)
-
-    val baseRight = WHITE_SOFT.copy(alpha = 0.96f)
-    val dimRight = WHITE_SOFT.copy(alpha = 0.42f)
-
-    val baseMid = TURQUOISE.copy(alpha = 0.92f)
-    val dimMid = TURQUOISE.copy(alpha = 0.72f)
-
-    val baseTrajectory = WHITE_SOFT.copy(alpha = 0.78f)
-    val dimTrajectory = WHITE_SOFT.copy(alpha = 0.46f)
-
-    val cardsLabelColor = if (isActive) {
-        WHITE_SOFT.copy(alpha = 0.76f)
+    val labelColor = if (isActive) {
+        WHITE_SOFT.copy(alpha = 0.98f)
     } else {
-        WHITE_SOFT.copy(alpha = 0.52f)
+        WHITE_SOFT.copy(alpha = 0.74f)
     }
 
-    val labelColor = if (isActive) baseLabel else dimLabel
-    val rightColor = if (isActive) baseRight else dimRight
-    val statusColor = if (isActive) baseMid else dimMid
+    val rightColor = if (isActive) {
+        WHITE_SOFT.copy(alpha = 0.98f)
+    } else {
+        WHITE_SOFT.copy(alpha = 0.42f)
+    }
+
+    val statusColor = if (isActive) {
+        TURQUOISE.copy(alpha = 0.95f)
+    } else {
+        TURQUOISE.copy(alpha = 0.76f)
+    }
 
     val hourColor = if (isActive) {
-        WHITE_SOFT.copy(alpha = 0.78f)
+        WHITE_SOFT.copy(alpha = 0.82f)
     } else {
         WHITE_SOFT.copy(alpha = 0.56f)
     }
 
-    val trajectoryColor = if (isActive) baseTrajectory else dimTrajectory
+    val trajectoryColor = if (isActive) {
+        WHITE_SOFT.copy(alpha = 0.82f)
+    } else {
+        WHITE_SOFT.copy(alpha = 0.46f)
+    }
 
-    val focusShape = RoundedCornerShape(18.dp)
-    val focusBrush = Brush.horizontalGradient(
-        listOf(
-            TURQUOISE.copy(alpha = if (isActive) 0.07f else 0.00f),
-            MAUVE.copy(alpha = if (isActive) 0.06f else 0.00f)
+    val cardsLabelColor = if (isActive) {
+        WHITE_SOFT.copy(alpha = 0.78f)
+    } else {
+        WHITE_SOFT.copy(alpha = 0.52f)
+    }
+
+    val focusShape = RoundedCornerShape(20.dp)
+
+    val activeBaseBrush = Brush.linearGradient(
+        colors = listOf(
+            TURQUOISE.copy(alpha = 0.12f),
+            Color(0xFF10141C).copy(alpha = 0.94f),
+            MAUVE.copy(alpha = 0.10f)
         )
     )
-    val focusOutline = Color.White.copy(alpha = if (isActive) 0.06f else 0.00f)
+
+    val inactiveBaseBrush = Brush.linearGradient(
+        colors = listOf(
+            Color.Transparent,
+            Color.Transparent
+        )
+    )
+
+    val innerGlowBrush = Brush.radialGradient(
+        colors = listOf(
+            MAUVE.copy(alpha = if (isActive) 0.10f else 0.03f),
+            Color.Transparent
+        ),
+        radius = 420f
+    )
+
+    val outlineColor = if (isActive) {
+        Color.White.copy(alpha = 0.07f)
+    } else {
+        Color.Transparent
+    }
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
             .clip(focusShape)
-            .background(focusBrush)
-            .background(focusOutline)
-            .padding(horizontal = 10.dp, vertical = 10.dp)
+            .background(if (isActive) activeBaseBrush else inactiveBaseBrush)
+            .background(innerGlowBrush)
+            .border(
+                width = 1.dp,
+                color = outlineColor,
+                shape = focusShape
+            )
+            .padding(horizontal = 12.dp, vertical = 12.dp)
     ) {
-        // Ligne 1 : label | bar | valeur
+        // Ligne 1 : label | barre | valeur
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = ui.label,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.ExtraBold,
                 color = labelColor,
-                modifier = Modifier.width(78.dp)
+                modifier = Modifier.width(84.dp)
             )
 
             Spacer(Modifier.width(12.dp))
@@ -149,7 +184,7 @@ fun AccueilRectangleRow(
                 modifier = Modifier.weight(1f)
             )
 
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(10.dp))
 
             Text(
                 text = rightTextDisplay,
@@ -159,16 +194,15 @@ fun AccueilRectangleRow(
             )
         }
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(11.dp))
 
-        // Ligne 2 : statut + heure alignés à gauche
         if (isSaved) {
+            // Ligne 2 : statut complet à gauche | heure à droite
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 30.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Start
+                    .padding(start = 24.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = statusText,
@@ -177,9 +211,9 @@ fun AccueilRectangleRow(
                     color = statusColor
                 )
 
-                if (hourText != null) {
-                    Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.weight(1f))
 
+                if (hourText != null) {
                     Text(
                         text = "•",
                         fontSize = 12.sp,
@@ -192,14 +226,15 @@ fun AccueilRectangleRow(
                         text = hourText,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = hourColor
+                        color = hourColor,
+                        modifier = Modifier.widthIn(min = 36.dp)
                     )
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
 
-            // Ligne 3 : trajectoire à gauche | cartes à droite
+            // Ligne 3 : trajectoire | cartes
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -258,21 +293,29 @@ private fun AccueilRectangleBar(
     val p = percent.coerceIn(0, 100)
     val trackShape = RoundedCornerShape(999.dp)
 
-    val trackBg = Color.White.copy(alpha = 0.06f)
+    val trackBg = if (isActive) {
+        Color.White.copy(alpha = 0.08f)
+    } else {
+        Color.White.copy(alpha = 0.06f)
+    }
 
     val fillBrush = Brush.horizontalGradient(
         listOf(
-            TURQUOISE.copy(alpha = 0.95f),
+            TURQUOISE.copy(alpha = 0.96f),
             MAUVE.copy(alpha = 0.82f)
         )
     )
 
     val inf = rememberInfiniteTransition(label = "accueil_bar_glow")
+
     val glowAlpha by inf.animateFloat(
-        initialValue = if (isActive) 0.22f else 0.14f,
-        targetValue = if (isActive) 0.40f else 0.26f,
+        initialValue = if (isActive) 0.26f else 0.14f,
+        targetValue = if (isActive) 0.46f else 0.24f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1700, easing = FastOutSlowInEasing),
+            animation = tween(
+                durationMillis = 1700,
+                easing = FastOutSlowInEasing
+            ),
             repeatMode = RepeatMode.Reverse
         ),
         label = "glowAlpha"
@@ -281,28 +324,26 @@ private fun AccueilRectangleBar(
     val glowBrush = Brush.horizontalGradient(
         listOf(
             TURQUOISE.copy(alpha = glowAlpha),
-            MAUVE.copy(alpha = glowAlpha * 0.92f),
-            TURQUOISE.copy(alpha = glowAlpha * 0.55f)
+            MAUVE.copy(alpha = glowAlpha * 0.95f),
+            TURQUOISE.copy(alpha = glowAlpha * 0.45f)
         )
     )
 
     Box(
         modifier = modifier
-            .height(14.dp)
+            .height(16.dp)
             .clip(trackShape)
             .background(trackBg)
     ) {
         if (isSaved && p > 0) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxWidth(fraction = p / 100f)
                     .fillMaxHeight()
                     .clip(trackShape)
                     .background(glowBrush)
             )
-        }
 
-        if (isSaved && p > 0) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(fraction = p / 100f)

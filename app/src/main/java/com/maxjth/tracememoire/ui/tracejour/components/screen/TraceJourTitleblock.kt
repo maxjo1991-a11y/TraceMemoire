@@ -22,37 +22,41 @@ fun TraceJourTitleBlock(
     cycle: TraceCycle,
     modifier: Modifier = Modifier
 ) {
-    val titleLine2 = "de l’expérience du moment"
+
+    val titleLine1 = "Empreinte"
+    val titleLine2 = "du présent"
+
     val tagline = "Chaque instant intérieur mérite d’être observé"
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = 18.dp),
+            .padding(top = 22.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+
         Text(
-            text = "Trace",
+            text = titleLine1,
             color = Color.White,
-            fontSize = 64.sp,
+            fontSize = 56.sp,
             fontWeight = FontWeight.ExtraBold,
             textAlign = TextAlign.Center,
-            lineHeight = 64.sp
+            lineHeight = 58.sp
         )
 
-        Spacer(modifier = Modifier.height(2.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         Text(
             text = titleLine2,
-            color = Color.White.copy(alpha = 0.90f),
-            fontSize = 22.sp,
+            color = Color.White.copy(alpha = 0.92f),
+            fontSize = 24.sp,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
-            lineHeight = 26.sp,
+            lineHeight = 28.sp,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
-        Spacer(modifier = Modifier.height(18.dp))
+        Spacer(modifier = Modifier.height(22.dp))
 
         Text(
             text = tagline,
@@ -61,9 +65,9 @@ fun TraceJourTitleBlock(
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
             lineHeight = 24.sp,
-            modifier = Modifier.padding(horizontal = 24.dp)
+            modifier = Modifier.padding(horizontal = 28.dp)
         )
 
-        Spacer(modifier = Modifier.height(25.dp))
+        Spacer(modifier = Modifier.height(28.dp))
     }
 }

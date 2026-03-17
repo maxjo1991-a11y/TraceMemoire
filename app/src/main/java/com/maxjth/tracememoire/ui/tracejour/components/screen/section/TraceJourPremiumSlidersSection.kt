@@ -10,6 +10,7 @@ import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.maxjth.tracememoire.ui.tracejour.components.screen.cards.model.CardOpenState
 import com.maxjth.tracememoire.ui.tracejour.components.screen.cards.CollapsibleSliderCard
 import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.INNER_OPEN_GAP_DP
 import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.OUTER_HORIZONTAL_PADDING_DP
@@ -29,8 +30,8 @@ fun TraceJourPremiumSlidersSection(
     isPremium: Boolean,
     cycleKey: String,
     seedBase: String,
-    openKey: String,
-    onOpenKeyChange: (String) -> Unit,
+    getCardState: (String) -> CardOpenState,
+    onCycleCardState: (String) -> Unit,
     capturedMap: MutableMap<String, Boolean>,
     noteMap: MutableMap<String, String>,
     sliderMap: MutableMap<String, Int>,
@@ -59,10 +60,9 @@ fun TraceJourPremiumSlidersSection(
             val persistedPct = sliderMap[def.key] ?: 0
 
             val createdAtMillis: Long? = createdAtMap[def.key]?.takeIf { it > 0L }
-            val createdAtMillisForCard: Long? = null
+            val createdAtMillisForCard: Long? = createdAtMillis
             val isLockedCard: Boolean = lockedMap[def.key] == true
 
-            // Carte visible même sans Premium, mais non éditable
             val contentOk = isPremium
             val enabledCard = (enabled && contentOk) && !isLockedCard
 
@@ -87,15 +87,13 @@ fun TraceJourPremiumSlidersSection(
                 CollapsibleSliderCard(
                     sliderKey = def.key,
                     title = def.title,
-                    isOpen = openKey == def.key,
+                    cardState = getCardState(def.key),
                     captured = captured,
                     createdAtMillis = createdAtMillisForCard,
                     locked = isLockedCard,
                     enabledForDot = enabled && contentOk,
                     onLockClick = null,
-                    onToggle = {
-                        onOpenKeyChange(if (openKey == def.key) "" else def.key)
-                    },
+                    onToggle = { onCycleCardState(def.key) },
                     percent = persistedPct,
                     memoryPhrase = memoryPhrase,
                     memoryKeyword = memoryKeyword,

@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.maxjth.tracememoire.ui.tracejour.components.screen.cards.model.CardOpenState
 import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.SECTION_GAP_DP
 import com.maxjth.tracememoire.ui.tracejour.components.screen.section.TraceJourFreeSlidersSection
 import com.maxjth.tracememoire.ui.tracejour.components.screen.section.TraceJourPremiumSlidersSection
@@ -39,7 +40,7 @@ fun TraceJourSlidersBlock(
     onCaptured: ((String) -> Unit)? = null,
     onLock: ((TraceLockPayload) -> Unit)? = null
 ) {
-    var openKey by remember { mutableStateOf("") }
+    val cardStateMap = remember { mutableStateMapOf<String, CardOpenState>() }
 
     val capturedMap = externalCapturedMap ?: remember { mutableStateMapOf<String, Boolean>() }
     val noteMap = externalNoteMap ?: remember { mutableStateMapOf<String, String>() }
@@ -51,7 +52,6 @@ fun TraceJourSlidersBlock(
     val accentMap = remember { mutableStateMapOf<String, Color>() }
     val optimisticLocking = remember { mutableStateMapOf<String, Boolean>() }
 
-    // feedback immédiat pendant la session
     val phraseMap = remember { mutableStateMapOf<String, String>() }
     val keywordMap = remember { mutableStateMapOf<String, String>() }
 
@@ -62,14 +62,26 @@ fun TraceJourSlidersBlock(
             createdAtMap[sliderKey] = System.currentTimeMillis()
         }
 
-        if (openKey == sliderKey) {
-            openKey = ""
+        // après verrouillage, on force la carte en PREVIEW
+        cardStateMap.clear()
+        cardStateMap[sliderKey] = CardOpenState.PREVIEW
+    }
+
+    fun getCardState(key: String): CardOpenState {
+        return cardStateMap[key] ?: CardOpenState.CLOSED
+    }
+
+    fun cycleCardState(key: String) {
+        val current = getCardState(key)
+        val next = current.next()
+
+        cardStateMap.clear()
+
+        if (next != CardOpenState.CLOSED) {
+            cardStateMap[key] = next
         }
     }
 
-    // ✅ Interprétation du mode :
-    // - false = mode Essentiel
-    // - true  = mode Premium
     val showEssentialSection = !showPremiumLockedRows
     val showPremiumSection = showPremiumLockedRows
 
@@ -82,8 +94,8 @@ fun TraceJourSlidersBlock(
                 isPremium = isPremium,
                 cycleKey = cycleKey,
                 seedBase = seedBase,
-                openKey = openKey,
-                onOpenKeyChange = { openKey = it },
+                getCardState = ::getCardState,
+                onCycleCardState = ::cycleCardState,
 
                 capturedMap = capturedMap,
                 noteMap = noteMap,
@@ -114,8 +126,8 @@ fun TraceJourSlidersBlock(
                 isPremium = isPremium,
                 cycleKey = cycleKey,
                 seedBase = seedBase,
-                openKey = openKey,
-                onOpenKeyChange = { openKey = it },
+                getCardState = ::getCardState,
+                onCycleCardState = ::cycleCardState,
 
                 capturedMap = capturedMap,
                 noteMap = noteMap,

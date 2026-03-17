@@ -77,6 +77,8 @@ object TraceValeurCycleHelper {
             )
         }
 
-        return TraceValeurLogic.computeDayValue(cycleValues)
+        // ✅ NOUVELLE LOGIQUE :
+        // Aujourd’hui = somme brute réelle de NUIT + MATIN + JOUR + SOIR
+        return cycleValues.sum()
     }
 }

@@ -1,5 +1,12 @@
 package com.maxjth.tracememoire.ui.tracejour.components.screen.cards
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -27,11 +34,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.maxjth.tracememoire.ui.systeme.cyclecolors.CycleColors
 import com.maxjth.tracememoire.ui.theme.BG_DEEP
 import com.maxjth.tracememoire.ui.theme.MAUVE
-import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
+import com.maxjth.tracememoire.ui.tracejour.components.screen.cards.logic.cycleBorderColors
+import com.maxjth.tracememoire.ui.tracejour.components.screen.cards.logic.parseMemoryMeta
+import com.maxjth.tracememoire.ui.tracejour.components.screen.cards.model.CardOpenState
 import com.maxjth.tracememoire.ui.tracejour.components.screen.dots.TraceDotState
 import com.maxjth.tracememoire.ui.tracejour.components.screen.dots.TraceStatusDot
 import com.maxjth.tracememoire.ui.tracejour.components.screen.header.TraceMemoryStamp
@@ -46,83 +54,11 @@ private fun formatCardTitle(raw: String): String {
     return raw.replace(" / ", " ").trim()
 }
 
-private data class MemoryMetaUi(
-    val topLine: String,
-    val bottomLine: String?
-)
-
-private fun parseMemoryMeta(memoryMeta: String?): MemoryMetaUi? {
-    if (memoryMeta.isNullOrBlank()) return null
-
-    val parts = memoryMeta
-        .split("•")
-        .map { it.trim() }
-        .filter { it.isNotBlank() }
-
-    return when {
-        parts.size >= 3 -> {
-            MemoryMetaUi(
-                topLine = "${parts[0]} • ${parts[1]}",
-                bottomLine = parts.drop(2).joinToString(" • ")
-            )
-        }
-
-        parts.size == 2 -> {
-            MemoryMetaUi(
-                topLine = "${parts[0]} • ${parts[1]}",
-                bottomLine = null
-            )
-        }
-
-        else -> {
-            MemoryMetaUi(
-                topLine = parts.first(),
-                bottomLine = null
-            )
-        }
-    }
-}
-
-private fun cycleBorderColors(
-    activeCycleKey: String?,
-    isHero: Boolean
-): Pair<Color, Color> {
-    val alphaStart = if (isHero) 0.88f else 0.80f
-    val alphaEnd = if (isHero) 0.72f else 0.64f
-
-    return when (activeCycleKey?.trim()?.uppercase()) {
-        "MATIN" -> Pair(
-            CycleColors.MatinStart.copy(alpha = alphaStart),
-            CycleColors.MatinEnd.copy(alpha = alphaEnd)
-        )
-
-        "JOUR" -> Pair(
-            CycleColors.JourStart.copy(alpha = alphaStart),
-            CycleColors.JourEnd.copy(alpha = alphaEnd)
-        )
-
-        "SOIR" -> Pair(
-            CycleColors.SoirStart.copy(alpha = alphaStart),
-            CycleColors.SoirEnd.copy(alpha = alphaEnd)
-        )
-
-        "NUIT" -> Pair(
-            CycleColors.NuitStart.copy(alpha = alphaStart),
-            CycleColors.NuitEnd.copy(alpha = alphaEnd)
-        )
-
-        else -> Pair(
-            TURQUOISE.copy(alpha = alphaStart),
-            MAUVE.copy(alpha = alphaEnd)
-        )
-    }
-}
-
 @Composable
 fun CollapsibleSliderCard(
     sliderKey: String,
     title: String,
-    isOpen: Boolean,
+    cardState: CardOpenState,
     captured: Boolean,
     createdAtMillis: Long?,
     locked: Boolean,
@@ -141,6 +77,10 @@ fun CollapsibleSliderCard(
     activeCycleKey: String? = null,
     modifier: Modifier = Modifier
 ) {
+    val isPreview = cardState == CardOpenState.PREVIEW
+    val isFull = cardState == CardOpenState.FULL
+    val isExpanded = isPreview || isFull
+
     val shape = RoundedCornerShape(CARD_RADIUS)
 
     val dotState = when {
@@ -169,31 +109,24 @@ fun CollapsibleSliderCard(
 
     val shownPercent = percent?.coerceIn(0, 100)
 
-    val hasMeta = remember(captured, createdAtMillis, locked) {
-        captured || (createdAtMillis != null) || locked
+    val hasCollapsedMemory = remember(memoryPhrase, memoryKeyword) {
+        !memoryPhrase.isNullOrBlank() || !memoryKeyword.isNullOrBlank()
     }
 
-    val hasCollapsedMemory = remember(memoryPhrase, memoryKeyword, memoryMeta) {
-        !memoryPhrase.isNullOrBlank() ||
-                !memoryKeyword.isNullOrBlank() ||
-                !memoryMeta.isNullOrBlank()
-    }
-
-    val isEmptyCollapsedCard = !isOpen &&
+    val isEmptyCollapsedCard = !isExpanded &&
             !hasCollapsedMemory &&
-            !hasMeta &&
             (shownPercent == null || shownPercent == 0)
 
     val rowVerticalAlignment = if (isEmptyCollapsedCard) {
         Alignment.CenterVertically
-    } else if (hasMeta || hasCollapsedMemory) {
-        Alignment.Top
     } else {
-        Alignment.CenterVertically
+        Alignment.Top
     }
 
-    val rightTopPadding = if (hasMeta || hasCollapsedMemory) 6.dp else 0.dp
-    val cardClickable = !locked
+    val rightTopPadding = if (!isExpanded && hasCollapsedMemory) 6.dp else 0.dp
+
+    // même verrouillée, la carte doit rester ouvrable
+    val cardClickable = true
 
     val (borderStart, borderEnd) = remember(activeCycleKey, isHero) {
         cycleBorderColors(
@@ -240,10 +173,7 @@ fun CollapsibleSliderCard(
                 .border(
                     width = 0.95.dp,
                     brush = Brush.linearGradient(
-                        colors = listOf(
-                            borderStart,
-                            borderEnd
-                        )
+                        colors = listOf(borderStart, borderEnd)
                     ),
                     shape = shape
                 )
@@ -288,7 +218,6 @@ fun CollapsibleSliderCard(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-
                         Spacer(modifier = Modifier.size(5.dp))
                     }
 
@@ -302,80 +231,168 @@ fun CollapsibleSliderCard(
                         softWrap = false,
                         overflow = TextOverflow.Ellipsis,
                         textAlign = if (isEmptyCollapsedCard) TextAlign.Center else TextAlign.Start,
-                        modifier = if (isEmptyCollapsedCard) {
-                            Modifier.fillMaxWidth()
-                        } else {
-                            Modifier
-                        }
+                        modifier = if (isEmptyCollapsedCard) Modifier.fillMaxWidth() else Modifier
                     )
 
                     if (!isEmptyCollapsedCard) {
-                        if (!isOpen && hasCollapsedMemory) {
-                            if (!memoryPhrase.isNullOrBlank()) {
-                                Spacer(modifier = Modifier.size(8.dp))
-                                Text(
-                                    text = memoryPhrase,
-                                    color = WHITE_SOFT.copy(alpha = 0.88f),
-                                    fontSize = 15.sp,
-                                    lineHeight = 20.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-
-                            if (!memoryKeyword.isNullOrBlank()) {
-                                Spacer(modifier = Modifier.size(40.dp))
-                                Text(
-                                    text = memoryKeyword,
-                                    color = TURQUOISE.copy(alpha = 0.92f),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-
-                            if (parsedMeta != null) {
-                                Spacer(modifier = Modifier.size(8.dp))
-
-                                Text(
-                                    text = parsedMeta.topLine,
-                                    color = WHITE_SOFT.copy(alpha = 0.78f),
-                                    fontSize = 13.sp,
-                                    lineHeight = 17.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-
-                                if (!parsedMeta.bottomLine.isNullOrBlank()) {
-                                    Spacer(modifier = Modifier.size(2.dp))
+                        when (cardState) {
+                            CardOpenState.CLOSED -> {
+                                if (!memoryPhrase.isNullOrBlank()) {
+                                    Spacer(modifier = Modifier.size(8.dp))
                                     Text(
-                                        text = parsedMeta.bottomLine,
-                                        color = WHITE_SOFT.copy(alpha = 0.54f),
-                                        fontSize = 12.sp,
-                                        lineHeight = 16.sp,
+                                        text = memoryPhrase,
+                                        color = WHITE_SOFT.copy(alpha = 0.90f),
+                                        fontSize = 15.sp,
+                                        lineHeight = 20.sp,
                                         fontWeight = FontWeight.Medium,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+
+                                if (!memoryKeyword.isNullOrBlank()) {
+                                    Spacer(modifier = Modifier.size(10.dp))
+                                    Text(
+                                        text = memoryKeyword,
+                                        color = borderStart.copy(alpha = 0.95f),
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.SemiBold,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                 }
                             }
 
-                            Spacer(modifier = Modifier.size(8.dp))
-                        } else {
-                            Spacer(modifier = Modifier.size(6.dp))
-                        }
+                            CardOpenState.PREVIEW -> {
+                                if (!memoryPhrase.isNullOrBlank()) {
+                                    Spacer(modifier = Modifier.size(8.dp))
+                                    Text(
+                                        text = memoryPhrase,
+                                        color = WHITE_SOFT.copy(alpha = 0.88f),
+                                        fontSize = 15.sp,
+                                        lineHeight = 20.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
 
-                        TraceMemoryStamp(
-                            captured = captured,
-                            createdAtMillis = createdAtMillis,
-                            locked = locked,
-                            onLock = onLockClick,
-                            showLockChip = true,
-                            modifier = Modifier
-                        )
+                                if (!memoryKeyword.isNullOrBlank()) {
+                                    Spacer(modifier = Modifier.size(10.dp))
+                                    Text(
+                                        text = memoryKeyword,
+                                        color = borderStart.copy(alpha = 0.92f),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+
+                                if (parsedMeta != null) {
+                                    Spacer(modifier = Modifier.size(8.dp))
+
+                                    Text(
+                                        text = parsedMeta.topLine,
+                                        color = WHITE_SOFT.copy(alpha = 0.78f),
+                                        fontSize = 13.sp,
+                                        lineHeight = 17.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+
+                                    if (!parsedMeta.bottomLine.isNullOrBlank()) {
+                                        Spacer(modifier = Modifier.size(2.dp))
+                                        Text(
+                                            text = parsedMeta.bottomLine,
+                                            color = WHITE_SOFT.copy(alpha = 0.54f),
+                                            fontSize = 12.sp,
+                                            lineHeight = 16.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.size(8.dp))
+
+                                TraceMemoryStamp(
+                                    captured = captured,
+                                    createdAtMillis = createdAtMillis,
+                                    locked = locked,
+                                    onLock = onLockClick,
+                                    showLockChip = true,
+                                    modifier = Modifier
+                                )
+                            }
+
+                            CardOpenState.FULL -> {
+                                if (!memoryPhrase.isNullOrBlank()) {
+                                    Spacer(modifier = Modifier.size(8.dp))
+                                    Text(
+                                        text = memoryPhrase,
+                                        color = WHITE_SOFT.copy(alpha = 0.88f),
+                                        fontSize = 15.sp,
+                                        lineHeight = 20.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 3,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+
+                                if (!memoryKeyword.isNullOrBlank()) {
+                                    Spacer(modifier = Modifier.size(10.dp))
+                                    Text(
+                                        text = memoryKeyword,
+                                        color = borderStart.copy(alpha = 0.92f),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+
+                                if (parsedMeta != null) {
+                                    Spacer(modifier = Modifier.size(8.dp))
+
+                                    Text(
+                                        text = parsedMeta.topLine,
+                                        color = WHITE_SOFT.copy(alpha = 0.78f),
+                                        fontSize = 13.sp,
+                                        lineHeight = 17.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+
+                                    if (!parsedMeta.bottomLine.isNullOrBlank()) {
+                                        Spacer(modifier = Modifier.size(2.dp))
+                                        Text(
+                                            text = parsedMeta.bottomLine,
+                                            color = WHITE_SOFT.copy(alpha = 0.54f),
+                                            fontSize = 12.sp,
+                                            lineHeight = 16.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.size(8.dp))
+
+                                TraceMemoryStamp(
+                                    captured = captured,
+                                    createdAtMillis = createdAtMillis,
+                                    locked = locked,
+                                    onLock = onLockClick,
+                                    showLockChip = true,
+                                    modifier = Modifier
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -409,9 +426,37 @@ fun CollapsibleSliderCard(
                 }
             }
 
-            if (isOpen) {
-                Spacer(modifier = Modifier.size(10.dp))
-                content()
+            AnimatedVisibility(
+                visible = isFull,
+                enter = fadeIn(
+                    animationSpec = tween(
+                        durationMillis = 240,
+                        easing = FastOutSlowInEasing
+                    )
+                ) + expandVertically(
+                    animationSpec = tween(
+                        durationMillis = 260,
+                        easing = FastOutSlowInEasing
+                    ),
+                    expandFrom = Alignment.Top
+                ),
+                exit = fadeOut(
+                    animationSpec = tween(
+                        durationMillis = 180,
+                        easing = FastOutSlowInEasing
+                    )
+                ) + shrinkVertically(
+                    animationSpec = tween(
+                        durationMillis = 220,
+                        easing = FastOutSlowInEasing
+                    ),
+                    shrinkTowards = Alignment.Top
+                )
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.size(10.dp))
+                    content()
+                }
             }
         }
     }
