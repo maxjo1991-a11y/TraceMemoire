@@ -27,9 +27,8 @@ object TraceValeurCycleHelper {
         val cycle = normCycleKey(cycleKey) ?: return 0
 
         // ✅ IMPORTANT :
-        // on lit la journée logique complète
-        // et non plus le simple jour calendrier
-        val daySeed = TraceJourPrefs.seedForLogicalDay(seedBase)
+        // on lit la même journée que le stockage du cycle
+        val daySeed = TraceJourPrefs.seedForToday(seedBase)
 
         val sliderMapForCycle = mapOf(
             TraceSaveKeys.SLIDER_HUMEUR to TraceJourPrefs.getInt(
@@ -77,8 +76,6 @@ object TraceValeurCycleHelper {
             )
         }
 
-        // ✅ NOUVELLE LOGIQUE :
-        // Aujourd’hui = somme brute réelle de NUIT + MATIN + JOUR + SOIR
         return cycleValues.sum()
     }
 }

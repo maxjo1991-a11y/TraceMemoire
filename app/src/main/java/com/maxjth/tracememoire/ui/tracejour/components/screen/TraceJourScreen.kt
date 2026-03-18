@@ -189,7 +189,22 @@ fun TraceJourScreen(
             ) {
                 TraceJourTitleBlock(cycle = currentCycle)
 
-                Spacer(modifier = Modifier.height(0.dp))
+                Spacer(modifier = Modifier.height(18.dp))
+
+                TraceJourModeToggle(
+                    selectedMode = displayMode,
+                    onModeChange = { displayMode = it },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                TraceApprofondirDiamondButton(
+                    onClick = onDeepen,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+
+                Spacer(modifier = Modifier.height(18.dp))
 
                 TraceCycleValeurCapsule(
                     cycleLabel = cycleLabel,
@@ -198,22 +213,7 @@ fun TraceJourScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(18.dp))
-
-                TraceApprofondirDiamondButton(
-                    onClick = onDeepen,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
-
-                Spacer(modifier = Modifier.height(22.dp))
-
-                TraceJourModeToggle(
-                    selectedMode = displayMode,
-                    onModeChange = { displayMode = it },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 key(reloadKey) {
                     TraceJourSlidersBlock(

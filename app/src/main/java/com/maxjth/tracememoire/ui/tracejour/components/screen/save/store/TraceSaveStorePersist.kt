@@ -32,7 +32,8 @@ internal object TraceSaveStorePersist {
         cycleKey: String,
         sliderKeys: List<String>
     ) {
-        val safeCycleKey = TraceValeurCycleHelper.normCycleKey(cycleKey) ?: cycleKey.trim().uppercase()
+        val safeCycleKey = TraceValeurCycleHelper.normCycleKey(cycleKey)
+            ?: cycleKey.trim().uppercase()
 
         store.attach(context, seedBase)
         store.currentLoadedCycleKey = safeCycleKey
@@ -72,7 +73,8 @@ internal object TraceSaveStorePersist {
         seedBase: String,
         cycleKey: String
     ) {
-        val safeCycleKey = TraceValeurCycleHelper.normCycleKey(cycleKey) ?: cycleKey.trim().uppercase()
+        val safeCycleKey = TraceValeurCycleHelper.normCycleKey(cycleKey)
+            ?: cycleKey.trim().uppercase()
 
         store.currentLoadedCycleKey = safeCycleKey
 
@@ -88,7 +90,11 @@ internal object TraceSaveStorePersist {
             touchedMap = store.touchedMap
         )
 
-        store.recomputeTodayValueFromAllCycles()
+        // 🔒 FIX MIDNIGHT — recalcul seulement si un slider du cycle a une vraie valeur
+        if (store.sliderMap.values.any { it > 0 }) {
+            store.recomputeTodayValueFromAllCycles()
+        }
+
         store.valeur.persist(context, seedBase)
 
         store.homeIO.persistHomeSafe(
@@ -97,6 +103,9 @@ internal object TraceSaveStorePersist {
             lastDeltaTodaySetter = { store.lastDeltaToday.value = it }
         )
 
-        store.homeIO.persistCyclePercentIfPossible(safeCycleKey, store.cyclePercentMap)
+        store.homeIO.persistCyclePercentIfPossible(
+            safeCycleKey,
+            store.cyclePercentMap
+        )
     }
 }

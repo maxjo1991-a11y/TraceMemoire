@@ -7,17 +7,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -25,7 +18,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.maxjth.tracememoire.ui.theme.BG_SOFT
 import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
@@ -41,55 +33,46 @@ fun TraceJourModeToggle(
     onModeChange: (TraceJourDisplayMode) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val shape = RoundedCornerShape(22.dp)
-    val segmentShape = RoundedCornerShape(18.dp)
+    val containerShape = RoundedCornerShape(24.dp)
+    val segmentShape = RoundedCornerShape(20.dp)
 
     val essentialSelected = selectedMode == TraceJourDisplayMode.ESSENTIEL
     val premiumSelected = selectedMode == TraceJourDisplayMode.PREMIUM
 
+    val animSpec = tween<Color>(260, easing = FastOutSlowInEasing)
+
+    val essentialStart by animateColorAsState(
+        if (essentialSelected) TURQUOISE.copy(alpha = 0.28f) else Color.Transparent,
+        animSpec, label = ""
+    )
+
+    val essentialEnd by animateColorAsState(
+        if (essentialSelected) TURQUOISE.copy(alpha = 0.08f) else Color.Transparent,
+        animSpec, label = ""
+    )
+
+    val premiumStart by animateColorAsState(
+        if (premiumSelected) MAUVE.copy(alpha = 0.28f) else Color.Transparent,
+        animSpec, label = ""
+    )
+
+    val premiumEnd by animateColorAsState(
+        if (premiumSelected) MAUVE.copy(alpha = 0.08f) else Color.Transparent,
+        animSpec, label = ""
+    )
+
+    val essentialText by animateColorAsState(
+        if (essentialSelected) WHITE_SOFT else WHITE_SOFT.copy(alpha = 0.65f),
+        animSpec, label = ""
+    )
+
+    val premiumText by animateColorAsState(
+        if (premiumSelected) WHITE_SOFT else WHITE_SOFT.copy(alpha = 0.65f),
+        animSpec, label = ""
+    )
+
     val essentialInteraction = remember { MutableInteractionSource() }
     val premiumInteraction = remember { MutableInteractionSource() }
-
-    val animSpec = tween<Color>(
-        durationMillis = 260,
-        easing = FastOutSlowInEasing
-    )
-
-    val essentialBgStart by animateColorAsState(
-        targetValue = if (essentialSelected) TURQUOISE.copy(alpha = 0.24f) else Color.Transparent,
-        animationSpec = animSpec,
-        label = "essential_bg_start"
-    )
-
-    val essentialBgEnd by animateColorAsState(
-        targetValue = if (essentialSelected) TURQUOISE.copy(alpha = 0.10f) else Color.Transparent,
-        animationSpec = animSpec,
-        label = "essential_bg_end"
-    )
-
-    val premiumBgStart by animateColorAsState(
-        targetValue = if (premiumSelected) MAUVE.copy(alpha = 0.24f) else Color.Transparent,
-        animationSpec = animSpec,
-        label = "premium_bg_start"
-    )
-
-    val premiumBgEnd by animateColorAsState(
-        targetValue = if (premiumSelected) MAUVE.copy(alpha = 0.10f) else Color.Transparent,
-        animationSpec = animSpec,
-        label = "premium_bg_end"
-    )
-
-    val essentialTextColor by animateColorAsState(
-        targetValue = if (essentialSelected) WHITE_SOFT else WHITE_SOFT.copy(alpha = 0.78f),
-        animationSpec = animSpec,
-        label = "essential_text"
-    )
-
-    val premiumTextColor by animateColorAsState(
-        targetValue = if (premiumSelected) WHITE_SOFT else WHITE_SOFT.copy(alpha = 0.78f),
-        animationSpec = animSpec,
-        label = "premium_text"
-    )
 
     Box(
         modifier = modifier
@@ -97,21 +80,22 @@ fun TraceJourModeToggle(
             .background(
                 brush = Brush.horizontalGradient(
                     colors = listOf(
-                        BG_SOFT.copy(alpha = 0.92f),
-                        BG_SOFT.copy(alpha = 0.98f)
+                        MAUVE.copy(alpha = 0.10f),
+                        Color.Black.copy(alpha = 0.80f),
+                        TURQUOISE.copy(alpha = 0.08f)
                     )
                 ),
-                shape = shape
+                shape = containerShape
             )
             .border(
-                width = 1.2.dp,
+                width = 1.3.dp,
                 brush = Brush.horizontalGradient(
                     colors = listOf(
-                        TURQUOISE.copy(alpha = 0.45f),
-                        MAUVE.copy(alpha = 0.45f)
+                        MAUVE.copy(alpha = 0.55f),
+                        TURQUOISE.copy(alpha = 0.55f)
                     )
                 ),
-                shape = shape
+                shape = containerShape
             )
             .padding(4.dp)
     ) {
@@ -119,12 +103,14 @@ fun TraceJourModeToggle(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+
+            // ESSENTIEL
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .background(
                         brush = Brush.horizontalGradient(
-                            colors = listOf(essentialBgStart, essentialBgEnd)
+                            colors = listOf(essentialStart, essentialEnd)
                         ),
                         shape = segmentShape
                     )
@@ -134,23 +120,24 @@ fun TraceJourModeToggle(
                     ) {
                         onModeChange(TraceJourDisplayMode.ESSENTIEL)
                     }
-                    .padding(vertical = 12.dp),
+                    .padding(vertical = 13.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "Essentiel",
-                    color = essentialTextColor,
+                    color = essentialText,
                     fontSize = 16.sp,
                     fontWeight = if (essentialSelected) FontWeight.SemiBold else FontWeight.Medium
                 )
             }
 
+            // PREMIUM
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .background(
                         brush = Brush.horizontalGradient(
-                            colors = listOf(premiumBgStart, premiumBgEnd)
+                            colors = listOf(premiumStart, premiumEnd)
                         ),
                         shape = segmentShape
                     )
@@ -160,12 +147,12 @@ fun TraceJourModeToggle(
                     ) {
                         onModeChange(TraceJourDisplayMode.PREMIUM)
                     }
-                    .padding(vertical = 12.dp),
+                    .padding(vertical = 13.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "Premium",
-                    color = premiumTextColor,
+                    color = premiumText,
                     fontSize = 16.sp,
                     fontWeight = if (premiumSelected) FontWeight.SemiBold else FontWeight.Medium
                 )
@@ -173,4 +160,3 @@ fun TraceJourModeToggle(
         }
     }
 }
-

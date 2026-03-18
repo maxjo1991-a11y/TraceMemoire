@@ -10,8 +10,9 @@ import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.maxjth.tracememoire.ui.tracejour.components.screen.cards.model.CardOpenState
+import com.maxjth.tracememoire.ui.tracejour.components.screen.TraceJourSlidersBlock
 import com.maxjth.tracememoire.ui.tracejour.components.screen.cards.CollapsibleSliderCard
+import com.maxjth.tracememoire.ui.tracejour.components.screen.cards.model.CardOpenState
 import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.INNER_OPEN_GAP_DP
 import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.OUTER_HORIZONTAL_PADDING_DP
 import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.ROW_SPACING_DP
@@ -164,9 +165,7 @@ fun TraceJourFreeSlidersSection(
                             accent = accent,
                             userIsPremium = isPremium,
                             title = "Trace écrite",
-                            placeholder = "Écrire une note…",
-                            footerMessageFree = "Tout ne demande pas à être écrit. Mais tout peut l'être.",
-                            footerMessagePremium = "Ici, tout peut exister. Sans filtre."
+                            placeholder = "Écrire une note…"
                         )
                     }
                 )

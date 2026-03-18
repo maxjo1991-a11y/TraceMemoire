@@ -1,241 +1,187 @@
 package com.maxjth.tracememoire.ui.tracejour.components.screen.diamondbutton
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.maxjth.tracememoire.ui.theme.MAUVE
 import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
+import com.maxjth.tracememoire.ui.tracejour.components.screen.diamondbutton.animation.rememberDiamondButtonAnimations
+import com.maxjth.tracememoire.ui.tracejour.components.screen.diamondbutton.draw.drawDiamondButtonCenterStar
+import com.maxjth.tracememoire.ui.tracejour.components.screen.diamondbutton.draw.drawDiamondButtonDiamond
+import com.maxjth.tracememoire.ui.tracejour.components.screen.diamondbutton.draw.drawDiamondButtonHalo
+import com.maxjth.tracememoire.ui.tracejour.components.screen.diamondbutton.draw.drawDiamondButtonStage
+import com.maxjth.tracememoire.ui.tracejour.components.screen.diamondbutton.style.DiamondButtonStyle
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun TraceApprofondirDiamondButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val infinite = rememberInfiniteTransition(label = "diamond_anim")
+    val scope = rememberCoroutineScope()
+    val textMeasurer = rememberTextMeasurer()
 
-    val haloPulse by infinite.animateFloat(
-        initialValue = 0.95f,
-        targetValue = 1.13f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "haloPulse"
-    )
+    var pressed by remember { mutableStateOf(false) }
 
-    val corePulse by infinite.animateFloat(
-        initialValue = 0.95f,
-        targetValue = 1.28f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2300, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "corePulse"
-    )
+    val anim = rememberDiamondButtonAnimations(pressed = pressed)
 
-    val shimmerShift by infinite.animateFloat(
-        initialValue = -1f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(4200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shimmerShift"
-    )
-
-    val slowRotate by infinite.animateFloat(
-        initialValue = -3f,
-        targetValue = 3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(5200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "slowRotate"
-    )
-
-    Column(
+    Box(
         modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
+        contentAlignment = Alignment.Center
     ) {
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.size(132.dp)
+            modifier = Modifier
+                .size(DiamondButtonStyle.BUTTON_SIZE_DP.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onPress = {
+                            pressed = true
+                            tryAwaitRelease()
+                            pressed = false
+                        },
+                        onTap = {
+                            scope.launch {
+                                pressed = true
+                                delay(90)
+                                pressed = false
+                            }
+                            onClick()
+                        }
+                    )
+                }
         ) {
-            Canvas(modifier = Modifier.size(132.dp)) {
+            Canvas(
+                modifier = Modifier
+                    .size(DiamondButtonStyle.CANVAS_SIZE_DP.dp)
+                    .graphicsLayer {
+                        scaleX = anim.pressScale
+                        scaleY = anim.pressScale
+                    }
+            ) {
                 val c = center
 
-                val outerDiamondSize = size.minDimension * 0.30f
-                val innerDiamondSize = outerDiamondSize * 0.58f
+                val outerDiamondSize =
+                    size.minDimension * DiamondButtonStyle.OUTER_DIAMOND_RATIO
 
-                val haloOuterRadius = size.minDimension * 0.66f * haloPulse
-                val haloInnerRadius = size.minDimension * 0.40f * haloPulse
+                val innerDiamondSize =
+                    outerDiamondSize * DiamondButtonStyle.INNER_DIAMOND_RATIO
 
-                // Halo externe turquoise / mauve plus présent
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            TURQUOISE.copy(alpha = 0.18f),
-                            MAUVE.copy(alpha = 0.14f),
-                            Color.Transparent
-                        ),
-                        center = c,
-                        radius = haloOuterRadius
-                    ),
-                    radius = haloOuterRadius,
-                    center = c
+                val haloOuterRadius =
+                    size.minDimension *
+                            DiamondButtonStyle.HALO_OUTER_RATIO *
+                            anim.haloPulse *
+                            anim.pressGlow
+
+                val haloInnerRadius =
+                    size.minDimension *
+                            DiamondButtonStyle.HALO_INNER_RATIO *
+                            anim.haloPulse *
+                            anim.pressGlow
+
+                val stageY =
+                    c.y + outerDiamondSize * DiamondButtonStyle.STAGE_Y_MULTIPLIER
+
+                val enterY =
+                    stageY + DiamondButtonStyle.ENTER_Y_OFFSET_DP.dp.toPx()
+
+                drawDiamondButtonHalo(
+                    center = c,
+                    outerDiamondSize = outerDiamondSize,
+                    haloOuterRadius = haloOuterRadius,
+                    haloInnerRadius = haloInnerRadius
                 )
 
-                // Halo interne plus dense
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            MAUVE.copy(alpha = 0.22f),
-                            TURQUOISE.copy(alpha = 0.13f),
-                            Color.Transparent
-                        ),
-                        center = c,
-                        radius = haloInnerRadius
-                    ),
-                    radius = haloInnerRadius,
-                    center = c
+                drawDiamondButtonStage(
+                    center = c,
+                    sizeWidth = size.width,
+                    stageY = stageY,
+                    shimmerShift = anim.shimmerShift
                 )
 
-                // Trait cosmique horizontal plus visible
-                val lightCenterX = c.x + (size.width * 0.18f * shimmerShift)
-                drawRect(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            MAUVE.copy(alpha = 0.14f),
-                            WHITE_SOFT.copy(alpha = 0.22f),
-                            TURQUOISE.copy(alpha = 0.28f),
-                            Color.Transparent
-                        ),
-                        startX = lightCenterX - size.width * 0.42f,
-                        endX = lightCenterX + size.width * 0.42f
-                    ),
-                    topLeft = Offset(0f, c.y - 1.4f),
-                    size = Size(size.width, 2.8f),
-                    blendMode = BlendMode.SrcOver
+                drawDiamondButtonDiamond(
+                    center = c,
+                    outerDiamondSize = outerDiamondSize,
+                    innerDiamondSize = innerDiamondSize,
+                    slowRotate = anim.slowRotate
                 )
 
-                val outerPath = Path().apply {
-                    moveTo(c.x, c.y - outerDiamondSize)
-                    lineTo(c.x + outerDiamondSize, c.y)
-                    lineTo(c.x, c.y + outerDiamondSize)
-                    lineTo(c.x - outerDiamondSize, c.y)
-                    close()
-                }
+                drawDiamondButtonCenterStar(
+                    center = c,
+                    starPulse = anim.starPulse,
+                    starGlowPulse = anim.starGlowPulse,
+                    pressGlow = anim.pressGlow
+                )
 
-                val innerPath = Path().apply {
-                    moveTo(c.x, c.y - innerDiamondSize)
-                    lineTo(c.x + innerDiamondSize, c.y)
-                    lineTo(c.x, c.y + innerDiamondSize)
-                    lineTo(c.x - innerDiamondSize, c.y)
-                    close()
-                }
-
-                rotate(slowRotate, pivot = c) {
-                    // Diamant externe
-                    drawPath(
-                        path = outerPath,
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                MAUVE.copy(alpha = 0.98f),
-                                TURQUOISE.copy(alpha = 1f)
-                            ),
-                            start = Offset(c.x - outerDiamondSize, c.y),
-                            end = Offset(c.x + outerDiamondSize, c.y)
-                        ),
-                        style = Stroke(
-                            width = 3.5f,
-                            cap = StrokeCap.Round
+                val approfondirLayout = textMeasurer.measure(
+                    text = "Approfondir",
+                    style = TextStyle(
+                        color = WHITE_SOFT.copy(alpha = anim.textAlpha),
+                        fontSize = DiamondButtonStyle.TITLE_FONT_SP.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = DiamondButtonStyle.TITLE_LETTER_SPACING.sp,
+                        shadow = Shadow(
+                            color = MAUVE.copy(alpha = 0.18f),
+                            blurRadius = 7f
                         )
                     )
+                )
 
-                    // Diamant interne
-                    drawPath(
-                        path = innerPath,
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                WHITE_SOFT.copy(alpha = 0.96f),
-                                TURQUOISE.copy(alpha = 0.90f)
-                            ),
-                            start = Offset(c.x - innerDiamondSize, c.y),
-                            end = Offset(c.x + innerDiamondSize, c.y)
-                        ),
-                        style = Stroke(
-                            width = 2.6f,
-                            cap = StrokeCap.Round
+                val approfondirX = c.x - approfondirLayout.size.width / 2f
+                val approfondirY =
+                    c.y - outerDiamondSize - DiamondButtonStyle.TITLE_Y_OFFSET_DP.dp.toPx() + anim.textLift
+
+                drawText(
+                    textLayoutResult = approfondirLayout,
+                    topLeft = Offset(
+                        x = approfondirX,
+                        y = approfondirY
+                    )
+                )
+
+                val entrerLayout = textMeasurer.measure(
+                    text = "Entrer",
+                    style = TextStyle(
+                        color = WHITE_SOFT.copy(alpha = anim.enterAlpha),
+                        fontSize = DiamondButtonStyle.ENTER_FONT_SP.sp,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = DiamondButtonStyle.ENTER_LETTER_SPACING.sp,
+                        shadow = Shadow(
+                            color = TURQUOISE.copy(alpha = 0.10f),
+                            blurRadius = 4f
                         )
                     )
-                }
-
-                // Aura centrale blanche
-                drawCircle(
-                    color = WHITE_SOFT.copy(alpha = 0.12f),
-                    radius = 18f * corePulse,
-                    center = c
                 )
 
-                // Noyau bleu lumineux
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            WHITE_SOFT.copy(alpha = 0.98f),
-                            Color(0xFFBFEFFF).copy(alpha = 0.92f),
-                            TURQUOISE.copy(alpha = 0.55f),
-                            Color.Transparent
-                        ),
-                        center = c,
-                        radius = 14f * corePulse
-                    ),
-                    radius = 14f * corePulse,
-                    center = c
-                )
-
-                // Point central net
-                drawCircle(
-                    color = WHITE_SOFT.copy(alpha = 1f),
-                    radius = 4.8f * corePulse,
-                    center = c
+                drawText(
+                    textLayoutResult = entrerLayout,
+                    topLeft = Offset(
+                        x = c.x - entrerLayout.size.width / 2f,
+                        y = enterY
+                    )
                 )
             }
         }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Text(
-            text = "Approfondir",
-            fontSize = 16.sp,
-            color = WHITE_SOFT.copy(alpha = 0.96f)
-        )
     }
 }
