@@ -1,8 +1,8 @@
 package com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.reset
 
 import android.content.Context
+import com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.date.TraceHomeLogicalDate
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.prefs.TraceJourPrefs
-import java.time.LocalDate
 import java.time.LocalDateTime
 
 object TraceHomeDailyReset {
@@ -16,7 +16,10 @@ object TraceHomeDailyReset {
         now: LocalDateTime
     ): Boolean {
 
-        val today = now.toLocalDate().toString()
+        // ✅ utiliser la date logique HOME (06:00)
+        val logicalToday = TraceHomeLogicalDate
+            .effectiveDate(now)
+            .toString()
 
         val lastSeen = TraceJourPrefs.getString(
             context = context,
@@ -26,7 +29,7 @@ object TraceHomeDailyReset {
             def = ""
         )
 
-        return lastSeen != today
+        return lastSeen != logicalToday
     }
 
     fun markTodaySeen(
@@ -35,15 +38,17 @@ object TraceHomeDailyReset {
         now: LocalDateTime
     ) {
 
-        val today = now.toLocalDate().toString()
+        // ✅ même logique ici
+        val logicalToday = TraceHomeLogicalDate
+            .effectiveDate(now)
+            .toString()
 
         TraceJourPrefs.putString(
             context = context,
             seedBase = seedBase,
             cycleKey = HOME_KEY,
             id = KEY_LAST_DAY_SEEN,
-            value = today
+            value = logicalToday
         )
     }
-
 }

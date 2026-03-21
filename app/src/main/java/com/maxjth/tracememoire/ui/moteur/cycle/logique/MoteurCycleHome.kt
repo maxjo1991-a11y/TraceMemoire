@@ -1,9 +1,10 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/moteur/cycle/logique/MoteurCycleHome.kt
 package com.maxjth.tracememoire.ui.moteur.cycle.logique
 
 import android.content.Context
 import com.maxjth.tracememoire.ui.moteur.cycle.modele.TypeCycleHome
 import com.maxjth.tracememoire.ui.moteur.cycle.stockage.CyclePrefsHome
+import java.time.LocalDateTime
+import java.time.LocalTime
 
 class MoteurCycleHome {
 
@@ -36,7 +37,6 @@ class MoteurCycleHome {
         return CyclePrefsHome.readHomeLastPercent(context, seedBase)
     }
 
-    // ✅ AJOUT: valeur précédente (pour delta stable)
     fun loadHomeLastPercentPrev(
         context: Context,
         seedBase: String
@@ -44,7 +44,6 @@ class MoteurCycleHome {
         return CyclePrefsHome.readHomeLastPercentPrev(context, seedBase)
     }
 
-    // ✅ AJOUT: delta stable du jour (ex: -20 / +8)
     fun loadHomeLastDeltaToday(
         context: Context,
         seedBase: String
@@ -59,12 +58,28 @@ class MoteurCycleHome {
         return CyclePrefsHome.readHomeDailyPercent(context, seedBase)
     }
 
-    // (optionnel, seulement si tu l’utilises)
     fun loadHomeYearlyPercent(
         context: Context,
         seedBase: String
     ): Int? {
         return CyclePrefsHome.readHomeYearlyPercent(context, seedBase)
+    }
+
+    // ─────────────────────────────────────────────
+    // CYCLE COURANT
+    // ─────────────────────────────────────────────
+
+    fun getCurrentCycle(
+        now: LocalDateTime = LocalDateTime.now()
+    ): TypeCycleHome {
+        val time = now.toLocalTime()
+
+        return when {
+            time < LocalTime.of(6, 0) -> TypeCycleHome.NUIT
+            time < LocalTime.of(12, 0) -> TypeCycleHome.MATIN
+            time < LocalTime.of(18, 0) -> TypeCycleHome.JOUR
+            else -> TypeCycleHome.SOIR
+        }
     }
 
     // ─────────────────────────────────────────────
@@ -84,7 +99,6 @@ class MoteurCycleHome {
             percent = percent
         )
 
-        // Si un percent existe → cycle considéré complété
         if (percent != null) {
             CyclePrefsHome.writeCycleDone(
                 context = context,
@@ -107,30 +121,19 @@ class MoteurCycleHome {
         )
     }
 
-    /**
-     * ✅ PATCH IMPORTANT
-     * Quand tu écris HOME_LAST_PERCENT, on sauvegarde aussi:
-     * - HOME_LAST_PERCENT_PREV (ancienne valeur)
-     * - HOME_LAST_DELTA_TODAY (new - old)
-     *
-     * Comme ça le “deltaText” sous ton 56 reste stable, même après reload.
-     */
     fun persistHomeLastPercent(
         context: Context,
         seedBase: String,
         percent: Int?
     ) {
-        // lire l’ancien LAST avant d’écrire le nouveau
         val prev = CyclePrefsHome.readHomeLastPercent(context, seedBase)
 
-        // 1) prev
         CyclePrefsHome.writeHomeLastPercentPrev(
             context = context,
             seedBase = seedBase,
             value = prev
         )
 
-        // 2) delta
         val delta = if (prev != null && percent != null) (percent - prev) else null
         CyclePrefsHome.writeHomeLastDeltaToday(
             context = context,
@@ -138,7 +141,6 @@ class MoteurCycleHome {
             value = delta
         )
 
-        // 3) last (valeur actuelle)
         CyclePrefsHome.writeHomeLastPercent(
             context = context,
             seedBase = seedBase,
@@ -158,7 +160,6 @@ class MoteurCycleHome {
         )
     }
 
-    // (optionnel, seulement si tu l’utilises)
     fun persistHomeYearlyPercent(
         context: Context,
         seedBase: String,
@@ -175,9 +176,6 @@ class MoteurCycleHome {
     // RESET JOURNALIER
     // ─────────────────────────────────────────────
 
-    /**
-     * Nettoie les prefs HOME du jour (ce que ton CyclePrefsHome sait déjà faire).
-     */
     fun resetHomeDay(
         context: Context,
         seedBase: String
@@ -185,23 +183,16 @@ class MoteurCycleHome {
         CyclePrefsHome.clearHomeDay(context, seedBase)
     }
 
-    /**
-     * ✅ RESET cycles seulement (rectangle + done flags)
-     * - vide la percentMap -> plus aucun % d'hier
-     * - remet done=false pour chaque cycle
-     */
     fun resetCyclesOnly(
         context: Context,
         seedBase: String
     ) {
-        // 1) vider map (source de vérité)
         CyclePrefsHome.writeCyclePercentMap(
             context = context,
             seedBase = seedBase,
             map = emptyMap()
         )
 
-        // 2) remettre done=false (si tu as des flags done)
         TypeCycleHome.entries.forEach { type ->
             CyclePrefsHome.writeCycleDone(
                 context = context,
@@ -212,11 +203,6 @@ class MoteurCycleHome {
         }
     }
 
-    /**
-     * ✅ RESET complet "nouveau jour" (recommandé)
-     * - reset HOME day
-     * - reset cycles (map + done)
-     */
     fun resetNewDay(
         context: Context,
         seedBase: String

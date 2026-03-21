@@ -2,7 +2,9 @@ package com.maxjth.tracememoire.ui.tracejour.components.screen.save.coordinator
 
 import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.MutableState
+import com.maxjth.tracememoire.ui.moteur.cycle.logique.MoteurCycleHome
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.TraceSaveHomeIO
+import com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.date.TraceHomeLogicalDate
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.reset.TraceSaveStoreHome
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.satellites.TraceSaveSatellites
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.state.TraceSaveState
@@ -17,6 +19,7 @@ class TraceSaveTickCoordinator(
     private val stateSetter: (TraceSaveState) -> Unit,
     private val yearlyPercentState: MutableState<Int?>,
     private val currentLoadedCycleKeySetter: (String?) -> Unit,
+    private val currentLoadedCycleKeyProvider: () -> String?,
     private val luneTick: MutableIntState,
     private val terreTick: MutableIntState,
     private val cyclePercentMapProvider: () -> Map<String, Int>,
@@ -24,9 +27,16 @@ class TraceSaveTickCoordinator(
     private val recomputeTodayValueFromAllCycles: () -> Unit
 ) {
 
+    private val moteurCycleHome = MoteurCycleHome()
+
     private fun safeIncrementLuneTick() {
         val next = luneTick.intValue + 1
         luneTick.intValue = next.coerceIn(0, 999_999)
+    }
+
+    private fun safeIncrementTerreTick() {
+        val next = terreTick.intValue + 1
+        terreTick.intValue = next.coerceIn(0, 999_999)
     }
 
     fun onHomeTick(
@@ -37,15 +47,27 @@ class TraceSaveTickCoordinator(
         val context = attachedContext ?: return
         val seedBase = attachedSeedBase ?: return
 
+        val logicalToday = TraceHomeLogicalDate.effectiveDate(now).toString()
+
         val lastProcessedDay = TraceSaveSatellites.readLastProcessedDay(
             context = context,
             seedBase = seedBase
         )
 
-        val newDayDetected =
-            lastProcessedDay != now.toLocalDate().toString()
+        val newDayDetected = lastProcessedDay != logicalToday
 
-        // 1) archive Soleil -> Terre
+        val currentCycleKey = moteurCycleHome
+            .getCurrentCycle(now)
+            .name
+            .trim()
+            .uppercase()
+
+        val loadedCycleKey = currentLoadedCycleKeyProvider()
+            ?.trim()
+            ?.uppercase()
+
+        val cycleChanged = loadedCycleKey != null && loadedCycleKey != currentCycleKey
+
         TraceSaveSatellites.archiveYesterdayIfNeeded(
             context = context,
             seedBase = seedBase,
@@ -54,40 +76,31 @@ class TraceSaveTickCoordinator(
             liveScore = home.lastPercent.value,
             hasCompletedCycle = home.completedCycleMap.values.any { it == true },
             onArchived = {
-                terreTick.intValue += 1
+                safeIncrementTerreTick()
             }
         )
 
-        // 2) sync Valeur (minuit)
         valeur.syncAtTick(now)
 
-        // 3) reset écran 2 si nouveau jour
         if (newDayDetected) {
             cycleClearAll()
             stateSetter(TraceSaveState())
-            yearlyPercentState.value = 0
             currentLoadedCycleKeySetter(null)
-
-            // IMPORTANT :
-            // au nouveau jour, la valeur du jour doit repartir à zéro
             valeur.resetTodayOnly()
+        } else if (cycleChanged) {
+            cycleClearAll()
+            stateSetter(TraceSaveState(cycleKey = currentCycleKey))
+            currentLoadedCycleKeySetter(null)
         }
 
-        // 4) refresh HOME après le reset
         home.onHomeTick(now)
 
-        // 5) tick Lune
         safeIncrementLuneTick()
 
-        // 6) persist HOME
         homeIO.persistHomeSafe(
             cyclePercentMap = cyclePercentMapProvider(),
             dailyPercentValue = yearlyPercentState.value,
             lastDeltaTodaySetter = { lastDeltaToday.value = it }
         )
-
-        // On ne recalcul plus la valeur ici.
-        // La valeur doit être recalculée seulement quand
-        // les sliders changent ou quand un cycle est sauvegardé.
     }
 }

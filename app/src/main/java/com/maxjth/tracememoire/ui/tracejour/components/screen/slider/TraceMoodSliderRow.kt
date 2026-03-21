@@ -1,5 +1,13 @@
 package com.maxjth.tracememoire.ui.tracejour.components.screen.slider
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -12,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -44,6 +53,7 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private val VIOLET_POSITIVE = Color(0xFF8A5CFF)
+private val TURQUOISE_LIVE = Color(0xFF35D6D1)
 
 data class TraceLockPayload(
     val seedBase: String,
@@ -52,33 +62,6 @@ data class TraceLockPayload(
     val percent: Int,
     val phaseKey: String
 )
-
-private fun extractKeywordFromPhrase(phrase: String): String {
-    val stopWords = setOf(
-        "de", "du", "des", "la", "le", "les", "un", "une", "et",
-        "très", "plus", "peu", "assez", "dans", "sur", "avec", "sans",
-        "au", "aux", "en", "du", "moment", "soirée", "journée", "nuit", "matinée"
-    )
-
-    val cleanedWords = phrase
-        .replace("’", "'")
-        .replace(",", " ")
-        .replace(".", " ")
-        .replace(";", " ")
-        .replace(":", " ")
-        .split(" ", "'", "-", "•")
-        .map { it.trim() }
-        .filter { it.isNotBlank() }
-        .map { it.lowercase() }
-
-    val best = cleanedWords.lastOrNull { it !in stopWords && it.length >= 3 }
-        ?: cleanedWords.lastOrNull()
-        ?: ""
-
-    return best.replaceFirstChar { c ->
-        if (c.isLowerCase()) c.titlecase() else c.toString()
-    }
-}
 
 @Composable
 private fun PercentBadgeDiamond(
@@ -107,6 +90,7 @@ private fun PercentBadgeDiamond(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TraceMoodSliderRow(
     title: String,
@@ -118,38 +102,31 @@ fun TraceMoodSliderRow(
     cycleKey: String,
     seedBase: String,
     sliderKey: String,
-
     showTitle: Boolean = true,
-
-    showRing: Boolean = true,
     forceCenterIfNotCaptured: Boolean = false,
     onDragStateChanged: (Boolean) -> Unit = {},
-
     onCapturedChanged: (Boolean) -> Unit = {},
     onAccentChanged: (Color) -> Unit = {},
-
     onPhraseChanged: ((String) -> Unit)? = null,
     onKeywordChanged: ((String) -> Unit)? = null,
-
     externalPercent: Int? = null,
     onPercentChanged: ((Int) -> Unit)? = null,
-
     externalCaptured: Boolean? = null,
     externalCreatedAtMillis: Long? = null,
     externalLocked: Boolean? = null,
-
     onLock: (TraceLockPayload) -> Unit
 ) {
-    val premiumLocked = isPremiumSlider && !userIsPremium
-    val cycleLocked = (externalLocked == true)
-    val fullyLocked = premiumLocked || cycleLocked
+    // MODE TEST : TOUT DÉVERROUILLÉ
+    val premiumLocked = false
+    val cycleLocked = false
+    val fullyLocked = false
 
     val stateKey = remember(seedBase, cycleKey, sliderKey) {
         "$seedBase|$cycleKey|$sliderKey"
     }
 
     var value by rememberSaveable(stateKey) { mutableFloatStateOf(0f) }
-    var capturedLocal by rememberSaveable(stateKey + "|captured") { mutableStateOf(false) }
+    var capturedLocal by rememberSaveable("${stateKey}|captured") { mutableStateOf(false) }
 
     val interactionSource = remember { MutableInteractionSource() }
     val isDragging by interactionSource.collectIsDraggedAsState()
@@ -160,7 +137,7 @@ fun TraceMoodSliderRow(
 
     LaunchedEffect(externalCaptured) {
         if (externalCaptured != null) {
-            capturedLocal = externalCaptured == true
+            capturedLocal = externalCaptured
         }
     }
 
@@ -203,17 +180,82 @@ fun TraceMoodSliderRow(
         )
     }
 
-    val autoKeyword = remember(phrase) {
-        extractKeywordFromPhrase(phrase)
+    val controlledKeyword = remember(pct, sliderKey, phaseKey) {
+        TracePhrasesData.keywordForSlider(
+            sliderKey = sliderKey,
+            phaseKey = phaseKey,
+            percent = pct
+        )
     }
 
     LaunchedEffect(phrase) {
         onPhraseChanged?.invoke(phrase)
     }
 
-    LaunchedEffect(autoKeyword) {
-        onKeywordChanged?.invoke(autoKeyword)
+    LaunchedEffect(controlledKeyword) {
+        onKeywordChanged?.invoke(controlledKeyword)
     }
+
+    val infinite = rememberInfiniteTransition(label = "slider_live")
+
+    val gradientShift by infinite.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 7000,
+                easing = LinearEasing
+            ),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "gradient_shift"
+    )
+
+    val restingGlow by infinite.animateFloat(
+        initialValue = 0.035f,
+        targetValue = 0.07f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 2600,
+                easing = FastOutSlowInEasing
+            ),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "resting_glow"
+    )
+
+    val dragGlow by animateFloatAsState(
+        targetValue = if (isDragging) 0.16f else restingGlow,
+        animationSpec = tween(220),
+        label = "drag_glow"
+    )
+
+    val thumbScale by animateFloatAsState(
+        targetValue = if (isDragging) 1.12f else 1f,
+        animationSpec = tween(180),
+        label = "thumb_scale"
+    )
+
+    val outerScale by animateFloatAsState(
+        targetValue = if (isDragging) 1.012f else 1f,
+        animationSpec = tween(220),
+        label = "outer_scale"
+    )
+
+    val pillShape = RoundedCornerShape(999.dp)
+    val liveStart = lerp(VIOLET_POSITIVE, uiAccent, 0.35f)
+    val liveMiddle = lerp(uiAccent, TURQUOISE_LIVE, 0.45f)
+    val liveEnd = lerp(TURQUOISE_LIVE, uiAccent, 0.35f)
+
+    val sliderBackgroundBrush = Brush.horizontalGradient(
+        colorStops = arrayOf(
+            0.00f to Color.Black.copy(alpha = 0.14f),
+            (0.22f + gradientShift * 0.10f).coerceIn(0f, 1f) to liveStart.copy(alpha = dragGlow),
+            (0.50f + gradientShift * 0.08f).coerceIn(0f, 1f) to liveMiddle.copy(alpha = dragGlow * 0.95f),
+            (0.78f + gradientShift * 0.06f).coerceIn(0f, 1f) to liveEnd.copy(alpha = dragGlow * 0.90f),
+            1.00f to Color.Black.copy(alpha = 0.14f)
+        )
+    )
 
     val cardShape = RoundedCornerShape(18.dp)
 
@@ -273,40 +315,33 @@ fun TraceMoodSliderRow(
 
         Spacer(Modifier.size(8.dp))
 
-        if (autoKeyword.isNotBlank()) {
+        if (controlledKeyword.isNotBlank()) {
             Text(
-                text = autoKeyword,
+                text = controlledKeyword,
                 color = uiAccent.copy(alpha = 0.88f),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
-
             Spacer(Modifier.size(12.dp))
         } else {
             Spacer(Modifier.size(8.dp))
         }
 
-        val pillShape = RoundedCornerShape(999.dp)
-
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .graphicsLayer {
+                    scaleX = outerScale
+                    scaleY = outerScale
+                }
                 .clip(pillShape)
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.14f),
-                            uiAccent.copy(alpha = 0.04f),
-                            Color.Black.copy(alpha = 0.14f)
-                        )
-                    )
-                )
+                .background(sliderBackgroundBrush)
                 .border(
-                    1.2.dp,
-                    uiAccent.copy(alpha = 0.16f),
-                    pillShape
+                    width = 1.2.dp,
+                    color = uiAccent.copy(alpha = if (isDragging) 0.26f else 0.16f),
+                    shape = pillShape
                 )
                 .padding(horizontal = 6.dp, vertical = 6.dp)
         ) {
@@ -329,30 +364,60 @@ fun TraceMoodSliderRow(
                 enabled = sliderEnabled,
                 valueRange = 0f..1f,
                 interactionSource = interactionSource,
+                thumb = {
+                    Box(
+                        modifier = Modifier
+                            .graphicsLayer {
+                                scaleX = thumbScale
+                                scaleY = thumbScale
+                            }
+                            .size(if (isDragging) 28.dp else 24.dp)
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(
+                                Brush.radialGradient(
+                                    colors = listOf(
+                                        uiAccent.copy(alpha = if (isDragging) 1f else 0.96f),
+                                        uiAccent.copy(alpha = if (isDragging) 0.84f else 0.72f),
+                                        Color.Transparent
+                                    )
+                                )
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = Color.White.copy(alpha = if (isDragging) 0.20f else 0.10f),
+                                shape = RoundedCornerShape(999.dp)
+                            )
+                    )
+                },
                 colors = SliderDefaults.colors(
-                    activeTrackColor = uiAccent.copy(alpha = if (isDragging) 0.88f else 0.66f),
+                    activeTrackColor = uiAccent.copy(alpha = if (isDragging) 0.94f else 0.70f),
                     inactiveTrackColor = Color.White.copy(alpha = 0.10f),
-                    thumbColor = uiAccent.copy(alpha = if (isDragging) 1.00f else 0.94f)
+                    thumbColor = Color.Transparent,
+                    disabledActiveTrackColor = uiAccent.copy(alpha = 0.38f),
+                    disabledInactiveTrackColor = Color.White.copy(alpha = 0.08f),
+                    disabledThumbColor = Color.Transparent
                 )
             )
         }
 
-        if (!premiumLocked && !cycleLocked) {
+        if (!premiumLocked) {
             Spacer(Modifier.size(12.dp))
 
             TraceLockConfirmButton(
-                text = "VERROUILLER",
-                enabled = sliderEnabled && capturedLocal,
+                text = if (cycleLocked) "VALIDÉ" else "VERROUILLER",
+                enabled = if (cycleLocked) false else sliderEnabled && capturedLocal,
                 onClick = {
-                    onLock(
-                        TraceLockPayload(
-                            seedBase = seedBase,
-                            cycleKey = cycleKey,
-                            sliderKey = sliderKey,
-                            percent = pct,
-                            phaseKey = phaseKey
+                    if (!cycleLocked) {
+                        onLock(
+                            TraceLockPayload(
+                                seedBase = seedBase,
+                                cycleKey = cycleKey,
+                                sliderKey = sliderKey,
+                                percent = pct,
+                                phaseKey = phaseKey
+                            )
                         )
-                    )
+                    }
                 }
             )
         }

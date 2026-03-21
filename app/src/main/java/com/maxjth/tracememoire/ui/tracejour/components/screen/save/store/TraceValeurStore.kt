@@ -2,8 +2,10 @@ package com.maxjth.tracememoire.ui.tracejour.components.screen.save.store
 
 import android.content.Context
 import androidx.compose.runtime.mutableStateOf
+import com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.date.TraceHomeLogicalDate
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.logic.TraceValeurLogic
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.prefs.TraceValeurPrefs
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 
@@ -41,28 +43,6 @@ class TraceValeurStore {
         persistIfAttached()
     }
 
-    fun onMidnightTransfer(
-        now: LocalDateTime = LocalDateTime.now()
-    ) {
-        val context = appContext ?: return
-        val seedBase = seedBaseAttached ?: return
-
-        val safeToday = TraceValeurLogic.clampDayValue(todayValue.value)
-
-        yesterdayValue.value = safeToday
-        todayValue.value = 0
-
-        saveYesterdayFallbackIfAttached(safeToday)
-
-        TraceValeurPrefs.saveLastSeenDay(
-            context = context,
-            seedBase = seedBase,
-            date = now.toLocalDate()
-        )
-
-        persistIfAttached()
-    }
-
     fun resetTodayOnly() {
         todayValue.value = 0
         persistIfAttached()
@@ -95,7 +75,7 @@ class TraceValeurStore {
         }
 
         println(
-            "DEBUG_MIDNIGHT_3 load -> " +
+            "DEBUG_VALUE load -> " +
                     "today=${todayValue.value} " +
                     "yesterday=${yesterdayValue.value} " +
                     "loadedToday=$loadedToday " +
@@ -142,38 +122,42 @@ class TraceValeurStore {
         val context = appContext ?: return
         val seedBase = seedBaseAttached ?: return
 
-        val today = now.toLocalDate()
+        // ✅ date logique HOME (06:00)
+        val logicalToday: LocalDate = TraceHomeLogicalDate.effectiveDate(now)
+
         val lastSeenDay = TraceValeurPrefs.readLastSeenDay(
             context = context,
             seedBase = seedBase
         )
 
         println(
-            "DEBUG_MIDNIGHT_1 before -> " +
+            "DEBUG_VALUE before -> " +
                     "today=${todayValue.value} " +
                     "yesterday=${yesterdayValue.value} " +
                     "lastSeenDay=$lastSeenDay " +
-                    "todayDate=$today"
+                    "logicalToday=$logicalToday"
         )
 
+        // Premier lancement
         if (lastSeenDay == null) {
             TraceValeurPrefs.saveLastSeenDay(
                 context = context,
                 seedBase = seedBase,
-                date = today
+                date = logicalToday
             )
             persist(context, seedBase)
             return
         }
 
-        if (lastSeenDay != today) {
+        // ✅ nouveau jour LOGIQUE seulement
+        if (lastSeenDay != logicalToday) {
             val safeToday = TraceValeurLogic.clampDayValue(todayValue.value)
 
             yesterdayValue.value = safeToday
             todayValue.value = 0
 
             println(
-                "DEBUG_MIDNIGHT_2 transfer -> " +
+                "DEBUG_VALUE transfer -> " +
                         "safeToday=$safeToday " +
                         "today=${todayValue.value} " +
                         "yesterday=${yesterdayValue.value}"
@@ -188,13 +172,14 @@ class TraceValeurStore {
             TraceValeurPrefs.saveLastSeenDay(
                 context = context,
                 seedBase = seedBase,
-                date = today
+                date = logicalToday
             )
 
             persist(context, seedBase)
             return
         }
 
+        // fallback sécurité
         if (yesterdayValue.value <= 0) {
             val safeYesterday = TraceValeurPrefs.readYesterdayTodayValue(
                 context = context,
@@ -216,6 +201,7 @@ class TraceValeurStore {
         val seedBase = seedBaseAttached ?: return
 
         val safeToday = TraceValeurLogic.clampDayValue(todayValue.value)
+        val logicalToday = TraceHomeLogicalDate.effectiveDate(now)
 
         yesterdayValue.value = safeToday
         todayValue.value = 0
@@ -225,7 +211,7 @@ class TraceValeurStore {
         TraceValeurPrefs.saveLastSeenDay(
             context = context,
             seedBase = seedBase,
-            date = now.toLocalDate()
+            date = logicalToday
         )
 
         persistIfAttached()

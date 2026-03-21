@@ -69,7 +69,7 @@ fun TraceCycleValeurCapsule(
             )
 
             Text(
-                text = "Valeur $value / $max",
+                text = "Repère $value / $max",
                 color = WHITE_SOFT,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold

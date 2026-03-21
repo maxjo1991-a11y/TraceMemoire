@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -28,8 +29,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.maxjth.tracememoire.ui.theme.BG_DEEP
 import com.maxjth.tracememoire.ui.theme.MAUVE
+import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.tracejour.components.screen.cards.logic.cycleBorderColors
 import com.maxjth.tracememoire.ui.tracejour.components.screen.cards.model.CardOpenState
 import com.maxjth.tracememoire.ui.tracejour.components.screen.dots.TraceDotState
@@ -51,6 +54,7 @@ fun CollapsibleSliderCard(
     memoryPhrase: String? = null,
     memoryKeyword: String? = null,
     memoryMeta: String? = null,
+    hasNote: Boolean = false,
     isHero: Boolean = false,
     heroSubtitle: String? = null,
     heroMinHeight: Dp = 210.dp,
@@ -87,6 +91,7 @@ fun CollapsibleSliderCard(
 
     val isEmptyCollapsedCard = !isExpanded &&
             !hasCollapsedMemory &&
+            !hasNote &&
             (shownPercent == null || shownPercent == 0)
 
     val rowVerticalAlignment = if (isEmptyCollapsedCard) {
@@ -95,7 +100,7 @@ fun CollapsibleSliderCard(
         Alignment.Top
     }
 
-    val rightTopPadding = if (!isExpanded && hasCollapsedMemory) 6.dp else 0.dp
+    val rightTopPadding = if (!isExpanded && (hasCollapsedMemory || hasNote)) 6.dp else 0.dp
     val cardClickable = true
 
     val (borderStart, borderEnd) = remember(activeCycleKey, isHero) {
@@ -175,6 +180,7 @@ fun CollapsibleSliderCard(
                     memoryPhrase = memoryPhrase,
                     memoryKeyword = memoryKeyword,
                     memoryMeta = memoryMeta,
+                    hasNote = hasNote, // ✅ AJOUT ICI
                     captured = captured,
                     createdAtMillis = createdAtMillis,
                     locked = locked,
@@ -187,12 +193,18 @@ fun CollapsibleSliderCard(
                 if (!isEmptyCollapsedCard) {
                     Spacer(modifier = Modifier.size(12.dp))
 
-                    CardRightMetricsBlock(
-                        shownPercent = shownPercent,
-                        dotState = dotState,
-                        rightTopPadding = rightTopPadding,
-                        isHero = isHero
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.End
+                    ) {
+                        CardRightMetricsBlock(
+                            shownPercent = shownPercent,
+                            dotState = dotState,
+                            rightTopPadding = rightTopPadding,
+                            isHero = isHero
+                        )
+
+
+                    }
                 }
             }
 

@@ -1,9 +1,11 @@
 package com.maxjth.tracememoire.ui.tracejour.components.screen.save.helper
 
 import android.content.Context
+import com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.date.TraceHomeLogicalDate
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.logic.TraceValeurLogic
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.prefs.TraceJourPrefs
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.stockage.TraceSaveKeys
+import java.time.LocalDateTime
 
 object TraceValeurCycleHelper {
 
@@ -22,13 +24,12 @@ object TraceValeurCycleHelper {
     fun readPersistedCycleValue(
         context: Context,
         seedBase: String,
-        cycleKey: String
+        cycleKey: String,
+        now: LocalDateTime = LocalDateTime.now()
     ): Int {
         val cycle = normCycleKey(cycleKey) ?: return 0
 
-        // ✅ IMPORTANT :
-        // on lit la même journée que le stockage du cycle
-        val daySeed = TraceJourPrefs.seedForToday(seedBase)
+        val daySeed = TraceHomeLogicalDate.effectiveSeed(seedBase, now)
 
         val sliderMapForCycle = mapOf(
             TraceSaveKeys.SLIDER_HUMEUR to TraceJourPrefs.getInt(
@@ -66,16 +67,21 @@ object TraceValeurCycleHelper {
 
     fun recomputeTodayValueFromAllCycles(
         context: Context,
-        seedBase: String
+        seedBase: String,
+        completedCycleMap: Map<String, Boolean>,
+        now: LocalDateTime = LocalDateTime.now()
     ): Int {
-        val cycleValues = validCycles.map { cycleKey ->
+        val cycleValues = validCycles.mapNotNull { cycleKey ->
+            if (completedCycleMap[cycleKey] != true) return@mapNotNull null
+
             readPersistedCycleValue(
                 context = context,
                 seedBase = seedBase,
-                cycleKey = cycleKey
+                cycleKey = cycleKey,
+                now = now
             )
         }
 
-        return cycleValues.sum()
+        return TraceValeurLogic.computeDayValue(cycleValues)
     }
 }

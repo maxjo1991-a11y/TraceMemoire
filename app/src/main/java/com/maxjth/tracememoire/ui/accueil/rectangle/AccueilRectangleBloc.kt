@@ -47,14 +47,8 @@ fun AccueilRectangleBloc(
     fun safeCycleValue(value: Int?): Int? =
         value?.coerceIn(0, 400)
 
-    fun cumulativeValue(current: Int?, previous: List<Int?>): Int? {
-        val safeCurrent = safeCycleValue(current) ?: return null
-        val previousTotal = previous.mapNotNull { safeCycleValue(it) }.sum()
-        return previousTotal + safeCurrent
-    }
-
     fun displayRightText(value: Int?): String =
-        value?.toString() ?: "—"
+        safeCycleValue(value)?.toString() ?: "—"
 
     fun trajectoryText(previous: Int?, current: Int?): String? {
         val curr = safeCycleValue(current) ?: return null
@@ -67,26 +61,6 @@ fun AccueilRectangleBloc(
             else -> "→ Stable"
         }
     }
-
-    val matinCumulative = cumulativeValue(
-        current = pMatin,
-        previous = emptyList()
-    )
-
-    val jourCumulative = cumulativeValue(
-        current = pJour,
-        previous = listOf(pMatin)
-    )
-
-    val soirCumulative = cumulativeValue(
-        current = pSoir,
-        previous = listOf(pMatin, pJour)
-    )
-
-    val nuitCumulative = cumulativeValue(
-        current = pNuit,
-        previous = listOf(pMatin, pJour, pSoir)
-    )
 
     val matinTrajectory = trajectoryText(
         previous = null,
@@ -127,7 +101,7 @@ fun AccueilRectangleBloc(
                     isActive = isActive("NUIT"),
                     trajectoryText = nuitTrajectory
                 ).copy(
-                    rightText = displayRightText(nuitCumulative)
+                    rightText = displayRightText(pNuit)
                 )
             )
         }
@@ -149,7 +123,7 @@ fun AccueilRectangleBloc(
                 isActive = isActive("MATIN"),
                 trajectoryText = matinTrajectory
             ).copy(
-                rightText = displayRightText(matinCumulative)
+                rightText = displayRightText(pMatin)
             )
         )
 
@@ -170,7 +144,7 @@ fun AccueilRectangleBloc(
                 isActive = isActive("JOUR"),
                 trajectoryText = jourTrajectory
             ).copy(
-                rightText = displayRightText(jourCumulative)
+                rightText = displayRightText(pJour)
             )
         )
 
@@ -191,7 +165,7 @@ fun AccueilRectangleBloc(
                 isActive = isActive("SOIR"),
                 trajectoryText = soirTrajectory
             ).copy(
-                rightText = displayRightText(soirCumulative)
+                rightText = displayRightText(pSoir)
             )
         )
     }

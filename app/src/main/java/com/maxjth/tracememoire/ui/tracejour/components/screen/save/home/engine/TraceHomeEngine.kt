@@ -1,6 +1,7 @@
 package com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.engine
 
 import android.content.Context
+import com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.date.TraceHomeLogicalDate
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.dots.TraceHomeFreeDots
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.official.TraceHomeOfficial
 import com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.reset.TraceHomeDailyReset
@@ -73,6 +74,11 @@ class TraceHomeEngine(
         return key in VALID_CYCLES
     }
 
+    private fun isCycleAlreadyLocked(cycleKey: String): Boolean {
+        val c = normCycleKey(cycleKey)
+        return state.completedCycleMap[c] == true
+    }
+
     // -----------------------------
     // API simple
     // -----------------------------
@@ -135,7 +141,7 @@ class TraceHomeEngine(
     }
 
     /**
-     * appelée à chaque lock d’un slider FREE.
+     * Appelée à chaque lock d’un slider FREE.
      */
     fun onFreeSliderLocked(cycleKey: String, sliderKey: String) {
         val idx = TraceHomeFreeDots.freeDotIndexForSliderKey(sliderKey) ?: return
@@ -172,12 +178,17 @@ class TraceHomeEngine(
         val seedBase = seedBaseAttached ?: return
 
         if (TraceHomeDailyReset.shouldResetToday(ctx, seedBase, now)) {
-            state.yesterdayValue.value = state.todayValue.value.coerceAtLeast(0)
+            val safeTodayValue = state.todayValue.value.coerceAtLeast(0)
+
+            // On transfère avant reset
+            state.yesterdayValue.value = safeTodayValue
 
             state.resetForNewDay()
 
-            TraceHomeDailyReset.markTodaySeen(ctx, seedBase, now)
+            // On restaure la valeur d'hier après reset
+            state.yesterdayValue.value = safeTodayValue
 
+            TraceHomeDailyReset.markTodaySeen(ctx, seedBase, now)
             storage.persistHomeOnly(ctx, seedBase, state, now)
         }
 
@@ -195,22 +206,25 @@ class TraceHomeEngine(
         val c = normCycleKey(cycleKey)
         if (c !in VALID_CYCLES) return
 
+        // Un cycle verrouillé est figé : on ne le réécrit plus
+        if (isCycleAlreadyLocked(c)) return
+
+        val v = currentSoleil?.coerceIn(0, 100) ?: return
+
         state.completedCycleMap[c] = true
-
-        val v = currentSoleil?.coerceIn(0, 100) ?: -1
-        if (v in 0..100) {
-            state.cyclePercentMap[c] = v
-        }
-
-        if (state.cycleCreatedAtMillisMap[c] == null) {
-            state.cycleCreatedAtMillisMap[c] = System.currentTimeMillis()
-        }
+        state.cyclePercentMap[c] = v
+        state.cycleCreatedAtMillisMap[c] = System.currentTimeMillis()
 
         persistHomeOnlyIfAttached()
     }
 
     fun onCycleSaved(cycleKey: String, currentSoleil: Int?) {
-        onCycleLocked(cycleKey, currentSoleil)
+        val c = normCycleKey(cycleKey)
+        if (c !in VALID_CYCLES) return
+
+        if (isCycleAlreadyLocked(c)) return
+
+        onCycleLocked(c, currentSoleil)
     }
 
     // -----------------------------
@@ -221,7 +235,7 @@ class TraceHomeEngine(
         val seedBase = seedBaseAttached ?: return
 
         val newValue = state.lastPercent.value?.coerceIn(0, 100) ?: return
-        val daySeed = com.maxjth.tracememoire.ui.tracejour.components.screen.save.home.date.TraceHomeLogicalDate.effectiveSeed(seedBase)
+        val daySeed = TraceHomeLogicalDate.effectiveSeed(seedBase)
 
         val prevValue = TraceHomeOfficial.readCurrent(
             context = ctx,
@@ -230,7 +244,11 @@ class TraceHomeEngine(
 
         state.officialPrev.value = prevValue
         state.officialCurrent.value = newValue
-        state.officialDelta.value = if (prevValue != null) (newValue - prevValue) else null
+        state.officialDelta.value = if (prevValue != null) {
+            newValue - prevValue
+        } else {
+            null
+        }
 
         TraceHomeOfficial.save(
             context = ctx,

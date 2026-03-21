@@ -76,7 +76,7 @@ fun AccueilRectangleRow(
     }
 
     val rightTextDisplay = if (isSaved) {
-        "${ui.rightText} Valeur"
+        "${ui.rightText} Repère"
     } else {
         ui.rightText
     }

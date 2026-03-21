@@ -12,8 +12,7 @@ import java.time.ZoneId
  * Centralise la date logique HOME.
  *
  * Règle verrouillée :
- * - 00:00 -> 05:59 = encore la veille logique
- * - 06:00 -> 23:59 = journée logique actuelle
+ * - 00:00 -> 23:59 = journée logique actuelle
  *
  * Usage :
  * - savoir à quelle journée HOME rattacher une trace
@@ -22,7 +21,7 @@ import java.time.ZoneId
  */
 object TraceHomeLogicalDate {
 
-    private val DAY_START_TIME: LocalTime = LocalTime.of(6, 0)
+    private val DAY_START_TIME: LocalTime = LocalTime.of(0, 0)
 
     /**
      * Retourne la date logique HOME à partir d'un LocalDateTime.
@@ -30,11 +29,7 @@ object TraceHomeLogicalDate {
     fun effectiveDate(
         now: LocalDateTime = LocalDateTime.now()
     ): LocalDate {
-        return if (now.toLocalTime().isBefore(DAY_START_TIME)) {
-            now.toLocalDate().minusDays(1)
-        } else {
-            now.toLocalDate()
-        }
+        return now.toLocalDate()
     }
 
     /**
@@ -81,7 +76,7 @@ object TraceHomeLogicalDate {
     fun isStillPreviousLogicalDay(
         now: LocalDateTime = LocalDateTime.now()
     ): Boolean {
-        return now.toLocalTime().isBefore(DAY_START_TIME)
+        return false
     }
 
     /**

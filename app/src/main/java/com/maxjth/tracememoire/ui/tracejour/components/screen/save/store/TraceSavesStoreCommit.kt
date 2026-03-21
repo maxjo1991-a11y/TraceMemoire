@@ -9,7 +9,7 @@ internal object TraceSaveStoreCommit {
     ) {
         val safeCycleKey = cycleKey.trim().uppercase()
 
-        // 1) verrouillage / commit Home
+        // 1) verrouillage / commit Home (fige le cycle)
         store.confirmation.confirmerEtVerrouiller(
             cycleKey = safeCycleKey,
             sliderKey = sliderKey,
@@ -20,18 +20,28 @@ internal object TraceSaveStoreCommit {
             lastDeltaToday = store.lastDeltaToday
         )
 
-        // 2) recalcul immédiat de la valeur journée
-        store.recomputeTodayValueFromAllCycles()
-
-        // 3) persistance OFFICIELLE du cycle courant
         val context = store.attachedContext
         val seedBase = store.attachedSeedBase
 
         if (context != null && seedBase != null) {
+            // 2) persistance du cycle courant
             store.persistAllToPrefs(
                 context = context,
                 seedBase = seedBase,
                 cycleKey = safeCycleKey
+            )
+
+            // 3) recalcul propre APRÈS persistance
+            store.recomputeTodayValueFromAllCycles()
+
+            // 4) on repersiste la valeur recalculée
+            store.valeur.persist(context, seedBase)
+
+            // 5) on resynchronise HOME avec la valeur finale
+            store.homeIO.persistHomeSafe(
+                cyclePercentMap = store.cyclePercentMap,
+                dailyPercentValue = store.yearlyPercent.value,
+                lastDeltaTodaySetter = { store.lastDeltaToday.value = it }
             )
         }
     }

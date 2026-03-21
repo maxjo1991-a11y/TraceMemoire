@@ -10,9 +10,16 @@ import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.maxjth.tracememoire.ui.tracejour.components.screen.cards.model.CardOpenState
 import com.maxjth.tracememoire.ui.tracejour.components.screen.cards.CollapsibleSliderCard
-import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.*
+import com.maxjth.tracememoire.ui.tracejour.components.screen.cards.model.CardOpenState
+import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.INNER_OPEN_GAP_DP
+import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.OUTER_HORIZONTAL_PADDING_DP
+import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.ROW_SPACING_DP
+import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.SLIDERS_PREMIUM
+import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.buildMemoryKeyword
+import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.buildMemoryPhrase
+import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.cycleAccentColor
+import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.formatMemoryMeta
 import com.maxjth.tracememoire.ui.tracejour.components.screen.notes.TraceNoteBlock
 import com.maxjth.tracememoire.ui.tracejour.components.screen.slider.TraceLockPayload
 import com.maxjth.tracememoire.ui.tracejour.components.screen.slider.TraceMoodSliderRow
@@ -41,6 +48,9 @@ fun TraceJourPremiumSlidersSection(
     onLock: ((TraceLockPayload) -> Unit)? = null,
     optimisticLock: (String) -> Unit
 ) {
+    // MODE TEST : force Premium ouvert
+    val debugForcePremium = true
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -56,8 +66,11 @@ fun TraceJourPremiumSlidersSection(
             val createdAtMillis = createdAtMap[def.key]?.takeIf { it > 0L }
             val isLockedCard = lockedMap[def.key] == true
 
-            val contentOk = isPremium
-            val enabledCard = (enabled && contentOk) && !isLockedCard
+            val contentOk = isPremium || debugForcePremium
+            val enabledCard = enabled && contentOk
+
+            val cardState = getCardState(def.key)
+            val isCardOpen = cardState != CardOpenState.CLOSED
 
             val memoryPhrase = phraseMap[def.key]
                 ?: buildMemoryPhrase(
@@ -71,6 +84,8 @@ fun TraceJourPremiumSlidersSection(
             val memoryKeyword = keywordMap[def.key]
                 ?: buildMemoryKeyword(memoryPhrase)
 
+            val memoryKeywordForCard = if (isCardOpen) "" else memoryKeyword
+
             val memoryMeta = formatMemoryMeta(
                 cycleKey = cycleKey,
                 createdAtMillis = createdAtMillis
@@ -80,17 +95,18 @@ fun TraceJourPremiumSlidersSection(
                 CollapsibleSliderCard(
                     sliderKey = def.key,
                     title = def.title,
-                    cardState = getCardState(def.key),
+                    cardState = cardState,
                     captured = captured,
                     createdAtMillis = createdAtMillis,
-                    locked = isLockedCard,
-                    enabledForDot = enabled && contentOk,
+                    locked = false,
                     onLockClick = null,
+                    enabledForDot = enabled && contentOk,
                     onToggle = { onCycleCardState(def.key) },
                     percent = persistedPct,
                     memoryPhrase = memoryPhrase,
-                    memoryKeyword = memoryKeyword,
+                    memoryKeyword = memoryKeywordForCard,
                     memoryMeta = memoryMeta,
+                    hasNote = note.isNotBlank(),
                     isHero = false,
                     heroSubtitle = null,
                     heroMinHeight = 210.dp,
@@ -98,14 +114,12 @@ fun TraceJourPremiumSlidersSection(
                     activeCycleKey = cycleKey,
                     modifier = Modifier,
                     content = {
-
-                        // 🎯 SLIDER
                         TraceMoodSliderRow(
                             title = def.title,
                             enabled = enabledCard,
-                            userIsPremium = isPremium,
+                            userIsPremium = true,
                             isPremiumSlider = true,
-                            lockedLabel = if (isPremium) null else "Débloqué avec Premium.",
+                            lockedLabel = null,
                             phaseKey = cycleKey,
                             cycleKey = cycleKey,
                             seedBase = seedBase,
@@ -120,7 +134,7 @@ fun TraceJourPremiumSlidersSection(
                             },
                             externalCaptured = captured,
                             externalCreatedAtMillis = createdAtMillis,
-                            externalLocked = isLockedCard,
+                            externalLocked = false,
                             onPhraseChanged = { phrase ->
                                 phraseMap[def.key] = phrase
                             },
@@ -128,9 +142,7 @@ fun TraceJourPremiumSlidersSection(
                                 keywordMap[def.key] = keyword
                             },
                             onLock = { payload ->
-                                if (lockedMap[def.key] == true) return@TraceMoodSliderRow
                                 if (optimisticLocking[def.key] == true) return@TraceMoodSliderRow
-
                                 optimisticLock(def.key)
                                 onLock?.invoke(payload)
                                 onDirty?.invoke()
@@ -149,7 +161,6 @@ fun TraceJourPremiumSlidersSection(
 
                         Spacer(Modifier.size(INNER_OPEN_GAP_DP.dp))
 
-                        // ✨ NOTE BLOCK CLEAN
                         TraceNoteBlock(
                             note = note,
                             onNoteChange = { newText ->
@@ -160,7 +171,6 @@ fun TraceJourPremiumSlidersSection(
                             },
                             enabled = enabledCard,
                             accent = accent,
-                            userIsPremium = isPremium,
                             title = "Trace écrite",
                             placeholder = "Écrire une note…"
                         )

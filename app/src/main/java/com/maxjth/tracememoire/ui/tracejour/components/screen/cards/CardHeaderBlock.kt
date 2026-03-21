@@ -33,6 +33,7 @@ internal fun CardHeaderBlock(
     memoryPhrase: String?,
     memoryKeyword: String?,
     memoryMeta: String?,
+    hasNote: Boolean,
     captured: Boolean,
     createdAtMillis: Long?,
     locked: Boolean,
@@ -68,7 +69,6 @@ internal fun CardHeaderBlock(
         }
     ) {
 
-        // Subtitle HERO
         if (isHero && !heroSubtitle.isNullOrBlank() && !isEmptyCollapsedCard) {
             Text(
                 text = heroSubtitle,
@@ -81,7 +81,6 @@ internal fun CardHeaderBlock(
             Spacer(modifier = Modifier.size(5.dp))
         }
 
-        // Title
         Text(
             text = displayTitle,
             color = WHITE_SOFT.copy(alpha = 0.99f),
@@ -98,7 +97,6 @@ internal fun CardHeaderBlock(
 
             when (cardState) {
 
-                // ---------------- CLOSED ----------------
                 CardOpenState.CLOSED -> {
 
                     if (locked) {
@@ -126,6 +124,19 @@ internal fun CardHeaderBlock(
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
+
+                        if (hasNote) {
+                            Spacer(Modifier.size(6.dp))
+                            Text(
+                                text = "✦ Note",
+                                color = borderStart.copy(alpha = 0.88f),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
                     } else {
                         if (!memoryKeyword.isNullOrBlank()) {
                             Spacer(Modifier.size(8.dp))
@@ -138,10 +149,21 @@ internal fun CardHeaderBlock(
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
+
+                        if (hasNote) {
+                            Spacer(Modifier.size(6.dp))
+                            Text(
+                                text = "✦ Note",
+                                color = borderStart.copy(alpha = 0.88f),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
 
-                // ---------------- PREVIEW ----------------
                 CardOpenState.PREVIEW -> {
 
                     if (locked) {
@@ -171,6 +193,18 @@ internal fun CardHeaderBlock(
                             )
                         }
 
+                        if (hasNote) {
+                            Spacer(Modifier.size(6.dp))
+                            Text(
+                                text = "✦ Note",
+                                color = borderStart.copy(alpha = 0.88f),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
                         if (parsedMeta != null) {
                             Spacer(Modifier.size(8.dp))
 
@@ -221,10 +255,21 @@ internal fun CardHeaderBlock(
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
+
+                        if (hasNote) {
+                            Spacer(Modifier.size(6.dp))
+                            Text(
+                                text = "✦ Note",
+                                color = borderStart.copy(alpha = 0.88f),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
 
-                // ---------------- FULL ----------------
                 CardOpenState.FULL -> {
 
                     if (locked) {
@@ -254,6 +299,18 @@ internal fun CardHeaderBlock(
                             )
                         }
 
+                        if (hasNote) {
+                            Spacer(Modifier.size(6.dp))
+                            Text(
+                                text = "✦ Note",
+                                color = borderStart.copy(alpha = 0.88f),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
                         if (parsedMeta != null) {
                             Spacer(Modifier.size(8.dp))
 
@@ -304,10 +361,21 @@ internal fun CardHeaderBlock(
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
+
+                        if (hasNote) {
+                            Spacer(Modifier.size(6.dp))
+                            Text(
+                                text = "✦ Note",
+                                color = borderStart.copy(alpha = 0.88f),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
             }
         }
     }
 }
-

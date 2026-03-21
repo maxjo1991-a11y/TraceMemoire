@@ -6,22 +6,29 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import com.maxjth.tracememoire.ui.theme.MAUVE
+import com.maxjth.tracememoire.ui.theme.TURQUOISE
 import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
 
 fun DrawScope.drawDiamondButtonCenterStar(
     center: Offset,
     starPulse: Float,
     starGlowPulse: Float,
-    pressGlow: Float
+    starTwinkle: Float,
+    pressGlow: Float,
+    rippleProgress: Float
 ) {
     val outerGlowRadius = 16.5f * starGlowPulse * pressGlow
     val midGlowRadius = 8.2f * starPulse * pressGlow
     val nucleusRadius = 2.35f * pressGlow
 
     val crossHalfLength = 8.8f * starPulse
-    val crossThickness = 1.35f
+    val crossThickness = 1.20f + (starTwinkle - 0.90f) * 0.75f
 
-    // Halo externe plus visible
+    val p = ((rippleProgress % 1f) + 1f) % 1f
+    val rippleAlpha = if (p < 0.5f) p / 0.5f else (1f - p) / 0.5f
+    val rippleRadius = 6.0f + 9.0f * p
+
     drawCircle(
         brush = Brush.radialGradient(
             colors = listOf(
@@ -36,7 +43,6 @@ fun DrawScope.drawDiamondButtonCenterStar(
         center = center
     )
 
-    // Halo moyen respirant
     drawCircle(
         brush = Brush.radialGradient(
             colors = listOf(
@@ -51,14 +57,27 @@ fun DrawScope.drawDiamondButtonCenterStar(
         center = center
     )
 
-    // Croisillon vertical façon étoile
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                TURQUOISE.copy(alpha = 0.07f * rippleAlpha),
+                MAUVE.copy(alpha = 0.05f * rippleAlpha),
+                Color.Transparent
+            ),
+            center = center,
+            radius = rippleRadius
+        ),
+        radius = rippleRadius,
+        center = center
+    )
+
     drawRect(
         brush = Brush.verticalGradient(
             colors = listOf(
                 Color.Transparent,
-                WHITE_SOFT.copy(alpha = 0.28f),
+                WHITE_SOFT.copy(alpha = 0.24f),
                 WHITE_SOFT.copy(alpha = 0.98f),
-                WHITE_SOFT.copy(alpha = 0.28f),
+                WHITE_SOFT.copy(alpha = 0.24f),
                 Color.Transparent
             )
         ),
@@ -73,14 +92,13 @@ fun DrawScope.drawDiamondButtonCenterStar(
         blendMode = BlendMode.SrcOver
     )
 
-    // Croisillon horizontal façon étoile
     drawRect(
         brush = Brush.horizontalGradient(
             colors = listOf(
                 Color.Transparent,
-                WHITE_SOFT.copy(alpha = 0.28f),
+                WHITE_SOFT.copy(alpha = 0.24f),
                 WHITE_SOFT.copy(alpha = 0.98f),
-                WHITE_SOFT.copy(alpha = 0.28f),
+                WHITE_SOFT.copy(alpha = 0.24f),
                 Color.Transparent
             )
         ),
@@ -95,14 +113,27 @@ fun DrawScope.drawDiamondButtonCenterStar(
         blendMode = BlendMode.SrcOver
     )
 
-    // Petit coeur blanc très visible
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                WHITE_SOFT.copy(alpha = 0.22f * rippleAlpha),
+                TURQUOISE.copy(alpha = 0.10f * rippleAlpha),
+                MAUVE.copy(alpha = 0.08f * rippleAlpha),
+                Color.Transparent
+            ),
+            center = center,
+            radius = 4.8f * pressGlow
+        ),
+        radius = 4.8f * pressGlow,
+        center = center
+    )
+
     drawCircle(
         color = WHITE_SOFT.copy(alpha = 1.0f),
         radius = nucleusRadius,
         center = center
     )
 
-    // Point central ultra net
     drawCircle(
         color = Color.White,
         radius = 1.15f * pressGlow,

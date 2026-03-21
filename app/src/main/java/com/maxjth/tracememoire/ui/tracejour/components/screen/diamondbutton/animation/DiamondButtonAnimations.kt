@@ -1,5 +1,6 @@
 package com.maxjth.tracememoire.ui.tracejour.components.screen.diamondbutton.animation
 
+import androidx.compose.animation.core.EaseInOutSine
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -24,7 +25,12 @@ data class DiamondButtonAnimations(
     val shimmerShift: Float,
     val slowRotate: Float,
     val textAlpha: Float,
-    val enterAlpha: Float
+    val enterAlpha: Float,
+    val runnerProgress: Float,
+    val innerRunnerProgress: Float,
+    val bridgeRunnerProgress: Float,
+    val driftRunnerProgress: Float,
+    val rippleProgress: Float
 )
 
 @Composable
@@ -86,7 +92,6 @@ fun rememberDiamondButtonAnimations(
         label = "corePulse"
     )
 
-    // Respiration principale de l’étoile centrale
     val starPulse by infinite.animateFloat(
         initialValue = 0.82f,
         targetValue = 1.62f,
@@ -105,7 +110,6 @@ fun rememberDiamondButtonAnimations(
         label = "starPulse"
     )
 
-    // Halo plus ample derrière l’étoile
     val starGlowPulse by infinite.animateFloat(
         initialValue = 0.78f,
         targetValue = 1.58f,
@@ -124,7 +128,6 @@ fun rememberDiamondButtonAnimations(
         label = "starGlowPulse"
     )
 
-    // Petit scintillement vivant, comme une étoile
     val starTwinkle by infinite.animateFloat(
         initialValue = 0.90f,
         targetValue = 1.22f,
@@ -198,6 +201,72 @@ fun rememberDiamondButtonAnimations(
         label = "enterAlpha"
     )
 
+    // Runner externe : cycle plus long pour laisser respirer les pauses
+    val runnerProgress by infinite.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 14800,
+                easing = LinearEasing
+            ),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "runnerProgress"
+    )
+
+    val innerRunnerProgress by infinite.animateFloat(
+        initialValue = 0.61f,
+        targetValue = -0.39f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 15100,
+                easing = EaseInOutSine
+            ),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "innerRunnerProgress"
+    )
+
+    val bridgeRunnerProgress by infinite.animateFloat(
+        initialValue = 0.14f,
+        targetValue = 1.14f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 13800,
+                easing = EaseInOutSine
+            ),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "bridgeRunnerProgress"
+    )
+
+    val driftRunnerProgress by infinite.animateFloat(
+        initialValue = 0.31f,
+        targetValue = 1.31f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 17300,
+                easing = EaseInOutSine
+            ),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "driftRunnerProgress"
+    )
+
+    val rippleProgress by infinite.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 5200,
+                easing = LinearEasing
+            ),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rippleProgress"
+    )
+
     return DiamondButtonAnimations(
         pressScale = pressScale,
         pressGlow = pressGlow,
@@ -210,6 +279,11 @@ fun rememberDiamondButtonAnimations(
         shimmerShift = shimmerShift,
         slowRotate = slowRotate,
         textAlpha = textAlpha,
-        enterAlpha = enterAlpha
+        enterAlpha = enterAlpha,
+        runnerProgress = runnerProgress,
+        innerRunnerProgress = innerRunnerProgress,
+        bridgeRunnerProgress = bridgeRunnerProgress,
+        driftRunnerProgress = driftRunnerProgress,
+        rippleProgress = rippleProgress
     )
 }

@@ -32,7 +32,7 @@ class TraceSaveStore {
     internal val confirmation = TraceSaveConfirmationEngine(
         home = home,
         homeIO = homeIO,
-        verrouillerCarte = { k -> lockCard(k) },
+        verrouillerCarte = { key -> lockCard(key) },
         recalculerSoleil = { includePremium ->
             recomputeHomeScoreFromSliders(includePremium)
         }
@@ -45,6 +45,12 @@ class TraceSaveStore {
     internal var attachedContext: Context? = null
     internal var attachedSeedBase: String? = null
     internal var currentLoadedCycleKey: String? = null
+
+    private inline fun withAttachment(block: (context: Context, seedBase: String) -> Unit) {
+        val context = attachedContext ?: return
+        val seedBase = attachedSeedBase ?: return
+        block(context, seedBase)
+    }
 
     // ─────────────────────────────────────────────
     // EXPOSITIONS POUR HOME
@@ -81,6 +87,7 @@ class TraceSaveStore {
         stateSetter = { state.value = it },
         yearlyPercentState = yearlyPercent,
         currentLoadedCycleKeySetter = { currentLoadedCycleKey = it },
+        currentLoadedCycleKeyProvider = { currentLoadedCycleKey },
         luneTick = luneTick,
         terreTick = terreTick,
         cyclePercentMapProvider = { cyclePercentMap },
@@ -95,17 +102,14 @@ class TraceSaveStore {
     // ─────────────────────────────────────────────
 
     internal fun recomputeTodayValueFromAllCycles() {
-
-        val context = attachedContext ?: return
-        val seedBase = attachedSeedBase ?: return
-
-        val total =
-            TraceValeurCycleHelper.recomputeTodayValueFromAllCycles(
+        withAttachment { context, seedBase ->
+            val total = TraceValeurCycleHelper.recomputeTodayValueFromAllCycles(
                 context = context,
-                seedBase = seedBase
+                seedBase = seedBase,
+                completedCycleMap = home.completedCycleMap
             )
-
-        valeur.setTodayValue(total)
+            valeur.setTodayValue(total)
+        }
     }
 
     fun getFreeDotsForCycle(cycleKey: String): List<Boolean> {

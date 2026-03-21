@@ -4,12 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -22,14 +17,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.maxjth.tracememoire.ui.theme.MAUVE
-import com.maxjth.tracememoire.ui.theme.TURQUOISE
-import com.maxjth.tracememoire.ui.theme.WHITE_SOFT
+import com.maxjth.tracememoire.ui.theme.*
 import com.maxjth.tracememoire.ui.tracejour.components.screen.diamondbutton.animation.rememberDiamondButtonAnimations
-import com.maxjth.tracememoire.ui.tracejour.components.screen.diamondbutton.draw.drawDiamondButtonCenterStar
-import com.maxjth.tracememoire.ui.tracejour.components.screen.diamondbutton.draw.drawDiamondButtonDiamond
-import com.maxjth.tracememoire.ui.tracejour.components.screen.diamondbutton.draw.drawDiamondButtonHalo
-import com.maxjth.tracememoire.ui.tracejour.components.screen.diamondbutton.draw.drawDiamondButtonStage
+import com.maxjth.tracememoire.ui.tracejour.components.screen.diamondbutton.draw.*
 import com.maxjth.tracememoire.ui.tracejour.components.screen.diamondbutton.style.DiamondButtonStyle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -124,43 +114,26 @@ fun TraceApprofondirDiamondButton(
                     center = c,
                     outerDiamondSize = outerDiamondSize,
                     innerDiamondSize = innerDiamondSize,
-                    slowRotate = anim.slowRotate
+                    slowRotate = anim.slowRotate,
+                    runnerProgress = anim.runnerProgress,
+                    innerRunnerProgress = anim.innerRunnerProgress,
+                    bridgeRunnerProgress = anim.bridgeRunnerProgress,
+                    driftRunnerProgress = anim.driftRunnerProgress,
+                    rippleProgress = anim.rippleProgress
                 )
 
                 drawDiamondButtonCenterStar(
                     center = c,
                     starPulse = anim.starPulse,
                     starGlowPulse = anim.starGlowPulse,
-                    pressGlow = anim.pressGlow
+                    starTwinkle = anim.starTwinkle,
+                    pressGlow = anim.pressGlow,
+                    rippleProgress = anim.rippleProgress
                 )
 
-                val approfondirLayout = textMeasurer.measure(
-                    text = "Approfondir",
-                    style = TextStyle(
-                        color = WHITE_SOFT.copy(alpha = anim.textAlpha),
-                        fontSize = DiamondButtonStyle.TITLE_FONT_SP.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = DiamondButtonStyle.TITLE_LETTER_SPACING.sp,
-                        shadow = Shadow(
-                            color = MAUVE.copy(alpha = 0.18f),
-                            blurRadius = 7f
-                        )
-                    )
-                )
+                // 🔽 TEXTE BAS UNIQUEMENT (Entrer)
 
-                val approfondirX = c.x - approfondirLayout.size.width / 2f
-                val approfondirY =
-                    c.y - outerDiamondSize - DiamondButtonStyle.TITLE_Y_OFFSET_DP.dp.toPx() + anim.textLift
-
-                drawText(
-                    textLayoutResult = approfondirLayout,
-                    topLeft = Offset(
-                        x = approfondirX,
-                        y = approfondirY
-                    )
-                )
-
-                val entrerLayout = textMeasurer.measure(
+                val enterLayout = textMeasurer.measure(
                     text = "Entrer",
                     style = TextStyle(
                         color = WHITE_SOFT.copy(alpha = anim.enterAlpha),
@@ -168,16 +141,16 @@ fun TraceApprofondirDiamondButton(
                         fontWeight = FontWeight.Medium,
                         letterSpacing = DiamondButtonStyle.ENTER_LETTER_SPACING.sp,
                         shadow = Shadow(
-                            color = TURQUOISE.copy(alpha = 0.10f),
-                            blurRadius = 4f
+                            color = TURQUOISE.copy(alpha = 0.12f),
+                            blurRadius = 5f
                         )
                     )
                 )
 
                 drawText(
-                    textLayoutResult = entrerLayout,
+                    textLayoutResult = enterLayout,
                     topLeft = Offset(
-                        x = c.x - entrerLayout.size.width / 2f,
+                        x = c.x - enterLayout.size.width / 2f,
                         y = enterY
                     )
                 )

@@ -1,13 +1,13 @@
-// FILE: app/src/main/java/com/maxjth/tracememoire/ui/tracejour/components/screen/phrases/TracePhrasesData.kt
 package com.maxjth.tracememoire.ui.tracejour.components.screen.phrases
 
 import java.text.Normalizer
 
 object TracePhrasesData {
 
-    // ─────────────────────────────────────────────
-    // NORMALISATION
-    // ─────────────────────────────────────────────
+    data class PhraseItem(
+        val text: String,
+        val keyword: String
+    )
 
     private fun normalize(raw: String): String {
         return Normalizer.normalize(raw.trim(), Normalizer.Form.NFD)
@@ -19,22 +19,19 @@ object TracePhrasesData {
     private fun normalizeSliderKey(raw: String): String {
         val k = normalize(raw)
         return when {
-            // FREE
             k.startsWith("humeur") -> "humeur"
             k.startsWith("energie") || k.startsWith("rythme") -> "energie"
             k.startsWith("corps") || k.startsWith("sensation") -> "corps"
-            k.startsWith("presence") || k.startsWith("attention") || k.startsWith("focus") -> "presence"
+            k.startsWith("presence") || k.startsWith("attention") -> "presence"
 
-            // PREMIUM (déjà dans SlidersBlock)
             k.startsWith("typejour") || k.startsWith("type") -> "typejour"
             k.startsWith("motifs") || k.startsWith("motif") -> "motifs"
-            k.startsWith("environ") || k.startsWith("environnement") -> "environ"
+            k.startsWith("environ") -> "environ"
             k.startsWith("clarte") -> "clarte"
-            k.startsWith("chargeemotionnelle") || k.startsWith("charge") -> "charge"
+            k.startsWith("charge") -> "charge"
 
-            // PREMIUM (nouveaux)
-            k.startsWith("architectureemotionnelle") || k.startsWith("emotions") || k.startsWith("emotion") -> "emotion"
-            k.startsWith("qualitedureposvecu") || k.startsWith("repos") || k.startsWith("sommeil") -> "sommeil"
+            k.startsWith("emotion") -> "emotion"
+            k.startsWith("repos") || k.startsWith("sommeil") -> "sommeil"
 
             else -> k
         }
@@ -44,430 +41,260 @@ object TracePhrasesData {
         val k = normalize(raw)
         return when {
             k.startsWith("matin") -> "matin"
-            k.startsWith("jour") || k.startsWith("midi") -> "jour"
+            k.startsWith("jour") -> "jour"
             k.startsWith("soir") -> "soir"
             k.startsWith("nuit") -> "nuit"
             else -> "jour"
         }
     }
 
-    // ─────────────────────────────────────────────
-    // FREE — HUMEUR GLOBALE
-    // ─────────────────────────────────────────────
+    // ───────────────── GRATUIT ─────────────────
+    // HUMEUR
+    // Keywords stables :
+    // Légère / Agréable / Stable / Neutre / Lourde / Tendue
 
     private val HUMEUR_MATIN = listOf(
-        "Matin léger, esprit clair.",
-        "Bonne dynamique intérieure.",
-        "Sensation plutôt stable.",
-        "Matin neutre, rien de marquant.",
-        "Matin plus lourd, élan réduit.",
-        "Matin dense, tout semble plus difficile."
+        PhraseItem("Matin léger, ça part bien.", "Légère"),
+        PhraseItem("Matin agréable.", "Agréable"),
+        PhraseItem("Matin stable.", "Stable"),
+        PhraseItem("Matin neutre.", "Neutre"),
+        PhraseItem("Matin plus lourd.", "Lourde"),
+        PhraseItem("Matin tendu.", "Tendue")
     )
 
     private val HUMEUR_JOUR = listOf(
-        "Journée fluide, tout s’enchaîne naturellement.",
-        "Climat intérieur agréable, bonne stabilité.",
-        "Journée globalement stable.",
-        "Journée neutre, sans relief particulier.",
-        "Journée plus lourde, effort constant.",
-        "Journée difficile, sensation de tension."
+        PhraseItem("Journée légère, ça roule.", "Légère"),
+        PhraseItem("Journée agréable.", "Agréable"),
+        PhraseItem("Journée stable.", "Stable"),
+        PhraseItem("Journée neutre.", "Neutre"),
+        PhraseItem("Journée plus lourde.", "Lourde"),
+        PhraseItem("Journée tendue.", "Tendue")
     )
 
     private val HUMEUR_SOIR = listOf(
-        "Soirée légère, esprit relâché.",
-        "Bonne transition, état agréable.",
-        "Soirée plutôt stable.",
-        "Soirée neutre, rien de spécial.",
-        "Soirée plus lourde, fatigue présente.",
-        "Soirée difficile, tension persistante."
+        PhraseItem("Soirée légère.", "Légère"),
+        PhraseItem("Soirée agréable.", "Agréable"),
+        PhraseItem("Soirée stable.", "Stable"),
+        PhraseItem("Soirée neutre.", "Neutre"),
+        PhraseItem("Soirée plus lourde.", "Lourde"),
+        PhraseItem("Soirée tendue.", "Tendue")
     )
 
     private val HUMEUR_NUIT = listOf(
-        "Nuit calme, sensation apaisée.",
-        "Bonne stabilité intérieure.",
-        "Nuit correcte, sans perturbation notable.",
-        "Nuit neutre, état passif.",
-        "Nuit plus lourde, agitation de fond.",
-        "Nuit difficile, esprit peu tranquille."
+        PhraseItem("Nuit légère.", "Légère"),
+        PhraseItem("Nuit agréable.", "Agréable"),
+        PhraseItem("Nuit stable.", "Stable"),
+        PhraseItem("Nuit neutre.", "Neutre"),
+        PhraseItem("Nuit plus lourde.", "Lourde"),
+        PhraseItem("Nuit tendue.", "Tendue")
     )
 
-    // ─────────────────────────────────────────────
-    // FREE — ÉNERGIE / RYTHME
-    // ─────────────────────────────────────────────
+    // ÉNERGIE
+    // Keywords stables :
+    // Fluide / Ouverte / Stable / Ralentie / Lourde / Bloquée
 
     private val ENERGIE_MATIN = listOf(
-        "Énergie claire, mise en route facile.",
-        "Bonne disponibilité mentale et physique.",
-        "Rythme stable, fonctionnement correct.",
-        "Énergie modérée, sans excès.",
-        "Élan faible, démarrage plus lent.",
-        "Manque d’énergie marqué, effort notable."
+        PhraseItem("Ça circule bien dès le matin.", "Fluide"),
+        PhraseItem("L’ambiance est ouverte.", "Ouverte"),
+        PhraseItem("Ça tient normalement.", "Stable"),
+        PhraseItem("Ça ralentit.", "Ralentie"),
+        PhraseItem("C’est lourd dès le départ.", "Lourde"),
+        PhraseItem("Ça bloque.", "Bloquée")
     )
 
     private val ENERGIE_JOUR = listOf(
-        "Très bonne énergie, rythme naturel.",
-        "Bonne dynamique générale.",
-        "Énergie stable, fonctionnement régulier.",
-        "Rythme neutre, sans variation notable.",
-        "Énergie plus basse, fatigue diffuse.",
-        "Journée énergétiquement difficile."
+        PhraseItem("Ça circule bien.", "Fluide"),
+        PhraseItem("L’ambiance reste ouverte.", "Ouverte"),
+        PhraseItem("Énergie stable.", "Stable"),
+        PhraseItem("Ça ralentit un peu.", "Ralentie"),
+        PhraseItem("C’est lourd.", "Lourde"),
+        PhraseItem("Tout bloque.", "Bloquée")
     )
 
     private val ENERGIE_SOIR = listOf(
-        "Énergie encore confortable.",
-        "Bonne réserve, soirée fluide.",
-        "Niveau stable, sans tension.",
-        "Énergie neutre, état calme.",
-        "Fatigue présente, rythme ralenti.",
-        "Énergie très basse, lourdeur marquée."
+        PhraseItem("Ça redescend bien.", "Fluide"),
+        PhraseItem("L’ambiance s’ouvre.", "Ouverte"),
+        PhraseItem("Ça reste stable.", "Stable"),
+        PhraseItem("Ça ralentit.", "Ralentie"),
+        PhraseItem("C’est pesant.", "Lourde"),
+        PhraseItem("Ça reste bloqué.", "Bloquée")
     )
 
     private val ENERGIE_NUIT = listOf(
-        "État léger, récupération naturelle.",
-        "Bonne détente globale.",
-        "Niveau neutre, stable.",
-        "Énergie basse mais normale pour la nuit.",
-        "Agitation ou inconfort diffus.",
-        "Nuit peu récupératrice."
+        PhraseItem("Tout se calme.", "Fluide"),
+        PhraseItem("L’air devient ouvert.", "Ouverte"),
+        PhraseItem("Énergie stable.", "Stable"),
+        PhraseItem("Le repos tarde.", "Ralentie"),
+        PhraseItem("L’ambiance reste lourde.", "Lourde"),
+        PhraseItem("Ça ne décroche pas.", "Bloquée")
     )
 
-    // ─────────────────────────────────────────────
-    // FREE — CORPS / SENSATIONS
-    // ─────────────────────────────────────────────
+    // CORPS
+    // Keywords stables :
+    // Léger / Confortable / Stable / Fatigué / Tendu / Inconfortable
 
     private val CORPS_MATIN = listOf(
-        "Corps léger, sensations agréables.",
-        "Bonne aisance physique.",
-        "État corporel stable.",
-        "Ressenti neutre.",
-        "Corps plus lourd, légère tension.",
-        "Inconfort corporel marqué."
+        PhraseItem("Corps léger.", "Léger"),
+        PhraseItem("Corps confortable.", "Confortable"),
+        PhraseItem("Corps stable.", "Stable"),
+        PhraseItem("Fatigue légère.", "Fatigué"),
+        PhraseItem("Corps tendu.", "Tendu"),
+        PhraseItem("Corps inconfortable.", "Inconfortable")
     )
 
     private val CORPS_JOUR = listOf(
-        "Très bon confort physique.",
-        "Sensations globalement agréables.",
-        "État stable et fonctionnel.",
-        "Ressenti neutre, sans gêne notable.",
-        "Tensions ou fatigue corporelle.",
-        "Inconfort physique dominant."
+        PhraseItem("Corps léger.", "Léger"),
+        PhraseItem("Bon confort.", "Confortable"),
+        PhraseItem("État stable.", "Stable"),
+        PhraseItem("Fatigue présente.", "Fatigué"),
+        PhraseItem("Tensions présentes.", "Tendu"),
+        PhraseItem("Inconfort marqué.", "Inconfortable")
     )
 
     private val CORPS_SOIR = listOf(
-        "Corps détendu, sensations calmes.",
-        "Bonne relâche physique.",
-        "État stable.",
-        "Ressenti neutre.",
-        "Fatigue corporelle présente.",
-        "Tensions physiques marquées."
+        PhraseItem("Corps relâché.", "Léger"),
+        PhraseItem("Corps confortable.", "Confortable"),
+        PhraseItem("État stable.", "Stable"),
+        PhraseItem("Fatigue accumulée.", "Fatigué"),
+        PhraseItem("Corps tendu.", "Tendu"),
+        PhraseItem("Inconfort présent.", "Inconfortable")
     )
 
     private val CORPS_NUIT = listOf(
-        "Corps calme, repos naturel.",
-        "Bonne détente physique.",
-        "État neutre et stable.",
-        "Sensations passives.",
-        "Inconfort léger ou diffus.",
-        "Corps agité ou inconfortable."
+        PhraseItem("Corps relâché.", "Léger"),
+        PhraseItem("Bonne détente.", "Confortable"),
+        PhraseItem("État stable.", "Stable"),
+        PhraseItem("Repos léger.", "Fatigué"),
+        PhraseItem("Corps tendu.", "Tendu"),
+        PhraseItem("Inconfort empêche de dormir.", "Inconfortable")
     )
 
-    // ─────────────────────────────────────────────
-    // FREE — PRÉSENCE / ATTENTION
-    // ─────────────────────────────────────────────
+    // PRÉSENCE
+    // Keywords stables :
+    // Clair / Présent / Stable / Flottant / Dispersé / Brouillé
 
     private val PRESENCE_MATIN = listOf(
-        "Esprit clair, attention fluide.",
-        "Bonne présence mentale.",
-        "Concentration stable.",
-        "Attention neutre.",
-        "Distraction facile, focus instable.",
-        "Présence mentale difficile."
+        PhraseItem("Esprit clair.", "Clair"),
+        PhraseItem("Bonne présence.", "Présent"),
+        PhraseItem("Attention stable.", "Stable"),
+        PhraseItem("Esprit flottant.", "Flottant"),
+        PhraseItem("Attention dispersée.", "Dispersé"),
+        PhraseItem("Esprit brouillé.", "Brouillé")
     )
 
     private val PRESENCE_JOUR = listOf(
-        "Très bonne clarté mentale.",
-        "Bonne capacité d’attention.",
-        "Présence stable et fonctionnelle.",
-        "Attention neutre.",
-        "Difficulté légère à rester focus.",
-        "Attention fragmentée, esprit dispersé."
+        PhraseItem("Clarté mentale.", "Clair"),
+        PhraseItem("Présence solide.", "Présent"),
+        PhraseItem("Attention stable.", "Stable"),
+        PhraseItem("Attention fluctuante.", "Flottant"),
+        PhraseItem("Difficulté à rester concentré.", "Dispersé"),
+        PhraseItem("Esprit brouillé.", "Brouillé")
     )
 
     private val PRESENCE_SOIR = listOf(
-        "Esprit calme et présent.",
-        "Bonne stabilité mentale.",
-        "Attention stable.",
-        "Présence neutre.",
-        "Esprit plus diffus.",
-        "Difficulté à maintenir l’attention."
+        PhraseItem("Esprit clair.", "Clair"),
+        PhraseItem("Présence calme.", "Présent"),
+        PhraseItem("Attention stable.", "Stable"),
+        PhraseItem("Esprit plus flottant.", "Flottant"),
+        PhraseItem("Attention dispersée.", "Dispersé"),
+        PhraseItem("Esprit brouillé.", "Brouillé")
     )
 
     private val PRESENCE_NUIT = listOf(
-        "Esprit posé, calme mental.",
-        "Bonne tranquillité intérieure.",
-        "État neutre et passif.",
-        "Présence légère.",
-        "Agitation mentale diffuse.",
-        "Esprit instable ou chargé."
+        PhraseItem("Esprit calme.", "Clair"),
+        PhraseItem("Présence tranquille.", "Présent"),
+        PhraseItem("État stable.", "Stable"),
+        PhraseItem("Pensées flottantes.", "Flottant"),
+        PhraseItem("Esprit dispersé.", "Dispersé"),
+        PhraseItem("Esprit brouillé.", "Brouillé")
     )
 
-    // ─────────────────────────────────────────────
-    // PREMIUM — ÉMOTION (sans cycle)
-    // ─────────────────────────────────────────────
+    // ───────────────── PREMIUM ─────────────────
 
     private val EMOTION = listOf(
-        "Plénitude intérieure.",
-        "Joie présente.",
-        "Élan positif.",
-        "Stabilité émotionnelle.",
-        "État sensible.",
-        "Tension émotionnelle.",
-        "Fragilité intérieure.",
-        "Tristesse diffuse.",
-        "État sombre.",
-        "Vide émotionnel."
+        PhraseItem("État de plénitude.", "Plénitude"),
+        PhraseItem("Joie présente.", "Joie"),
+        PhraseItem("Élan positif.", "Positif"),
+        PhraseItem("État stable.", "Stable"),
+        PhraseItem("État sensible.", "Sensible"),
+        PhraseItem("Tension émotionnelle.", "Tension"),
+        PhraseItem("Fragilité présente.", "Fragile"),
+        PhraseItem("Tristesse présente.", "Tristesse"),
+        PhraseItem("État sombre.", "Sombre"),
+        PhraseItem("Vide ressenti.", "Vide")
     )
-
-    // ─────────────────────────────────────────────
-    // PREMIUM — SOMMEIL / REPOS (sans cycle)
-    // ─────────────────────────────────────────────
 
     private val SOMMEIL = listOf(
-        "Sommeil profondément réparateur.",
-        "Repos très stable, récupération nette.",
-        "Bonne nuit, continuité naturelle.",
-        "Sommeil correct, récupération présente.",
-        "Repos léger, récupération partielle.",
-        "Sommeil instable, micro-réveils possibles.",
-        "Nuit agitée, récupération limitée.",
-        "Sommeil fragmenté, fatigue persistante.",
-        "Nuit difficile, repos peu efficace.",
-        "Cauchemars ou sommeil perturbé."
+        PhraseItem("Sommeil réparateur.", "Réparateur"),
+        PhraseItem("Bonne nuit.", "Reposé"),
+        PhraseItem("Sommeil stable.", "Stable"),
+        PhraseItem("Sommeil correct.", "Correct"),
+        PhraseItem("Repos léger.", "Léger"),
+        PhraseItem("Sommeil instable.", "Instable"),
+        PhraseItem("Nuit agitée.", "Agité"),
+        PhraseItem("Sommeil fragmenté.", "Fragmenté"),
+        PhraseItem("Nuit difficile.", "Difficile"),
+        PhraseItem("Sommeil perturbé.", "Perturbé")
     )
 
-    // ─────────────────────────────────────────────
-    // PREMIUM — TYPE DE JOURNÉE (avec cycle)
-    // ─────────────────────────────────────────────
-
-    private val TYPEJOUR_MATIN = listOf(
-        "Départ fluide, intention claire.",
-        "Début stable, bonne tenue.",
-        "Mise en route correcte.",
-        "Début neutre, sans direction nette.",
-        "Départ lourd, résistance intérieure.",
-        "Début difficile, charge immédiate."
+    private val TYPEJOUR = listOf(
+        PhraseItem("Journée fluide.", "Fluide"),
+        PhraseItem("Journée bien structurée.", "Structurée"),
+        PhraseItem("Journée stable.", "Stable"),
+        PhraseItem("Journée variable.", "Variable"),
+        PhraseItem("Journée chargée.", "Chargée"),
+        PhraseItem("Journée désorganisée.", "Désorganisée")
     )
 
-    private val TYPEJOUR_JOUR = listOf(
-        "Journée simple, direction nette.",
-        "Journée structurée, bonne continuité.",
-        "Journée correcte, tenue générale.",
-        "Journée neutre, sans relief.",
-        "Journée lourde, effort constant.",
-        "Journée difficile, tenue fragile."
+    private val MOTIFS = listOf(
+        PhraseItem("Peu de remous en fond.", "Calme"),
+        PhraseItem("Quelques pensées reviennent.", "Présent"),
+        PhraseItem("Un motif se répète.", "Répétitif"),
+        PhraseItem("Ça revient par moments.", "Insistant"),
+        PhraseItem("Ça tourne davantage.", "Envahissant"),
+        PhraseItem("Le motif prend toute la place.", "Dominant")
     )
 
-    private val TYPEJOUR_SOIR = listOf(
-        "Soirée légère, relâche facile.",
-        "Soirée stable, bonne continuité.",
-        "Soirée correcte, tenue présente.",
-        "Soirée neutre, sans relief.",
-        "Soirée lourde, tension persistante.",
-        "Soirée difficile, charge dominante."
+    private val ENVIRON = listOf(
+        PhraseItem("Environnement calme.", "Calme"),
+        PhraseItem("Ambiance agréable.", "Agréable"),
+        PhraseItem("Environnement neutre.", "Neutre"),
+        PhraseItem("Environnement bruyant.", "Bruyant"),
+        PhraseItem("Ambiance tendue.", "Tendu"),
+        PhraseItem("Environnement lourd.", "Lourd")
     )
 
-    private val TYPEJOUR_NUIT = listOf(
-        "Nuit calme, décompression réelle.",
-        "Nuit stable, retombée douce.",
-        "Nuit correcte, état posé.",
-        "Nuit neutre, état passif.",
-        "Nuit lourde, rumination possible.",
-        "Nuit difficile, décompression absente."
+    private val CLARTE = listOf(
+        PhraseItem("Clarté très nette.", "Très claire"),
+        PhraseItem("Clarté présente.", "Claire"),
+        PhraseItem("Clarté stable.", "Stable"),
+        PhraseItem("Clarté plus floue.", "Floue"),
+        PhraseItem("Pensée confuse.", "Confuse"),
+        PhraseItem("Clarté brouillée.", "Brouillée")
     )
 
-    // ─────────────────────────────────────────────
-    // PREMIUM — MOTIFS PSYCHIQUES (avec cycle)
-    // ─────────────────────────────────────────────
-
-    private val MOTIFS_MATIN = listOf(
-        "Pensée nette, axe intérieur clair.",
-        "Bonne cohérence mentale.",
-        "Fil mental stable.",
-        "Pensée neutre, sans axe fort.",
-        "Pensée lourde, friction intérieure.",
-        "Pensée envahissante, charge mentale forte."
+    private val CHARGE = listOf(
+        PhraseItem("Charge légère.", "Légère"),
+        PhraseItem("Charge bien gérée.", "Gérée"),
+        PhraseItem("Charge stable.", "Stable"),
+        PhraseItem("Charge présente.", "Présente"),
+        PhraseItem("Charge lourde.", "Lourde"),
+        PhraseItem("Charge écrasante.", "Écrasante")
     )
 
-    private val MOTIFS_JOUR = listOf(
-        "Clarté psychique, direction facile.",
-        "Bonne cohérence interne.",
-        "Stabilité mentale fonctionnelle.",
-        "Neutre, mécanique du jour.",
-        "Charge mentale, répétitions présentes.",
-        "Boucles mentales, tension psychique."
-    )
+    // ───────────────── LOGIQUE ─────────────────
 
-    private val MOTIFS_SOIR = listOf(
-        "Relâche mentale, calme interne.",
-        "Bonne stabilité intérieure.",
-        "Pensée stable.",
-        "Neutre, sans relief.",
-        "Retour de tensions, ruminations.",
-        "Envahissement mental, charge forte."
-    )
-
-    private val MOTIFS_NUIT = listOf(
-        "Silence mental, apaisement.",
-        "Nuit stable, esprit posé.",
-        "État neutre, pensées rares.",
-        "Neutre, passage lent.",
-        "Agitation mentale diffuse.",
-        "Nuit envahie, pensées persistantes."
-    )
-
-    // ─────────────────────────────────────────────
-    // PREMIUM — ENVIRONNEMENT (avec cycle)
-    // ─────────────────────────────────────────────
-
-    private val ENVIRON_MATIN = listOf(
-        "Environnement soutenant.",
-        "Cadre favorable.",
-        "Cadre correct, neutre.",
-        "Cadre neutre, sans effet.",
-        "Cadre pesant.",
-        "Environnement difficile à porter."
-    )
-
-    private val ENVIRON_JOUR = listOf(
-        "Cadre très soutenant.",
-        "Cadre stable, bien géré.",
-        "Cadre correct.",
-        "Cadre neutre.",
-        "Cadre lourd, irritant.",
-        "Cadre hostile ou épuisant."
-    )
-
-    private val ENVIRON_SOIR = listOf(
-        "Cadre apaisant.",
-        "Cadre stable.",
-        "Cadre correct.",
-        "Cadre neutre.",
-        "Cadre lourd.",
-        "Cadre difficile, pression présente."
-    )
-
-    private val ENVIRON_NUIT = listOf(
-        "Cadre calme, sécurisant.",
-        "Cadre stable.",
-        "Cadre correct.",
-        "Cadre neutre.",
-        "Cadre pesant.",
-        "Cadre perturbant ou oppressant."
-    )
-
-    // ─────────────────────────────────────────────
-    // PREMIUM — CLARTÉ MENTALE (avec cycle)
-    // ─────────────────────────────────────────────
-
-    private val CLARTE_MATIN = listOf(
-        "Clarté nette, esprit lumineux.",
-        "Bonne clarté mentale.",
-        "Clarté stable.",
-        "Clarté neutre.",
-        "Brume mentale présente.",
-        "Esprit embrouillé, clarté faible."
-    )
-
-    private val CLARTE_JOUR = listOf(
-        "Esprit très clair, décisions faciles.",
-        "Bonne clarté, pensée fluide.",
-        "Clarté stable.",
-        "Neutre, sans netteté.",
-        "Brume mentale, effort cognitif.",
-        "Confusion mentale, charge cognitive."
-    )
-
-    private val CLARTE_SOIR = listOf(
-        "Esprit clair malgré la fin du jour.",
-        "Bonne clarté.",
-        "Clarté stable.",
-        "Neutre.",
-        "Brume mentale.",
-        "Esprit confus, clarté faible."
-    )
-
-    private val CLARTE_NUIT = listOf(
-        "Nuit claire, esprit posé.",
-        "Bonne clarté intérieure.",
-        "État stable.",
-        "Neutre.",
-        "Brume mentale diffuse.",
-        "Esprit instable, clarté absente."
-    )
-
-    // ─────────────────────────────────────────────
-    // PREMIUM — CHARGE ÉMOTIONNELLE (avec cycle)
-    // ─────────────────────────────────────────────
-
-    private val CHARGE_MATIN = listOf(
-        "Charge très basse, légèreté intérieure.",
-        "Charge faible, stable.",
-        "Charge modérée, gérable.",
-        "Charge neutre.",
-        "Charge lourde, pression interne.",
-        "Charge écrasante, poids immédiat."
-    )
-
-    private val CHARGE_JOUR = listOf(
-        "Charge très basse, respiration facile.",
-        "Charge faible, bonne tenue.",
-        "Charge modérée, gérable.",
-        "Charge neutre.",
-        "Charge lourde, effort constant.",
-        "Charge écrasante, poids dominant."
-    )
-
-    private val CHARGE_SOIR = listOf(
-        "Charge basse, relâche facile.",
-        "Charge faible.",
-        "Charge modérée.",
-        "Neutre.",
-        "Charge lourde, tension persistante.",
-        "Charge écrasante, saturation."
-    )
-
-    private val CHARGE_NUIT = listOf(
-        "Charge basse, nuit douce.",
-        "Charge faible, repos possible.",
-        "Charge modérée.",
-        "Neutre.",
-        "Charge lourde, agitation.",
-        "Charge écrasante, nuit difficile."
-    )
-
-    // ─────────────────────────────────────────────
-    // BUCKET % → INDEX (INVERSE)
-    // ─────────────────────────────────────────────
-
-    // ✅ 100% = meilleur (index 0)
-    // ✅ 0%   = pire    (dernier index)
     private fun bucket(percent: Int, size: Int): Int {
         val p = percent.coerceIn(0, 100)
         val inverted = 100 - p
         return (inverted * size) / 101
     }
 
-    // ─────────────────────────────────────────────
-    // API PRINCIPALE
-    // ─────────────────────────────────────────────
-
-    fun phraseForSlider(sliderKey: String, phaseKey: String, percent: Int): String {
+    private fun phraseListFor(sliderKey: String, phaseKey: String): List<PhraseItem> {
         val s = normalizeSliderKey(sliderKey)
         val p = normalizePhaseKey(phaseKey)
 
-        val list = when (s) {
-
-            // FREE
+        return when (s) {
             "humeur" -> when (p) {
                 "matin" -> HUMEUR_MATIN
                 "jour" -> HUMEUR_JOUR
@@ -496,49 +323,25 @@ object TracePhrasesData {
                 else -> PRESENCE_NUIT
             }
 
-            // PREMIUM — sans cycle
             "emotion" -> EMOTION
             "sommeil" -> SOMMEIL
+            "typejour" -> TYPEJOUR
+            "motifs" -> MOTIFS
+            "environ" -> ENVIRON
+            "clarte" -> CLARTE
+            "charge" -> CHARGE
 
-            // PREMIUM — avec cycle
-            "typejour" -> when (p) {
-                "matin" -> TYPEJOUR_MATIN
-                "jour" -> TYPEJOUR_JOUR
-                "soir" -> TYPEJOUR_SOIR
-                else -> TYPEJOUR_NUIT
-            }
-
-            "motifs" -> when (p) {
-                "matin" -> MOTIFS_MATIN
-                "jour" -> MOTIFS_JOUR
-                "soir" -> MOTIFS_SOIR
-                else -> MOTIFS_NUIT
-            }
-
-            "environ" -> when (p) {
-                "matin" -> ENVIRON_MATIN
-                "jour" -> ENVIRON_JOUR
-                "soir" -> ENVIRON_SOIR
-                else -> ENVIRON_NUIT
-            }
-
-            "clarte" -> when (p) {
-                "matin" -> CLARTE_MATIN
-                "jour" -> CLARTE_JOUR
-                "soir" -> CLARTE_SOIR
-                else -> CLARTE_NUIT
-            }
-
-            "charge" -> when (p) {
-                "matin" -> CHARGE_MATIN
-                "jour" -> CHARGE_JOUR
-                "soir" -> CHARGE_SOIR
-                else -> CHARGE_NUIT
-            }
-
-            else -> HUMEUR_JOUR // fallback safe
+            else -> HUMEUR_JOUR
         }
+    }
 
-        return list[bucket(percent, list.size)]
+    fun phraseForSlider(sliderKey: String, phaseKey: String, percent: Int): String {
+        val list = phraseListFor(sliderKey, phaseKey)
+        return list[bucket(percent, list.size)].text
+    }
+
+    fun keywordForSlider(sliderKey: String, phaseKey: String, percent: Int): String {
+        val list = phraseListFor(sliderKey, phaseKey)
+        return list[bucket(percent, list.size)].keyword
     }
 }

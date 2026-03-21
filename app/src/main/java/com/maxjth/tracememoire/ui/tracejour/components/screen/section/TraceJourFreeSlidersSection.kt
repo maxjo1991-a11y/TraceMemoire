@@ -10,7 +10,6 @@ import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.maxjth.tracememoire.ui.tracejour.components.screen.TraceJourSlidersBlock
 import com.maxjth.tracememoire.ui.tracejour.components.screen.cards.CollapsibleSliderCard
 import com.maxjth.tracememoire.ui.tracejour.components.screen.cards.model.CardOpenState
 import com.maxjth.tracememoire.ui.tracejour.components.screen.helpers.INNER_OPEN_GAP_DP
@@ -60,10 +59,12 @@ fun TraceJourFreeSlidersSection(
             val accent = accentMap[def.key] ?: cycleAccentColor(cycleKey)
             val persistedPct = sliderMap[def.key] ?: 0
 
-            val createdAtMillis: Long? = createdAtMap[def.key]?.takeIf { it > 0L }
-            val createdAtMillisForCard: Long? = createdAtMillis
-            val isLockedCard: Boolean = lockedMap[def.key] == true
+            val createdAtMillis = createdAtMap[def.key]?.takeIf { it > 0L }
+            val isLockedCard = lockedMap[def.key] == true
             val enabledCard = enabled && !isLockedCard
+
+            val cardState = getCardState(def.key)
+            val isCardOpen = cardState != CardOpenState.CLOSED
 
             val memoryPhrase = phraseMap[def.key]
                 ?: buildMemoryPhrase(
@@ -77,6 +78,8 @@ fun TraceJourFreeSlidersSection(
             val memoryKeyword = keywordMap[def.key]
                 ?: buildMemoryKeyword(memoryPhrase)
 
+            val memoryKeywordForCard = if (isCardOpen) "" else memoryKeyword
+
             val memoryMeta = formatMemoryMeta(
                 cycleKey = cycleKey,
                 createdAtMillis = createdAtMillis
@@ -86,17 +89,18 @@ fun TraceJourFreeSlidersSection(
                 CollapsibleSliderCard(
                     sliderKey = def.key,
                     title = def.title,
-                    cardState = getCardState(def.key),
+                    cardState = cardState,
                     captured = captured,
-                    createdAtMillis = createdAtMillisForCard,
+                    createdAtMillis = createdAtMillis,
                     locked = isLockedCard,
                     enabledForDot = enabled,
                     onLockClick = null,
                     onToggle = { onCycleCardState(def.key) },
                     percent = persistedPct,
                     memoryPhrase = memoryPhrase,
-                    memoryKeyword = memoryKeyword,
+                    memoryKeyword = memoryKeywordForCard,
                     memoryMeta = memoryMeta,
+                    hasNote = note.isNotBlank(),
                     isHero = false,
                     heroSubtitle = null,
                     heroMinHeight = 210.dp,
@@ -163,7 +167,6 @@ fun TraceJourFreeSlidersSection(
                             },
                             enabled = enabledCard,
                             accent = accent,
-                            userIsPremium = isPremium,
                             title = "Trace écrite",
                             placeholder = "Écrire une note…"
                         )

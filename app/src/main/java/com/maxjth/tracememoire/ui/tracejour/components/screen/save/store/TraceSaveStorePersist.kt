@@ -32,18 +32,17 @@ internal object TraceSaveStorePersist {
         cycleKey: String,
         sliderKeys: List<String>
     ) {
-        val safeCycleKey = TraceValeurCycleHelper.normCycleKey(cycleKey)
-            ?: cycleKey.trim().uppercase()
+        val persistedCycleKey = cycleKey.trim()
 
         store.attach(context, seedBase)
-        store.currentLoadedCycleKey = safeCycleKey
+        store.currentLoadedCycleKey = persistedCycleKey
 
         store.cycle.initDefaults(sliderKeys)
 
         store.cycleStorage.loadCycle(
             context = context,
             seedBase = seedBase,
-            cycleKey = safeCycleKey,
+            cycleKey = persistedCycleKey,
             sliderKeys = sliderKeys,
             sliderMap = store.sliderMap,
             noteMap = store.noteMap,
@@ -54,7 +53,9 @@ internal object TraceSaveStorePersist {
         )
 
         store.cycle.applyVisualZeroForUntouched(sliderKeys)
-        store.state.value = TraceSaveState()
+        store.state.value = TraceSaveState(
+            cycleKey = persistedCycleKey
+        )
 
         store.homeIO.loadHomeOnlyForHomeScreen(
             context = context,
@@ -73,15 +74,15 @@ internal object TraceSaveStorePersist {
         seedBase: String,
         cycleKey: String
     ) {
-        val safeCycleKey = TraceValeurCycleHelper.normCycleKey(cycleKey)
-            ?: cycleKey.trim().uppercase()
+        val persistedCycleKey = cycleKey.trim()
 
-        store.currentLoadedCycleKey = safeCycleKey
+        store.currentLoadedCycleKey = persistedCycleKey
 
+        // 1) persist du cycle courant daté
         store.cycleStorage.persistCycle(
             context = context,
             seedBase = seedBase,
-            cycleKey = safeCycleKey,
+            cycleKey = persistedCycleKey,
             sliderMap = store.sliderMap,
             noteMap = store.noteMap,
             capturedMap = store.capturedMap,
@@ -90,21 +91,22 @@ internal object TraceSaveStorePersist {
             touchedMap = store.touchedMap
         )
 
-        // 🔒 FIX MIDNIGHT — recalcul seulement si un slider du cycle a une vraie valeur
-        if (store.sliderMap.values.any { it > 0 }) {
-            store.recomputeTodayValueFromAllCycles()
-        }
-
+        // 2) persist de la valeur du jour
         store.valeur.persist(context, seedBase)
 
+        // 3) persist HOME
         store.homeIO.persistHomeSafe(
             cyclePercentMap = store.cyclePercentMap,
             dailyPercentValue = store.yearlyPercent.value,
             lastDeltaTodaySetter = { store.lastDeltaToday.value = it }
         )
 
+        // 4) persist du percent figé HOME avec clé normalisée si nécessaire
+        val normalizedForHome = TraceValeurCycleHelper.normCycleKey(cycleKey)
+            ?: cycleKey.trim().uppercase()
+
         store.homeIO.persistCyclePercentIfPossible(
-            safeCycleKey,
+            normalizedForHome,
             store.cyclePercentMap
         )
     }

@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -32,6 +31,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,6 +64,7 @@ fun TraceNoteBlock(
     enabled: Boolean,
     accent: Color,
     modifier: Modifier = Modifier,
+    externalLocked: Boolean = false,
     userIsPremium: Boolean = false,
     maxCharsFree: Int = 200,
     maxCharsPremium: Int = 589,
@@ -77,9 +78,19 @@ fun TraceNoteBlock(
         if (userIsPremium) premiumCap else freeCap
     }
 
-    val safeNote = remember(note, maxChars) {
-        if (note.length > maxChars) note.take(maxChars) else note
+    var localNote by remember(note, maxChars) {
+        mutableStateOf(if (note.length > maxChars) note.take(maxChars) else note)
     }
+
+    LaunchedEffect(note, maxChars) {
+        val clamped = if (note.length > maxChars) note.take(maxChars) else note
+        if (clamped != localNote) {
+            localNote = clamped
+        }
+    }
+
+    val safeNote = localNote
+    val noteEditable = enabled && !externalLocked
 
     var isOpen by remember { mutableStateOf(false) }
     var isFocused by remember { mutableStateOf(false) }
@@ -215,7 +226,7 @@ fun TraceNoteBlock(
                         .border(
                             width = 1.3.dp,
                             brush = Brush.linearGradient(
-                                listOf(
+                                colors = listOf(
                                     noteTurquoise.copy(alpha = 0.72f),
                                     noteAccent.copy(alpha = 0.84f),
                                     Color.White.copy(alpha = 0.18f)
@@ -273,20 +284,20 @@ fun TraceNoteBlock(
                         .heightIn(min = 156.dp)
                         .height(if (userIsPremium) 210.dp else 184.dp)
                         .graphicsLayer {
-                            val scale = if (enabled && isFocused) breatheScale else 1f
+                            val scale = if (noteEditable && isFocused) breatheScale else 1f
                             scaleX = scale
                             scaleY = scale
                         }
                         .clip(shapeInner)
                         .background(writingBrush)
                         .border(
-                            width = if (isFocused && enabled) 1.6.dp else 1.2.dp,
+                            width = if (isFocused && noteEditable) 1.6.dp else 1.2.dp,
                             brush = Brush.linearGradient(
                                 colors = listOf(
                                     lerp(noteTurquoise, noteAccent, 0.45f).copy(
-                                        alpha = if (isFocused && enabled) 0.58f else 0.30f
+                                        alpha = if (isFocused && noteEditable) 0.58f else 0.30f
                                     ),
-                                    Color.White.copy(alpha = if (isFocused && enabled) 0.18f else 0.08f)
+                                    Color.White.copy(alpha = if (isFocused && noteEditable) 0.18f else 0.08f)
                                 )
                             ),
                             shape = shapeInner
@@ -300,7 +311,7 @@ fun TraceNoteBlock(
                                 Brush.radialGradient(
                                     colors = listOf(
                                         lerp(noteTurquoise, noteAccent, 0.55f).copy(
-                                            alpha = if (isFocused && enabled) 0.07f else 0.025f
+                                            alpha = if (isFocused && noteEditable) 0.07f else 0.025f
                                         ),
                                         Color.Transparent
                                     ),
@@ -309,7 +320,7 @@ fun TraceNoteBlock(
                             )
                     )
 
-                    if (!enabled) {
+                    if (!noteEditable) {
                         Text(
                             text = safeNote.ifBlank { "Aucune trace écrite." },
                             color = Color.White.copy(alpha = if (safeNote.isBlank()) 0.42f else 0.88f),
@@ -322,9 +333,11 @@ fun TraceNoteBlock(
                         BasicTextField(
                             value = safeNote,
                             onValueChange = { raw ->
-                                onNoteChange(raw.take(maxChars))
+                                val next = raw.take(maxChars)
+                                localNote = next
+                                onNoteChange(next)
                             },
-                            enabled = true,
+                            enabled = noteEditable,
                             textStyle = TextStyle(
                                 color = Color.White.copy(alpha = 0.98f),
                                 fontSize = 17.sp,
@@ -375,7 +388,7 @@ fun TraceNoteBlock(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.Start
                 ) {
                     Text(
                         text = "Fermer",
@@ -388,29 +401,6 @@ fun TraceNoteBlock(
                                 if (enabled) isOpen = false
                             }
                             .padding(horizontal = 12.dp, vertical = 8.dp)
-                    )
-
-                    Text(
-                        text = "Enregistrer",
-                        color = WHITE_SOFT.copy(alpha = 0.96f),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(
-                                Brush.horizontalGradient(
-                                    colors = listOf(
-                                        noteTurquoise.copy(alpha = 0.12f),
-                                        noteAccent.copy(alpha = 0.16f)
-                                    )
-                                )
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = lerp(noteTurquoise, noteAccent, 0.5f).copy(alpha = 0.28f),
-                                shape = RoundedCornerShape(14.dp)
-                            )
-                            .padding(horizontal = 15.dp, vertical = 9.dp)
                     )
                 }
             }

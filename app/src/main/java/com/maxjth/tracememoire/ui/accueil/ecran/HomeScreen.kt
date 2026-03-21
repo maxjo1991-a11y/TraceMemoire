@@ -85,36 +85,11 @@ fun HomeScreen(
         ).coerceIn(0, 400)
     }
 
-    fun cumulativeValue(current: Int?, previous: List<Int?>): Int? {
-        val safeCurrent = current?.coerceIn(0, 400) ?: return null
-        val previousTotal = previous.mapNotNull { it?.coerceIn(0, 400) }.sum()
-        return (previousTotal + safeCurrent).coerceIn(0, 1600)
-    }
-
-    val matinValue = cycleValue(TypeCycleHome.MATIN)
-    val jourValue = cycleValue(TypeCycleHome.JOUR)
-    val soirValue = cycleValue(TypeCycleHome.SOIR)
-    val nuitValue = cycleValue(TypeCycleHome.NUIT)
-
-    val pMatin = cumulativeValue(
-        current = matinValue,
-        previous = emptyList()
-    )
-
-    val pJour = cumulativeValue(
-        current = jourValue,
-        previous = listOf(matinValue)
-    )
-
-    val pSoir = cumulativeValue(
-        current = soirValue,
-        previous = listOf(matinValue, jourValue)
-    )
-
-    val pNuit = cumulativeValue(
-        current = nuitValue,
-        previous = listOf(matinValue, jourValue, soirValue)
-    )
+    // ✅ VALEURS PURES DE CYCLE
+    val pMatin = cycleValue(TypeCycleHome.MATIN)
+    val pJour = cycleValue(TypeCycleHome.JOUR)
+    val pSoir = cycleValue(TypeCycleHome.SOIR)
+    val pNuit = cycleValue(TypeCycleHome.NUIT)
 
     val yesterdayValue by saveStore.yesterdayValue
     val todayValue by saveStore.todayValue
